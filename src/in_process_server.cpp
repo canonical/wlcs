@@ -329,15 +329,13 @@ public:
         auto callback = wl_surface_frame(surface_);
 
         // TODO: Store pending callbacks and destroy + free closure on ~Surface
-        wl_callback_set_user_data(callback, holder.release());
-        wl_callback_add_listener(callback, &frame_listener, nullptr);
+        wl_callback_add_listener(callback, &frame_listener, holder.release());
     }
 
 private:
-    static void frame_callback(void*, wl_callback* callback, uint32_t frame_time)
+    static void frame_callback(void* ctx, wl_callback* callback, uint32_t frame_time)
     {
-        auto frame_callback = static_cast<std::function<void(uint32_t)>*>(
-            wl_callback_get_user_data(callback));
+        auto frame_callback = static_cast<std::function<void(uint32_t)>*>(ctx);
 
         (*frame_callback)(frame_time);
 
