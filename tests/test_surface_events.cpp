@@ -364,16 +364,16 @@ TEST_F(ClientSurfaceEventsTest, buffer_release)
 
 	auto surface = client.create_visible_surface(100, 100);
 
-	std::array<wlcs::ShmBuffer, 3> buffers = {
-		wlcs::ShmBuffer{client, 100, 100},
-		wlcs::ShmBuffer{client, 100, 100},
-		wlcs::ShmBuffer{client, 100, 100}
-	};
-	std::array<bool, 3> buffer_released = {
-		false,
-		false,
-		false
-	};
+	std::array<wlcs::ShmBuffer, 3> buffers = {{
+        wlcs::ShmBuffer{client, 100, 100},
+        wlcs::ShmBuffer{client, 100, 100},
+        wlcs::ShmBuffer{client, 100, 100}
+	}};
+	std::array<bool, 3> buffer_released = {{
+        false,
+        false,
+        false
+	}};
 
 	for (auto i = 0u; i < buffers.size(); ++i)
 	{
