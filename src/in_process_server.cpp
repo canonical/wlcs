@@ -71,8 +71,12 @@ public:
                     std::system_category(),
                     "Failed to get client socket from server"}));
             }
+            return fd;
         }
-        BOOST_THROW_EXCEPTION(ShimNotImplemented{});
+        else
+        {
+            BOOST_THROW_EXCEPTION(ShimNotImplemented{});
+        }
     }
 
 private:
