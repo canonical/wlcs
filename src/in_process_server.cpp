@@ -413,20 +413,17 @@ private:
     {
         auto me = static_cast<Impl*>(ctx);
 
-        auto start = me->release_notifiers.begin();
-        auto end = me->release_notifiers.end();
+        std::vector<decltype(me->release_notifiers.begin())> expired_notifiers;
 
-        for (auto& notifier = *start; start != end; ++start)
+        for (auto notifier = me->release_notifiers.begin(); notifier != me->release_notifiers.end(); ++notifier)
         {
-            if (!notifier())
+            if (!(*notifier)())
             {
-                *(end - 1) = std::move(*start);
-                end--;
+                expired_notifiers.push_back(notifier);
             }
         }
-        me->release_notifiers.erase(
-            end,
-            me->release_notifiers.end());
+        for (auto const& expired : expired_notifiers)
+            me->release_notifiers.erase(expired);
     }
 
     static constexpr wl_buffer_listener listener {
