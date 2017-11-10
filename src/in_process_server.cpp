@@ -207,8 +207,9 @@ public:
         wl_surface_attach(surface, *buffer, 0, 0);
         wl_surface_commit(surface);
 
+        buffer->add_release_listener([buffer]() { return false; });
         // It's safe to free the buffer after the release event has been received.
-        buffer->add_release_listener([buffer = std::move(buffer)]() { return false; });
+        buffer.reset();
 
         return surface;
     }
