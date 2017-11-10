@@ -441,7 +441,7 @@ wlcs::ShmBuffer::ShmBuffer(Client &client, int width, int height)
 {
 }
 
-wlcs::ShmBuffer::ShmBuffer(ShmBuffer &&other) = default;
+wlcs::ShmBuffer::ShmBuffer(ShmBuffer&&) = default;
 wlcs::ShmBuffer::~ShmBuffer() = default;
 
 wlcs::ShmBuffer::operator wl_buffer*() const
