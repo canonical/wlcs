@@ -1,0 +1,29 @@
+project: wlcs
+
+kill-timeout: 50m
+
+backends:
+    lxd:
+        systems:
+            - ubuntu-16.04
+            - ubuntu-17.10
+            - fedora-26
+
+environment:
+    CLANG: 0
+    CLANG/clang: 1
+
+suites:
+    spread/build/:
+        summary: Build wlcs
+        environment:
+            CC/gcc: gcc
+            CXX/gcc: g++
+            CC/clang: clang
+            CXX/clang: clang++
+
+path:
+    /spread/wlcs
+
+exclude:
+    - .git

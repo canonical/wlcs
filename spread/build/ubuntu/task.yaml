@@ -1,0 +1,20 @@
+summary: Build (on Ubuntu)
+
+execute: |
+    apt-get update
+
+    apt install --yes \
+        libwayland-dev \
+        cmake \
+        clang \
+        g++ \
+        pkg-config \
+        libgtest-dev \
+        google-mock \
+        libboost-dev
+
+    cd $SPREAD_PATH
+    cd $(mktemp --directory)
+    cmake $SPREAD_PATH
+    make -j
+
