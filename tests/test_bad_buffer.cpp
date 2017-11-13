@@ -73,12 +73,11 @@ TEST_F(BadBufferTest, test_truncated_shm_file)
 
 	wlcs::Client client{the_server()};
 
-	wl_buffer *bad_buffer;
 	bool buffer_consumed{false};
 
 	auto surface = client.create_visible_surface(200, 200);
 
-	bad_buffer = create_bad_shm_buffer(client, 200, 200);
+	wl_buffer* bad_buffer = create_bad_shm_buffer(client, 200, 200);
 
 	wl_surface_attach(surface, bad_buffer, 0, 0);
 	wl_surface_damage(surface, 0, 0, 200, 200);
@@ -93,6 +92,7 @@ TEST_F(BadBufferTest, test_truncated_shm_file)
 	}
 	catch (wlcs::ProtocolError const& err)
 	{
+		wl_buffer_destroy(bad_buffer);
 		EXPECT_THAT(err.error_code(), Eq(WL_SHM_ERROR_INVALID_FD));
 		EXPECT_THAT(err.interface(), Eq(&wl_buffer_interface));
 		return;

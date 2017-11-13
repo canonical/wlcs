@@ -174,6 +174,11 @@ public:
 
     ~Impl()
     {
+        if (shm) wl_shm_destroy(shm);
+        if (shell) wl_shell_destroy(shell);
+        if (compositor) wl_compositor_destroy(compositor);
+        if (registry) wl_registry_destroy(registry);
+        if (shell_surface) wl_shell_surface_destroy(shell_surface);
         wl_display_disconnect(display);
     }
 
@@ -194,22 +199,22 @@ public:
 
     Surface create_visible_surface(
         Client& client,
-        int width,
-        int height)
+        int /*width*/,
+        int /*height*/)
     {
         Surface surface{client};
 
-        auto shell_surface = wl_shell_get_shell_surface(shell, surface);
+        shell_surface = wl_shell_get_shell_surface(shell, surface);
         wl_shell_surface_set_toplevel(shell_surface);
 
-        auto buffer = std::make_shared<ShmBuffer>(client, width, height);
-
-        wl_surface_attach(surface, *buffer, 0, 0);
-        wl_surface_commit(surface);
-
-        buffer->add_release_listener([buffer]() { return false; });
-        // It's safe to free the buffer after the release event has been received.
-        buffer.reset();
+//        auto buffer = std::make_shared<ShmBuffer>(client, width, height);
+//
+//        wl_surface_attach(surface, *buffer, 0, 0);
+//        wl_surface_commit(surface);
+//
+//        buffer->add_release_listener([buffer]() { return false; });
+//        // It's safe to free the buffer after the release event has been received.
+//        buffer.reset();
 
         return surface;
     }
@@ -269,10 +274,11 @@ private:
     };
 
     struct wl_display* display;
-    struct wl_registry* registry;
-    struct wl_compositor* compositor;
-    struct wl_shm* shm;
-    struct wl_shell* shell;
+    struct wl_registry* registry = nullptr;
+    struct wl_compositor* compositor = nullptr;
+    struct wl_shm* shm = nullptr;
+    struct wl_shell_surface* shell_surface = nullptr;
+    struct wl_shell* shell = nullptr;
 };
 
 constexpr wl_registry_listener wlcs::Client::Impl::registry_listener;
@@ -317,6 +323,18 @@ public:
     {
     }
 
+    ~Impl()
+    {
+        if (pending_callback)
+        {
+            delete static_cast<std::function<void(uint32_t)>*>(wl_callback_get_user_data(pending_callback));
+
+            wl_callback_destroy(pending_callback);
+        }
+
+        wl_surface_destroy(surface_);
+    }
+
     wl_surface* surface() const
     {
         return surface_;
@@ -327,15 +345,20 @@ public:
         std::unique_ptr<std::function<void(uint32_t)>> holder{
             new std::function<void(uint32_t)>(on_frame)};
 
-        auto callback = wl_surface_frame(surface_);
+        pending_callback = wl_surface_frame(surface_);
 
         // TODO: Store pending callbacks and destroy + free closure on ~Surface
-        wl_callback_add_listener(callback, &frame_listener, holder.release());
+        wl_callback_add_listener(pending_callback, &frame_listener, holder.release());
     }
 
 private:
+
+    static wl_callback* pending_callback;
+
     static void frame_callback(void* ctx, wl_callback* callback, uint32_t frame_time)
     {
+        pending_callback = nullptr;
+
         auto frame_callback = static_cast<std::function<void(uint32_t)>*>(ctx);
 
         (*frame_callback)(frame_time);
@@ -350,6 +373,8 @@ private:
 
     struct wl_surface* const surface_;
 };
+
+wl_callback* wlcs::Surface::Impl::pending_callback = nullptr;
 
 constexpr wl_callback_listener wlcs::Surface::Impl::frame_listener;
 
@@ -390,6 +415,7 @@ public:
             stride,
             WL_SHM_FORMAT_ARGB8888);
         wl_shm_pool_destroy(pool);
+        close(fd);
 
         wl_buffer_add_listener(buffer_, &listener, this);
     }
