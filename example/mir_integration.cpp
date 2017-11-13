@@ -26,26 +26,36 @@
 #include "mir_test_framework/async_server_runner.h"
 #include "mir_test_framework/headless_display_buffer_compositor_factory.h"
 #include "mir_test_framework/executable_path.h"
+#include <mir/test/doubles/mock_gl.h>
 
 namespace mtf = mir_test_framework;
 
+namespace
+{
+struct MirWlcsDisplayServer : mtf::AsyncServerRunner
+{
+    mir::test::doubles::MockGL mockgl;
+};
+}
+
 void wlcs_server_start(WlcsDisplayServer* server)
 {
-    auto runner = reinterpret_cast<mtf::AsyncServerRunner*>(server);
+    auto runner = reinterpret_cast<MirWlcsDisplayServer*>(server);
 
     runner->start_server();
 }
 
 void wlcs_server_stop(WlcsDisplayServer* server)
 {
-    auto runner = reinterpret_cast<mtf::AsyncServerRunner*>(server);
+    auto runner = reinterpret_cast<MirWlcsDisplayServer*>(server);
 
     runner->stop_server();
 }
 
+
 WlcsDisplayServer* wlcs_create_server(int argc, char const** argv)
 {
-    auto runner = new mtf::AsyncServerRunner;
+    auto runner = new MirWlcsDisplayServer;
     runner->add_to_environment("MIR_SERVER_PLATFORM_GRAPHICS_LIB", mtf::server_platform("graphics-dummy.so").c_str());
     runner->add_to_environment("MIR_SERVER_PLATFORM_INPUT_LIB", mtf::server_platform("input-stub.so").c_str());
     runner->add_to_environment("MIR_SERVER_ENABLE_KEY_REPEAT", "false");
@@ -61,13 +71,13 @@ WlcsDisplayServer* wlcs_create_server(int argc, char const** argv)
 
 void wlcs_destroy_server(WlcsDisplayServer* server)
 {
-    auto runner = reinterpret_cast<mtf::AsyncServerRunner*>(server);
+    auto runner = reinterpret_cast<MirWlcsDisplayServer*>(server);
     delete runner;
 }
 
 int wlcs_server_create_client_socket(WlcsDisplayServer* server)
 {
-    auto runner = reinterpret_cast<mtf::AsyncServerRunner*>(server);
+    auto runner = reinterpret_cast<MirWlcsDisplayServer*>(server);
 
     return fcntl(runner->server.open_wayland_client_socket(), F_DUPFD_CLOEXEC, 3);
 }

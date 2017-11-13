@@ -77,6 +77,7 @@ int wlcs::helpers::create_anonymous_file(size_t size)
 
     if (ftruncate(fd, size) == -1)
     {
+        close(fd);
         BOOST_THROW_EXCEPTION(
             std::system_error(errno, std::system_category(), "Failed to resize temporary file"));
     }
