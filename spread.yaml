@@ -1,0 +1,30 @@
+project: wlcs
+
+kill-timeout: 50m
+
+backends:
+    lxd:
+        systems:
+            - ubuntu-16.04
+            - ubuntu-17.10
+            - fedora-26
+    linode:
+        key: "$(HOST: echo $SPREAD_LINODE_KEY)"
+        systems:
+            - ubuntu-16.04
+            - ubuntu-17.10
+
+suites:
+    spread/build/:
+        summary: Build wlcs
+        environment:
+            CC/gcc: gcc
+            CXX/gcc: g++
+            CC/clang: clang
+            CXX/clang: clang++
+
+path:
+    /spread/wlcs
+
+exclude:
+    - .git
