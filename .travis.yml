@@ -4,6 +4,12 @@ dist: trusty
 
 language: cpp
 
+branches:
+  only:
+  - staging
+  - trying
+  - master
+
 env:
   global:
     # SPREAD_LINODE_KEY
