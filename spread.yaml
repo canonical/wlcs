@@ -8,10 +8,11 @@ backends:
             - ubuntu-16.04
             - ubuntu-17.10
             - fedora-26
-
-environment:
-    CLANG: 0
-    CLANG/clang: 1
+    linode:
+        key: "$(HOST: echo $SPREAD_LINODE_KEY)"
+        systems:
+            - ubuntu-16.04
+            - ubuntu-17.10
 
 suites:
     spread/build/:
