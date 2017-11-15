@@ -1,4 +1,5 @@
 summary: Build (on Ubuntu)
+systems: [-fedora-26]
 
 execute: |
     apt-get update

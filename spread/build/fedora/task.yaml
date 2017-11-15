@@ -1,0 +1,19 @@
+summary: Build (on Fedora)
+systems: [fedora-26]
+
+execute: |
+    dnf install --assumeyes \
+        wayland-devel \
+        cmake \
+        clang \
+        gcc-c++ \
+        pkg-config \
+        boost-devel \
+        gtest-devel \
+        gmock-devel
+
+    cd $SPREAD_PATH
+    cd $(mktemp --directory)
+    cmake $SPREAD_PATH
+    make -j
+
