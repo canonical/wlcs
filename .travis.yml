@@ -16,7 +16,6 @@ env:
   - secure: KT6a0jTsWX1jQq9vlG1F6dE7Orn/VbiIQihe+v/VBYXiAvAKaoK520MUBgdaf3svULRwyn1T6yKOc3IcAs+L5qA6/oeyeLF+xC0ckpNaTEHSov5YJ+hNlL8bL1rZ1U9bZBXMAuhkjHuRi3agk+HgD1CI65xOiO7txyGArEF1qOlWR2dskWYKh+EuNEohl28OIi6iFZrMfCFrzG8sZ6V0RuS1nakhitnsJ87aZ1LNedDY4diL/DdrmSg4zgC81dH+etDlBDOf1amkj6/s/IgUAgeLmyuENjXXd1LQVjL6MjzLpot4BlcYoD+EHpvH9kbUe69t5LW4bmmJdRBa37l6T25CYrX/9oG83WDGr/FXCxUGEXhplaSkoGmga/PB+Zxya91d850lu+r2aOz/6FwHnwYseVxQef/hemE40QvuDDTX2tjKMoiw3rLktuAJTJfiSE84bjSPCM49aUemLpqTYk2w/avPWvv7zVtpgFDR9dkjti9p+FPKaqIuZ+XQFJ9Ov+MmCkOuBA1ieZN5I2+Exr6UKDbIBz8h97cqag7mcUB5QlMU/Iu7KiMr7NdHFBny3DHVgQtxAcC5yzuzPpa0zkJu9pnaCKy7RC+/uS/zCY05zGhyC8Qfdg3H0da9NlKpLUU6ojjPkuaZMpKeGkyMcYaMVjoaxdT2lRgtQFF9W1s=
   matrix:
   - SYSTEM=ubuntu-16.04 VARIANT=gcc
-  - SYSTEM=ubuntu-16.04 VARIANT=clang
   - SYSTEM=ubuntu-17.10 VARIANT=gcc
   - SYSTEM=ubuntu-17.10 VARIANT=clang
 
