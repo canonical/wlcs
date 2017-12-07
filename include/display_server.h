@@ -24,7 +24,11 @@
 extern "C" {
 #endif
 
+typedef struct wl_surface wl_surface;
+typedef struct wl_display wl_display;
+
 typedef struct WlcsDisplayServer WlcsDisplayServer;
+typedef struct WlcsPointer WlcsPointer;
 
 WlcsDisplayServer* wlcs_create_server(int argc, char const** argv) __attribute__((weak));
 void wlcs_destroy_server(WlcsDisplayServer* server) __attribute__((weak));
@@ -33,6 +37,11 @@ void wlcs_server_start(WlcsDisplayServer* server) __attribute__((weak));
 void wlcs_server_stop(WlcsDisplayServer* server) __attribute__((weak));
 
 int wlcs_server_create_client_socket(WlcsDisplayServer* server) __attribute__((weak));
+
+void wlcs_server_position_window_absolute (WlcsDisplayServer* server, wl_display* client, wl_surface* surface, int x, int y) __attribute__((weak));
+
+WlcsPointer* wlcs_server_create_pointer(WlcsDisplayServer* server) __attribute__((weak));
+void wlcs_destroy_pointer(WlcsPointer* pointer) __attribute__((weak));
 
 #ifdef __cplusplus
 }
