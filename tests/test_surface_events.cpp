@@ -28,6 +28,8 @@
 #include "helpers.h"
 #include "in_process_server.h"
 
+#include <gmock/gmock.h>
+
 using ClientSurfaceEventsTest = wlcs::InProcessServer;
 
 //
@@ -70,30 +72,6 @@ using ClientSurfaceEventsTest = wlcs::InProcessServer;
 //	check_pointer(client, x, y);
 //}
 //
-//TEST(test_pointer_top_left)
-//{
-//	struct client *client;
-//	int x, y;
-//
-//	client = create_client_and_test_surface(46, 76, 111, 134);
-//	assert(client);
-//
-//	/* move pointer outside top left */
-//	x = client->surface->x - 1;
-//	y = client->surface->y - 1;
-//	assert(!surface_contains(client->surface, x, y));
-//	check_pointer_move(client, x, y);
-//
-//	/* move pointer on top left */
-//	x += 1; y += 1;
-//	assert(surface_contains(client->surface, x, y));
-//	check_pointer_move(client, x, y);
-//
-//	/* move pointer outside top left */
-//	x -= 1; y -= 1;
-//	assert(!surface_contains(client->surface, x, y));
-//	check_pointer_move(client, x, y);
-//}
 //
 //TEST(test_pointer_bottom_left)
 //{
@@ -356,6 +334,43 @@ using ClientSurfaceEventsTest = wlcs::InProcessServer;
 //	check_client_move(client, x, --y);
 //	assert(output_contains_client(client));
 //}
+
+TEST_F(ClientSurfaceEventsTest, pointer_movement_top_left)
+{
+    using namespace testing;
+
+    auto pointer = the_server().create_pointer();
+
+    wlcs::Client client{the_server()};
+
+    auto surface = client.create_visible_surface(100, 100);
+
+
+    int const top_left_x = 200, top_left_y = 231;
+    the_server().move_surface_to(surface, top_left_x, top_left_y);
+
+    auto const wl_surface = static_cast<struct wl_surface*>(surface);
+	/* move pointer outside top left */
+    pointer.move_to(top_left_x - 1, top_left_y - 1);
+
+    client.roundtrip();
+
+    EXPECT_THAT(client.focused_window(), Ne(wl_surface));
+
+	/* move pointer on top left */
+    pointer.move_to(top_left_x + 1, top_left_y + 1);
+
+    client.roundtrip();
+
+    EXPECT_THAT(client.focused_window(), Eq(wl_surface));
+    EXPECT_THAT(client.pointer_position(), Eq(std::make_pair(wl_fixed_from_int(1), wl_fixed_from_int(1))));
+
+	/* move pointer outside top left */
+    pointer.move_to(top_left_x - 1, top_left_y - 1);
+
+    client.roundtrip();
+    EXPECT_THAT(client.focused_window(), Ne(wl_surface));
+}
 
 TEST_F(ClientSurfaceEventsTest, buffer_release)
 {
