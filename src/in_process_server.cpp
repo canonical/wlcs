@@ -19,11 +19,15 @@
 #include "in_process_server.h"
 #include "display_server.h"
 #include "helpers.h"
+#include "pointer.h"
 
 #include <boost/throw_exception.hpp>
 #include <stdexcept>
 #include <wayland-client.h>
 #include <memory>
+#include <vector>
+#include <algorithm>
+#include <experimental/optional>
 
 class ShimNotImplemented : public std::logic_error
 {
@@ -32,6 +36,39 @@ public:
     {
     }
 };
+
+class wlcs::Pointer::Impl
+{
+public:
+    Impl(WlcsPointer* raw_device)
+        : pointer{raw_device, &wlcs_destroy_pointer}
+    {
+    }
+
+    void move_to(int x, int y)
+    {
+        wlcs_pointer_move_absolute(
+            pointer.get(),
+            wl_fixed_from_int(x),
+            wl_fixed_from_int(y));
+    }
+
+private:
+    std::unique_ptr<WlcsPointer, decltype(&wlcs_destroy_pointer)> const pointer;
+};
+
+wlcs::Pointer::~Pointer() = default;
+wlcs::Pointer::Pointer(Pointer&&) = default;
+
+wlcs::Pointer::Pointer(WlcsPointer* raw_device)
+    : impl{std::make_unique<Impl>(raw_device)}
+{
+}
+
+void wlcs::Pointer::move_to(int x, int y)
+{
+    impl->move_to(x, y);
+}
 
 class wlcs::Server::Impl
 {
@@ -79,6 +116,19 @@ public:
         }
     }
 
+    void move_surface_to(Surface& surface, int x, int y)
+    {
+        // Ensure the server knows about the IDs we're about to send...
+        surface.owner().roundtrip();
+
+        wlcs_server_position_window_absolute(server.get(), surface.owner(), surface, x, y);
+    }
+
+    WlcsDisplayServer* wlcs_server() const
+    {
+        return server.get();
+    }
+
 private:
     std::unique_ptr<WlcsDisplayServer, void(*)(WlcsDisplayServer*)> const server;
 };
@@ -103,6 +153,21 @@ void wlcs::Server::stop()
 int wlcs::Server::create_client_socket()
 {
     return impl->create_client_socket();
+}
+
+void wlcs::Server::move_surface_to(Surface& surface, int x, int y)
+{
+    impl->move_surface_to(surface, x, y);
+}
+
+wlcs::Pointer wlcs::Server::create_pointer()
+{
+    if (!wlcs_server_create_pointer || !wlcs_destroy_pointer)
+    {
+        BOOST_THROW_EXCEPTION((ShimNotImplemented{}));
+    }
+
+    return Pointer{wlcs_server_create_pointer(impl->wlcs_server())};
 }
 
 wlcs::InProcessServer::InProcessServer()
@@ -199,25 +264,39 @@ public:
 
     Surface create_visible_surface(
         Client& client,
-        int /*width*/,
-        int /*height*/)
+        int width,
+        int height)
     {
         Surface surface{client};
 
         shell_surface = wl_shell_get_shell_surface(shell, surface);
         wl_shell_surface_set_toplevel(shell_surface);
 
-//        auto buffer = std::make_shared<ShmBuffer>(client, width, height);
-//
-//        wl_surface_attach(surface, *buffer, 0, 0);
-//        wl_surface_commit(surface);
-//
-//        buffer->add_release_listener([buffer]() { return false; });
-//        // It's safe to free the buffer after the release event has been received.
-//        buffer.reset();
+        auto buffer = std::make_shared<ShmBuffer>(client, width, height);
+
+        wl_surface_attach(surface, *buffer, 0, 0);
+        wl_surface_commit(surface);
+
+        buffer->add_release_listener([buffer]() { return false; });
+        // It's safe to free the buffer after the release event has been received.
+        buffer.reset();
 
         return surface;
     }
+
+    wl_surface* focused_window() const
+    {
+        if (current_pointer_location)
+        {
+            return current_pointer_location->surface;
+        }
+        return nullptr;
+    }
+
+    std::pair<wl_fixed_t, wl_fixed_t> pointer_position() const
+    {
+        return current_pointer_location.value().coordinates;
+    };
 
     void dispatch_until(std::function<bool()> const& predicate)
     {
@@ -240,6 +319,83 @@ public:
     }
 
 private:
+    static void pointer_enter(
+        void* ctx,
+        wl_pointer* /*pointer*/,
+        uint32_t /*serial*/,
+        wl_surface* surface,
+        wl_fixed_t x,
+        wl_fixed_t y)
+    {
+        auto me = static_cast<Impl*>(ctx);
+
+        me->current_pointer_location = PointerLocation {
+            surface,
+            std::make_pair(x,y)
+        };
+    }
+
+    static void pointer_leave(
+        void* ctx,
+        wl_pointer* /*pointer*/,
+        uint32_t /*serial*/,
+        wl_surface* /*surface*/)
+    {
+        auto me = static_cast<Impl*>(ctx);
+
+        me->current_pointer_location = {};
+    }
+
+    static void pointer_motion(
+        void* ctx,
+        wl_pointer* /*pointer*/,
+        uint32_t /*time*/,
+        wl_fixed_t x,
+        wl_fixed_t y)
+    {
+        auto me = static_cast<Impl*>(ctx);
+
+        me->current_pointer_location.value().coordinates = std::make_pair(x, y);
+    }
+
+    static constexpr wl_pointer_listener pointer_listener = {
+        &Impl::pointer_enter,
+        &Impl::pointer_leave,
+        &Impl::pointer_motion,
+        nullptr,    // button
+        nullptr,    // axis
+        nullptr,    // frame
+        nullptr,    // axis_source
+        nullptr,    // axis_stop
+        nullptr     // axis_discrete
+    };
+
+    static void seat_capabilities(
+        void* ctx,
+        wl_seat* seat,
+        uint32_t capabilities)
+    {
+        auto me = static_cast<Impl*>(ctx);
+
+        if (capabilities & WL_SEAT_CAPABILITY_POINTER)
+        {
+            me->pointer = wl_seat_get_pointer(seat);
+            wl_pointer_add_listener(me->pointer, &pointer_listener, me);
+        }
+    }
+
+    static void seat_name(
+        void*,
+        wl_seat*,
+        char const*)
+    {
+    }
+
+    static constexpr wl_seat_listener seat_listener = {
+        &Impl::seat_capabilities,
+        &Impl::seat_name
+    };
+
     static void global_handler(
         void* ctx,
         wl_registry* registry,
@@ -266,11 +422,25 @@ private:
             me->shell = static_cast<struct wl_shell*>(
                 wl_registry_bind(registry, id, &wl_shell_interface, version));
         }
+        else if ("wl_seat"s == interface)
+        {
+            me->seat = static_cast<struct wl_seat*>(
+                wl_registry_bind(registry, id, &wl_seat_interface, version));
+
+            wl_seat_add_listener(me->seat, &seat_listener, me);
+            // Ensure we receive the initial seat events.
+            me->server_roundtrip();
+        }
+    }
+
+    static void global_removed(void*, wl_registry*, uint32_t)
+    {
+        // TODO: Remove our globals
     }
 
     constexpr static wl_registry_listener registry_listener = {
         &global_handler,
-        nullptr
+        &global_removed
     };
 
     struct wl_display* display;
@@ -279,8 +449,20 @@ private:
     struct wl_shm* shm = nullptr;
     struct wl_shell_surface* shell_surface = nullptr;
     struct wl_shell* shell = nullptr;
+    struct wl_seat* seat = nullptr;
+    struct wl_pointer* pointer = nullptr;
+
+    struct PointerLocation
+    {
+        wl_surface* surface;
+        std::pair<wl_fixed_t, wl_fixed_t> coordinates;
+    };
+    std::experimental::optional<PointerLocation> current_pointer_location;
 };
 
+
+constexpr wl_pointer_listener wlcs::Client::Impl::pointer_listener;
+constexpr wl_seat_listener wlcs::Client::Impl::seat_listener;
 constexpr wl_registry_listener wlcs::Client::Impl::registry_listener;
 
 wlcs::Client::Client(Server& server)
@@ -310,26 +492,51 @@ wlcs::Surface wlcs::Client::create_visible_surface(int width, int height)
     return impl->create_visible_surface(*this, width, height);
 }
 
+wl_surface* wlcs::Client::focused_window() const
+{
+    return impl->focused_window();
+}
+
+std::pair<wl_fixed_t, wl_fixed_t> wlcs::Client::pointer_position() const
+{
+    return impl->pointer_position();
+}
+
 void wlcs::Client::dispatch_until(std::function<bool()> const& predicate)
 {
     impl->dispatch_until(predicate);
+}
+
+void wlcs::Client::roundtrip()
+{
+    impl->server_roundtrip();
 }
 
 class wlcs::Surface::Impl
 {
 public:
     Impl(Client& client)
-        : surface_{wl_compositor_create_surface(client.compositor())}
+        : surface_{wl_compositor_create_surface(client.compositor())},
+          owner_{client}
     {
     }
 
     ~Impl()
     {
-        if (pending_callback)
+        for (auto i = 0u; i < pending_callbacks.size(); )
         {
-            delete static_cast<std::function<void(uint32_t)>*>(wl_callback_get_user_data(pending_callback));
+            if (pending_callbacks[i].first == this)
+            {
+                auto pending_callback = pending_callbacks[i].second;
+                delete static_cast<std::function<void(uint32_t)>*>(wl_callback_get_user_data(pending_callback));
 
-            wl_callback_destroy(pending_callback);
+                wl_callback_destroy(pending_callback);
+                pending_callbacks.erase(pending_callbacks.begin() + i);
+            }
+            else
+            {
+                ++i;
+            }
         }
 
         wl_surface_destroy(surface_);
@@ -345,19 +552,31 @@ public:
         std::unique_ptr<std::function<void(uint32_t)>> holder{
             new std::function<void(uint32_t)>(on_frame)};
 
-        pending_callback = wl_surface_frame(surface_);
+        auto callback = wl_surface_frame(surface_);
 
-        // TODO: Store pending callbacks and destroy + free closure on ~Surface
-        wl_callback_add_listener(pending_callback, &frame_listener, holder.release());
+        pending_callbacks.push_back(std::make_pair(this, callback));
+
+        wl_callback_add_listener(callback, &frame_listener, holder.release());
     }
 
+    Client& owner() const
+    {
+        return owner_;
+    }
 private:
 
-    static wl_callback* pending_callback;
+    static std::vector<std::pair<Impl const*, wl_callback*>> pending_callbacks;
 
     static void frame_callback(void* ctx, wl_callback* callback, uint32_t frame_time)
     {
-        pending_callback = nullptr;
+        auto us = std::find_if(
+            pending_callbacks.begin(),
+            pending_callbacks.end(),
+            [callback](auto const& elem)
+            {
+                return elem.second == callback;
+            });
+        pending_callbacks.erase(us);
 
         auto frame_callback = static_cast<std::function<void(uint32_t)>*>(ctx);
 
@@ -372,9 +591,10 @@ private:
     };
 
     struct wl_surface* const surface_;
+    Client& owner_;
 };
 
-wl_callback* wlcs::Surface::Impl::pending_callback = nullptr;
+std::vector<std::pair<wlcs::Surface::Impl const*, wl_callback*>> wlcs::Surface::Impl::pending_callbacks;
 
 constexpr wl_callback_listener wlcs::Surface::Impl::frame_listener;
 
@@ -395,6 +615,11 @@ wlcs::Surface::operator wl_surface*() const
 void wlcs::Surface::add_frame_callback(std::function<void(int)> const& on_frame)
 {
     impl->add_frame_callback(on_frame);
+}
+
+wlcs::Client& wlcs::Surface::owner() const
+{
+    return impl->owner();
 }
 
 class wlcs::ShmBuffer::Impl
