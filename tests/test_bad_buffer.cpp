@@ -100,3 +100,52 @@ TEST_F(BadBufferTest, test_truncated_shm_file)
 
 	FAIL() << "Expected protocol error not raised";
 }
+
+TEST_F(BadBufferTest, client_lies_about_buffer_size)
+{
+    using namespace testing;
+
+    wlcs::Client client{the_server()};
+
+    bool buffer_consumed{false};
+
+    auto surface = client.create_visible_surface(200, 200);
+
+    auto const width = 200, height = 200;
+    auto const incorrect_stride = width;
+
+    auto fd = wlcs::helpers::create_anonymous_file(height * incorrect_stride);
+
+    auto shm_pool = wl_shm_create_pool(client.shm(), fd, height * incorrect_stride);
+
+    auto bad_buffer = wl_shm_pool_create_buffer(
+        shm_pool,
+        0,
+        width, height,
+        incorrect_stride, // Stride is in bytes, not pixels, so this is ¼ the correct value.
+        WL_SHM_FORMAT_ARGB8888);
+
+    wl_shm_pool_destroy(shm_pool);
+    close(fd);
+
+    wl_surface_attach(surface, bad_buffer, 0, 0);
+    wl_surface_damage(surface, 0, 0, 200, 200);
+
+    surface.add_frame_callback([&buffer_consumed](int) { buffer_consumed = true; });
+
+    wl_surface_commit(surface);
+
+    try
+    {
+        client.dispatch_until([&buffer_consumed]() { return buffer_consumed; });
+    }
+    catch (wlcs::ProtocolError const& err)
+    {
+        wl_buffer_destroy(bad_buffer);
+        EXPECT_THAT(err.error_code(), Eq(WL_SHM_ERROR_INVALID_STRIDE));
+        EXPECT_THAT(err.interface(), Eq(&wl_buffer_interface));
+        return;
+    }
+
+    FAIL() << "Expected protocol error not raised";
+}
