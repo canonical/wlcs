@@ -24,8 +24,28 @@
 #include <wayland-client.h>
 #include <functional>
 
+struct WlcsPointer;
+
 namespace wlcs
 {
+
+class Pointer
+{
+public:
+    ~Pointer();
+    Pointer(Pointer&&);
+
+    void move_to(int x, int y);
+
+private:
+    friend class Server;
+    Pointer(WlcsPointer* raw_device);
+
+    class Impl;
+    std::unique_ptr<Impl> impl;
+};
+
+class Surface;
 
 class Server
 {
@@ -34,6 +54,10 @@ public:
     ~Server();
 
     int create_client_socket();
+
+    Pointer create_pointer();
+
+    void move_surface_to(Surface& surface, int x, int y);
 
     void start();
     void stop();
@@ -55,6 +79,11 @@ public:
     operator wl_surface*() const;
 
     void add_frame_callback(std::function<void(int)> const& on_frame);
+
+    bool has_focus() const;
+    std::pair<int, int> pointer_position() const;
+
+    Client& owner() const;
 private:
     class Impl;
     std::unique_ptr<Impl> impl;
@@ -92,7 +121,11 @@ public:
 
     Surface create_visible_surface(int width, int height);
 
+    wl_surface* focused_window() const;
+    std::pair<wl_fixed_t, wl_fixed_t> pointer_position() const;
+
     void dispatch_until(std::function<bool()> const& predicate);
+    void roundtrip();
 private:
     class Impl;
     std::unique_ptr<Impl> const impl;
