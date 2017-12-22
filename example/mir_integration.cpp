@@ -606,7 +606,11 @@ int wlcs_server_create_client_socket(WlcsDisplayServer* server)
     }
     catch (std::exception const&)
     {
-        // TODO: Log!
+        mir::log(
+            mir::logging::Severity::critical,
+            "wlcs-bindings",
+            std::current_exception(),
+            "Failed to create Wayland client socket");
     }
 
     return -1;
