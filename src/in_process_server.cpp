@@ -244,6 +244,8 @@ public:
         if (compositor) wl_compositor_destroy(compositor);
         if (registry) wl_registry_destroy(registry);
         if (shell_surface) wl_shell_surface_destroy(shell_surface);
+        if (seat) wl_seat_destroy(seat);
+        if (pointer) wl_pointer_destroy(pointer);
         wl_display_disconnect(display);
     }
 
