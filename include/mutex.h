@@ -116,7 +116,7 @@ public:
             BOOST_THROW_EXCEPTION((std::runtime_error{"Notification timeout"}));
         }
         return MutexGuard<Guarded>{std::move(lock), this->value};
-    };
+    }
 
     void notify_all()
     {
