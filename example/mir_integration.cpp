@@ -438,7 +438,7 @@ public:
         std::chrono::nanoseconds event_time)
     {
         auto done_signal = std::make_shared<mir::test::Signal>();
-        expected_events.lock()->insert(std::make_pair(event_time.count(), done_signal));
+        expected_events.lock()->insert(std::make_pair(event_time, done_signal));
         return done_signal;
     }
 
