@@ -192,9 +192,13 @@ public:
         return listeners.state->lock()->client_session_map.at(client_socket);
     }
 
-    void pending_client_socket(int client_socket)
+    void associate_client_socket(int client_socket)
     {
-        listeners.state->lock()->next_client_socket = client_socket;
+        auto state_accessor = state.wait_for(
+            [](State& state) { return static_cast<bool>(state.latest_client)    ; },
+            std::chrono::seconds{30});
+        state_accessor->client_session_map[client_socket] = state_accessor->latest_client.value();
+        state_accessor->latest_client = {};
     }
 
 private:
@@ -204,14 +208,14 @@ private:
         std::unordered_map<wl_resource*, std::weak_ptr<mir::scene::Surface>> surface_map;
         std::unordered_map<std::shared_ptr<mir::frontend::BufferStream>, wl_resource*> stream_map;
 
-        int next_client_socket;
+        std::experimental::optional<wl_client*> latest_client;
         std::unordered_map<ClientFd, wl_client*> client_session_map;
     };
-    wlcs::Mutex<State> state;
+    wlcs::WaitableMutex<State> state;
 
     struct Listeners
     {
-        Listeners(wlcs::Mutex<State>* const state)
+        Listeners(wlcs::WaitableMutex<State>* const state)
             : state{state}
         {
         }
@@ -222,7 +226,7 @@ private:
         wl_resource* last_wl_surface{nullptr};
         wl_resource* last_wl_window{nullptr};
 
-        wlcs::Mutex<State>* const state;
+        wlcs::WaitableMutex<State>* const state;
     } listeners;
 
     static void resource_created(wl_listener* listener, void* ctx)
@@ -258,8 +262,9 @@ private:
 
         {
             auto state_accessor = listeners->state->lock();
-            state_accessor->client_session_map[state_accessor->next_client_socket] = client;
+            state_accessor->latest_client = client;
         }
+        listeners->state->notify_all();
 
         listeners->resource_listener.notify = &resource_created;
 
@@ -433,7 +438,7 @@ public:
         std::chrono::nanoseconds event_time)
     {
         auto done_signal = std::make_shared<mir::test::Signal>();
-        expected_events.lock()->insert(std::make_pair(event_time.count(), done_signal));
+        expected_events.lock()->insert(std::make_pair(event_time, done_signal));
         return done_signal;
     }
 
@@ -595,13 +600,17 @@ int wlcs_server_create_client_socket(WlcsDisplayServer* server)
             F_DUPFD_CLOEXEC,
             3);
 
-        runner->resource_mapper->pending_client_socket(client_fd);
+        runner->resource_mapper->associate_client_socket(client_fd);
 
         return client_fd;
     }
     catch (std::exception const&)
     {
-        // TODO: Log!
+        mir::log(
+            mir::logging::Severity::critical,
+            "wlcs-bindings",
+            std::current_exception(),
+            "Failed to create Wayland client socket");
     }
 
     return -1;

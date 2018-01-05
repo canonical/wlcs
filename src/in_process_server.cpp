@@ -239,11 +239,16 @@ public:
 
     ~Impl()
     {
+        // Free any buffers before we destroy the Wayland state…
+        client_buffers.clear();
+
         if (shm) wl_shm_destroy(shm);
         if (shell) wl_shell_destroy(shell);
         if (compositor) wl_compositor_destroy(compositor);
         if (registry) wl_registry_destroy(registry);
         if (shell_surface) wl_shell_surface_destroy(shell_surface);
+        if (seat) wl_seat_destroy(seat);
+        if (pointer) wl_pointer_destroy(pointer);
         wl_display_disconnect(display);
     }
 
@@ -277,9 +282,13 @@ public:
         wl_surface_attach(surface, *buffer, 0, 0);
         wl_surface_commit(surface);
 
-        buffer->add_release_listener([buffer]() { return false; });
-        // It's safe to free the buffer after the release event has been received.
-        buffer.reset();
+        /*
+         * We can't drive buffer cleanup by the buffer.release() event, as that's not
+         * guaranteed to be sent in the case of error or server shutdown.
+         *
+         * Just keep the buffers alive for the lifetime of the client.
+         */
+        client_buffers.push_back(buffer);
 
         return surface;
     }
@@ -458,6 +467,8 @@ private:
         std::pair<wl_fixed_t, wl_fixed_t> coordinates;
     };
     std::experimental::optional<PointerLocation> current_pointer_location;
+
+    std::vector<std::shared_ptr<ShmBuffer>> client_buffers;
 };
 
 
