@@ -260,7 +260,27 @@ using ClientSurfaceEventsTest = wlcs::InProcessServer;
 //	assert(output_contains_client(client));
 //}
 
-TEST_F(ClientSurfaceEventsTest, pointer_movement_top_left)
+struct PointerMotion
+{
+    static int constexpr window_width = 231;
+    static int constexpr window_height = 220;
+    std::string name;
+    int initial_x, initial_y; // Relative to surface top-left
+    int dx, dy;
+};
+
+std::ostream& operator<<(std::ostream& out, PointerMotion const& motion)
+{
+    return out << motion.name;
+}
+
+class SurfacePointerMotionTest :
+    public wlcs::InProcessServer,
+    public testing::WithParamInterface<PointerMotion>
+{
+};
+
+TEST_P(SurfacePointerMotionTest, pointer_movement)
 {
     using namespace testing;
 
@@ -268,148 +288,72 @@ TEST_F(ClientSurfaceEventsTest, pointer_movement_top_left)
 
     wlcs::Client client{the_server()};
 
-    auto surface = client.create_visible_surface(100, 100);
+    auto const params = GetParam();
 
+    auto surface = client.create_visible_surface(
+        params.window_width,
+        params.window_height);
 
-    int const top_left_x = 200, top_left_y = 231;
+    int const top_left_x = 23, top_left_y = 231;
     the_server().move_surface_to(surface, top_left_x, top_left_y);
 
     auto const wl_surface = static_cast<struct wl_surface*>(surface);
-	/* move pointer outside top left */
-    pointer.move_to(top_left_x - 1, top_left_y - 1);
+
+    pointer.move_to(top_left_x + params.initial_x, top_left_y + params.initial_y);
 
     client.roundtrip();
 
     EXPECT_THAT(client.focused_window(), Ne(wl_surface));
 
-	/* move pointer on top left */
-    pointer.move_to(1, 1);
+    /* move pointer; it should now be inside the surface */
+    pointer.move_by(params.dx, params.dy);
 
     client.roundtrip();
 
     EXPECT_THAT(client.focused_window(), Eq(wl_surface));
-    EXPECT_THAT(client.pointer_position(), Eq(std::make_pair(wl_fixed_from_int(0), wl_fixed_from_int(0))));
+    EXPECT_THAT(client.pointer_position(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(params.initial_x + params.dx),
+                    wl_fixed_from_int(params.initial_y + params.dy))));
 
-	/* move pointer outside top left */
-    pointer.move_to(-1, -1);
+    /* move pointer back; it should now be outside the surface */
+    pointer.move_by(-params.dx, -params.dy);
 
     client.roundtrip();
     EXPECT_THAT(client.focused_window(), Ne(wl_surface));
 }
 
-TEST_F(ClientSurfaceEventsTest, pointer_movement_bottom_left)
-{
-    using namespace testing;
+INSTANTIATE_TEST_CASE_P(
+    PointerCrossingSurfaceCorner,
+    SurfacePointerMotionTest,
+    testing::Values(
+        PointerMotion{"Top-left", -1, -1, 1, 1},
+        PointerMotion{"Bottom-left", -1, PointerMotion::window_height, 1, -1},
+        PointerMotion{"Bottom-right", PointerMotion::window_width, PointerMotion::window_height, -1, -1},
+        PointerMotion{"Top-right", PointerMotion::window_width, -1, -1, 1}
+    ));
 
-    auto pointer = the_server().create_pointer();
-
-    wlcs::Client client{the_server()};
-
-    int const top_left_x = 200, top_left_y = 231;
-    int const width = 100, height = 100;
-    auto surface = client.create_visible_surface(width, height);
-
-
-    the_server().move_surface_to(surface, top_left_x, top_left_y);
-
-    auto const wl_surface = static_cast<struct wl_surface*>(surface);
-    /* move pointer outside bottom left */
-    pointer.move_to(top_left_x - 1, top_left_y + height);
-
-    client.roundtrip();
-
-    EXPECT_THAT(client.focused_window(), Ne(wl_surface));
-
-    /* move pointer on bottom left */
-    pointer.move_to(1, -1);
-
-    client.roundtrip();
-
-    EXPECT_THAT(client.focused_window(), Eq(wl_surface));
-    EXPECT_THAT(client.pointer_position(), Eq(std::make_pair(wl_fixed_from_int(0), wl_fixed_from_int(height - 1))));
-
-    /* move pointer outside top left */
-    pointer.move_to(-1, 1);
-
-    client.roundtrip();
-    EXPECT_THAT(client.focused_window(), Ne(wl_surface));
-}
-
-TEST_F(ClientSurfaceEventsTest, pointer_movement_bottom_right)
-{
-    using namespace testing;
-
-    auto pointer = the_server().create_pointer();
-
-    wlcs::Client client{the_server()};
-
-    int const top_left_x = 200, top_left_y = 231;
-    int const width = 100, height = 100;
-    auto surface = client.create_visible_surface(width, height);
-
-
-    the_server().move_surface_to(surface, top_left_x, top_left_y);
-
-    auto const wl_surface = static_cast<struct wl_surface*>(surface);
-    /* move pointer outside bottom right */
-    pointer.move_to(top_left_x + width, top_left_y + height);
-
-    client.roundtrip();
-
-    EXPECT_THAT(client.focused_window(), Ne(wl_surface));
-
-    /* move pointer *just* into bottom right */
-    pointer.move_to(-1, -1);
-
-    client.roundtrip();
-
-    EXPECT_THAT(client.focused_window(), Eq(wl_surface));
-    EXPECT_THAT(client.pointer_position(), Eq(std::make_pair(wl_fixed_from_int(width - 1), wl_fixed_from_int(height - 1))));
-
-    /* move pointer outside bottom right again */
-    pointer.move_to(1, 1);
-
-    client.roundtrip();
-    EXPECT_THAT(client.focused_window(), Ne(wl_surface));
-}
-
-TEST_F(ClientSurfaceEventsTest, pointer_movement_top_right)
-{
-    using namespace testing;
-
-    auto pointer = the_server().create_pointer();
-
-    wlcs::Client client{the_server()};
-
-    int const top_left_x = 200, top_left_y = 231;
-    int const width = 100, height = 100;
-    auto surface = client.create_visible_surface(width, height);
-
-
-    the_server().move_surface_to(surface, top_left_x, top_left_y);
-
-    auto const wl_surface = static_cast<struct wl_surface*>(surface);
-    /* move pointer outside top right */
-    pointer.move_to(top_left_x + width, top_left_y - 1);
-
-    client.roundtrip();
-
-    EXPECT_THAT(client.focused_window(), Ne(wl_surface));
-
-    /* move pointer *just* into bottom right */
-    pointer.move_to(-1, 1);
-
-    client.roundtrip();
-
-    EXPECT_THAT(client.focused_window(), Eq(wl_surface));
-    EXPECT_THAT(client.pointer_position(), Eq(std::make_pair(wl_fixed_from_int(width - 1), wl_fixed_from_int(0))));
-
-    /* move pointer outside bottom right again */
-    pointer.move_to(1, -1);
-
-    client.roundtrip();
-    EXPECT_THAT(client.focused_window(), Ne(wl_surface));
-}
+INSTANTIATE_TEST_CASE_P(
+    PointerCrossingSurfaceEdge,
+    SurfacePointerMotionTest,
+    testing::Values(
+        PointerMotion{
+            "Centre-left",
+            -1, PointerMotion::window_height / 2,
+            1, 0},
+        PointerMotion{
+            "Bottom-centre",
+            PointerMotion::window_width / 2, PointerMotion::window_height,
+            0, -1},
+        PointerMotion{
+            "Centre-right",
+            PointerMotion::window_width, PointerMotion::window_height / 2,
+            -1, 0},
+        PointerMotion{
+            "Top-centre",
+            PointerMotion::window_width / 2, -1,
+            0, 1}
+    ));
 
 TEST_F(ClientSurfaceEventsTest, buffer_release)
 {
