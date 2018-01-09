@@ -358,15 +358,15 @@ TEST_F(ClientSurfaceEventsTest, pointer_movement_top_left)
     EXPECT_THAT(client.focused_window(), Ne(wl_surface));
 
 	/* move pointer on top left */
-    pointer.move_to(top_left_x + 1, top_left_y + 1);
+    pointer.move_to(1, 1);
 
     client.roundtrip();
 
     EXPECT_THAT(client.focused_window(), Eq(wl_surface));
-    EXPECT_THAT(client.pointer_position(), Eq(std::make_pair(wl_fixed_from_int(1), wl_fixed_from_int(1))));
+    EXPECT_THAT(client.pointer_position(), Eq(std::make_pair(wl_fixed_from_int(0), wl_fixed_from_int(0))));
 
 	/* move pointer outside top left */
-    pointer.move_to(top_left_x - 1, top_left_y - 1);
+    pointer.move_to(-1, -1);
 
     client.roundtrip();
     EXPECT_THAT(client.focused_window(), Ne(wl_surface));
