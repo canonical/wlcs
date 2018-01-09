@@ -18,13 +18,16 @@
 #ifndef WLCS_POINTER_H_
 #define WLCS_POINTER_H_
 
+#include <wayland-client-core.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 typedef struct WlcsPointer WlcsPointer;
 
-void wlcs_pointer_move_absolute(WlcsPointer* pointer, int x, int y) __attribute__((weak));
+void wlcs_pointer_move_absolute(WlcsPointer* pointer, wl_fixed_t x, wl_fixed_t y) __attribute__((weak));
+void wlcs_pointer_move_relative(WlcsPointer* pointer, wl_fixed_t dx, wl_fixed_t dy) __attribute__((weak));
 
 #ifdef __cplusplus
 }

@@ -53,6 +53,14 @@ public:
             wl_fixed_from_int(y));
     }
 
+    void move_by(int dx, int dy)
+    {
+        wlcs_pointer_move_relative(
+            pointer.get(),
+            wl_fixed_from_int(dx),
+            wl_fixed_from_int(dy));
+    }
+
 private:
     std::unique_ptr<WlcsPointer, decltype(&wlcs_destroy_pointer)> const pointer;
 };
@@ -68,6 +76,11 @@ wlcs::Pointer::Pointer(WlcsPointer* raw_device)
 void wlcs::Pointer::move_to(int x, int y)
 {
     impl->move_to(x, y);
+}
+
+void wlcs::Pointer::move_by(int dx, int dy)
+{
+    impl->move_by(dx, dy);
 }
 
 class wlcs::Server::Impl

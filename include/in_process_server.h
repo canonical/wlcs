@@ -36,6 +36,7 @@ public:
     Pointer(Pointer&&);
 
     void move_to(int x, int y);
+    void move_by(int dx, int dy);
 
 private:
     friend class Server;
