@@ -11,9 +11,8 @@ branches:
   - master
 
 install:
-  - sudo add-apt-repository -y ppa:ubuntu-lxc/lxd-stable;
   - sudo apt-get -qq update;
-  - sudo apt-get -y install lxd;
+  - sudo apt-get -y install lxd/trusty-backports liblxc1/trusty-backports
   - sudo lxd init --auto;
   - sudo apt-get --yes install snapd
   - sudo adduser $USER lxd
