@@ -254,6 +254,41 @@ INSTANTIATE_TEST_CASE_P(
             0, 1}
     ));
 
+TEST_F(ClientSurfaceEventsTest, surface_moves_under_pointer)
+{
+    using namespace testing;
+
+    auto pointer = the_server().create_pointer();
+
+    wlcs::Client client{the_server()};
+
+    auto surface = client.create_visible_surface(100, 100);
+    auto const wl_surface = static_cast<struct wl_surface*>(surface);
+
+    /* Set up the pointer outside the surface */
+    the_server().move_surface_to(surface, 0, 0);
+    pointer.move_to(500, 500);
+
+    client.roundtrip();
+
+    EXPECT_THAT(client.focused_window(), Ne(wl_surface));
+
+    /* move the surface so that it is under the pointer */
+    the_server().move_surface_to(surface, 450, 450);
+
+    client.dispatch_until(
+        [wl_surface, &client]()
+        {
+            return client.focused_window() == wl_surface;
+        });
+
+    EXPECT_THAT(client.focused_window(), Eq(wl_surface));
+    EXPECT_THAT(client.pointer_position(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(50),
+                    wl_fixed_from_int(50))));
+}
+
 TEST_F(ClientSurfaceEventsTest, buffer_release)
 {
     wlcs::Client client{the_server()};
