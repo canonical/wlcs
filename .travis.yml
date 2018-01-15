@@ -11,15 +11,18 @@ branches:
   - master
 
 install:
-  - sudo apt-get -qq update;
-  - sudo apt-get -y install lxd/trusty-backports liblxc1/trusty-backports
-  - sudo lxd init --auto;
   - sudo apt-get --yes install snapd
+  - sudo snap install lxd
+  - sudo addgroup --system lxd
   - sudo adduser $USER lxd
-  - sg lxd -c 'lxc network create lxdbr0';
-  - sg lxd -c 'lxc network attach-profile lxdbr0 default eth0';
+  - sudo snap start lxd
+  - for I in 1 2 3 4 5 6 7 8 9 10 ; do [ -S /var/snap/lxd/common/lxd/unix.socket ] || sleep 5 ; done
+  - sudo lxd init --auto
+  - sg lxd -c '/snap/bin/lxc network create lxdbr0';
+  - sg lxd -c '/snap/bin/lxc network attach-profile lxdbr0 default eth0';
   - wget https://cooperteam.net/spread_2017.09.21_amd64.snap
   - sudo snap install --dangerous spread_2017.09.21_amd64.snap
+  - sudo snap connect spread:lxd lxd:lxd
 
 env:
   matrix:
@@ -29,4 +32,4 @@ env:
   - SYSTEM=fedora-26 VARIANT=gcc
 
 script:
-  - sg lxd -c '/snap/bin/spread lxd:$SYSTEM:...:$VARIANT'
+  - sg lxd -c 'LXD_DIR=/var/snap/lxd/common/lxd /snap/bin/spread lxd:$SYSTEM:...:$VARIANT'
