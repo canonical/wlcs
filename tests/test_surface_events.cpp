@@ -289,6 +289,82 @@ TEST_F(ClientSurfaceEventsTest, surface_moves_under_pointer)
                     wl_fixed_from_int(50))));
 }
 
+TEST_F(ClientSurfaceEventsTest, surface_moves_over_surface_under_pointer)
+{
+    using namespace testing;
+
+    auto pointer = the_server().create_pointer();
+
+    wlcs::Client client{the_server()};
+
+    auto first_surface = client.create_visible_surface(100, 100);
+    auto second_surface = client.create_visible_surface(100, 100);
+
+    /* Set up the pointer outside the surface */
+    the_server().move_surface_to(first_surface, 0, 0);
+    the_server().move_surface_to(second_surface, 0, 0);
+    pointer.move_to(500, 500);
+
+    client.roundtrip();
+
+    /* move the first surface so that it is under the pointer */
+    the_server().move_surface_to(first_surface, 450, 450);
+
+    bool first_surface_focused{false};
+    client.add_pointer_enter_notification(
+        [&first_surface_focused, &first_surface](wl_surface* surf, auto, auto)
+        {
+            if (surf == first_surface)
+            {
+                first_surface_focused = true;
+            }
+            return false;
+        });
+
+    // Wait until the first surface is focused
+    client.dispatch_until(
+        [&first_surface_focused]()
+        {
+            return first_surface_focused;
+        });
+
+    client.add_pointer_leave_notification(
+        [&first_surface_focused, &first_surface](wl_surface* surf)
+        {
+            if (surf == first_surface)
+            {
+                first_surface_focused = false;
+            }
+            return false;
+        });
+
+    bool second_surface_focused{false};
+    client.add_pointer_enter_notification(
+        [&first_surface_focused, &second_surface_focused, &second_surface](auto surf, auto x, auto y)
+        {
+            if (surf == second_surface)
+            {
+                /*
+                 * Protocol requires that the pointer-leave event is sent before pointer-enter
+                 */
+                EXPECT_FALSE(first_surface_focused);
+                second_surface_focused = true;
+                EXPECT_THAT(x, Eq(wl_fixed_from_int(50)));
+                EXPECT_THAT(y, Eq(wl_fixed_from_int(50)));
+            }
+            return false;
+        });
+
+    the_server().move_surface_to(second_surface, 450, 450);
+
+    client.dispatch_until(
+        [&second_surface_focused]()
+        {
+            return second_surface_focused;
+        });
+}
+
+
 TEST_F(ClientSurfaceEventsTest, buffer_release)
 {
     wlcs::Client client{the_server()};
