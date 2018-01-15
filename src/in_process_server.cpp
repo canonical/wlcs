@@ -320,6 +320,15 @@ public:
         return current_pointer_location.value().coordinates;
     };
 
+    void add_pointer_enter_notification(PointerEnterNotifier const& on_enter)
+    {
+        enter_notifiers.push_back(on_enter);
+    }
+    void add_pointer_leave_notification(PointerLeaveNotifier const& on_leave)
+    {
+        leave_notifiers.push_back(on_leave);
+    }
+
     void dispatch_until(std::function<bool()> const& predicate)
     {
         // TODO: Drive this with epoll on the fd and have a timerfd for timeout
@@ -355,17 +364,43 @@ private:
             surface,
             std::make_pair(x,y)
         };
+
+        std::vector<decltype(enter_notifiers)::const_iterator> to_remove;
+        for (auto notifier = me->enter_notifiers.begin(); notifier != me->enter_notifiers.end(); ++notifier)
+        {
+            if (!(*notifier)(surface, x, y))
+            {
+                to_remove.push_back(notifier);
+            }
+        }
+        for (auto removed : to_remove)
+        {
+            me->enter_notifiers.erase(removed);
+        }
     }
 
     static void pointer_leave(
         void* ctx,
         wl_pointer* /*pointer*/,
         uint32_t /*serial*/,
-        wl_surface* /*surface*/)
+        wl_surface* surface)
     {
         auto me = static_cast<Impl*>(ctx);
 
         me->current_pointer_location = {};
+
+        std::vector<decltype(leave_notifiers)::const_iterator> to_remove;
+        for (auto notifier = me->leave_notifiers.begin(); notifier != me->leave_notifiers.end(); ++notifier)
+        {
+            if (!(*notifier)(surface))
+            {
+                to_remove.push_back(notifier);
+            }
+        }
+        for (auto removed : to_remove)
+        {
+            me->leave_notifiers.erase(removed);
+        }
     }
 
     static void pointer_motion(
@@ -482,6 +517,8 @@ private:
     std::experimental::optional<PointerLocation> current_pointer_location;
 
     std::vector<std::shared_ptr<ShmBuffer>> client_buffers;
+    std::vector<PointerEnterNotifier> enter_notifiers;
+    std::vector<PointerLeaveNotifier> leave_notifiers;
 };
 
 
@@ -524,6 +561,16 @@ wl_surface* wlcs::Client::focused_window() const
 std::pair<wl_fixed_t, wl_fixed_t> wlcs::Client::pointer_position() const
 {
     return impl->pointer_position();
+}
+
+void wlcs::Client::add_pointer_enter_notification(PointerEnterNotifier const& on_enter)
+{
+    impl->add_pointer_enter_notification(on_enter);
+}
+
+void wlcs::Client::add_pointer_leave_notification(PointerLeaveNotifier const& on_leave)
+{
+    impl->add_pointer_leave_notification(on_leave);
 }
 
 void wlcs::Client::dispatch_until(std::function<bool()> const& predicate)

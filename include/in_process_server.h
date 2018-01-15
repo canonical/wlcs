@@ -125,6 +125,13 @@ public:
     wl_surface* focused_window() const;
     std::pair<wl_fixed_t, wl_fixed_t> pointer_position() const;
 
+    using PointerEnterNotifier =
+        std::function<bool(wl_surface*, wl_fixed_t x, wl_fixed_t y)>;
+    using PointerLeaveNotifier =
+        std::function<bool(wl_surface*)>;
+    void add_pointer_enter_notification(PointerEnterNotifier const& on_enter);
+    void add_pointer_leave_notification(PointerLeaveNotifier const& on_leave);
+
     void dispatch_until(std::function<bool()> const& predicate);
     void roundtrip();
 private:
