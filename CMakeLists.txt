@@ -39,6 +39,13 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--as-needed -Wl,
 set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -Wl,--as-needed")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--as-needed")
 
+include(CheckCXXCompilerFlag)
+check_cxx_compiler_flag(-Wgnu-zero-variadic-macro-arguments HAVE_W_GNU_VARIADIC_MACROS)
+if (HAVE_W_GNU_VARIADIC_MACROS)
+  # GTest's parametrised test macro tweaks this warning
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=gnu-zero-variadic-macro-arguments")
+endif ()
+
 find_package(GtestGmock)
 pkg_check_modules(WAYLAND_CLIENT REQUIRED wayland-client)
 
