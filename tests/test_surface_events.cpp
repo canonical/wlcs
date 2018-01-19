@@ -28,6 +28,9 @@
 #include "helpers.h"
 #include "in_process_server.h"
 
+#include <deque>
+#include <tuple>
+
 #include <gmock/gmock.h>
 
 using ClientSurfaceEventsTest = wlcs::InProcessServer;
@@ -421,6 +424,74 @@ TEST_F(ClientSurfaceEventsTest, surface_resizes_under_pointer)
         [&surface_entered]()
         {
             return !surface_entered;
+        });
+}
+
+TEST_F(ClientSurfaceEventsTest, surface_moves_while_under_pointer)
+{
+    using namespace testing;
+
+    auto pointer = the_server().create_pointer();
+
+    wlcs::Client client{the_server()};
+
+    auto surface = client.create_visible_surface(100, 100);
+
+    the_server().move_surface_to(surface, 450, 450);
+    pointer.move_to(500, 500);
+
+    std::deque<std::pair<int, int>> surface_movements = {
+        std::make_pair(445, 455),
+        std::make_pair(460, 405),
+        std::make_pair(420, 440),
+        std::make_pair(430, 460),
+        std::make_pair(0, 0)    // The last motion is not checked for
+    };
+
+    client.dispatch_until(
+        [&client, &surface]()
+        {
+            if (client.focused_window() == surface)
+            {
+                EXPECT_THAT(client.pointer_position().first, Eq(wl_fixed_from_int(50)));
+                EXPECT_THAT(client.pointer_position().second, Eq(wl_fixed_from_int(50)));
+                return true;
+            }
+            return false;
+        });
+
+    int expected_x{55}, expected_y{45};
+    client.add_pointer_motion_notification(
+        [this, &surface, &surface_movements, &expected_x, &expected_y]
+            (wl_fixed_t x, wl_fixed_t y)
+        {
+            EXPECT_THAT(x, Eq(wl_fixed_from_int(expected_x)));
+            EXPECT_THAT(y, Eq(wl_fixed_from_int(expected_y)));
+
+            auto next_movement = surface_movements.front();
+            surface_movements.pop_front();
+
+            the_server().move_surface_to(
+                surface,
+                next_movement.first,
+                next_movement.second);
+
+            expected_x = 500 - next_movement.first;
+            expected_y = 500 - next_movement.second;
+            return true;
+        });
+
+    // Do the initial surface move
+    the_server().move_surface_to(
+        surface,
+        surface_movements.front().first,
+        surface_movements.front().second);
+    surface_movements.pop_front();
+
+    client.dispatch_until(
+        [&surface_movements]()
+        {
+            return surface_movements.empty();
         });
 }
 
