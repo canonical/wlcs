@@ -364,6 +364,65 @@ TEST_F(ClientSurfaceEventsTest, surface_moves_over_surface_under_pointer)
         });
 }
 
+TEST_F(ClientSurfaceEventsTest, surface_resizes_under_pointer)
+{
+    using namespace testing;
+
+    auto pointer = the_server().create_pointer();
+
+    wlcs::Client client{the_server()};
+
+    auto surface = client.create_visible_surface(100, 100);
+
+    /* Set up the pointer outside the surface */
+    the_server().move_surface_to(surface, 400, 400);
+    pointer.move_to(500, 500);
+
+    client.roundtrip();
+
+    ASSERT_THAT(client.focused_window(), Ne(static_cast<wl_surface*>(surface)));
+
+    bool surface_entered{false};
+    client.add_pointer_enter_notification(
+        [&surface_entered, &surface](wl_surface* entered_surf, wl_fixed_t x, wl_fixed_t y)
+        {
+            EXPECT_THAT(surface, Eq(entered_surf));
+            EXPECT_THAT(x, Eq(wl_fixed_from_int(100)));
+            EXPECT_THAT(y, Eq(wl_fixed_from_int(100)));
+            surface_entered = true;
+            return false;
+        });
+    client.add_pointer_leave_notification(
+        [&surface_entered, &surface](wl_surface* left_surf)
+        {
+            EXPECT_THAT(surface, Eq(left_surf));
+            surface_entered = false;
+            return false;
+        });
+
+    auto larger_buffer = wlcs::ShmBuffer{client, 200, 200};
+    auto smaller_buffer = wlcs::ShmBuffer{client, 50, 50};
+
+    // Resize the surface so that the pointer is now over the top...
+    wl_surface_attach(surface, larger_buffer, 0, 0);
+    wl_surface_commit(surface);
+
+    client.dispatch_until(
+        [&surface_entered]()
+        {
+            return surface_entered;
+        });
+
+    // Resize the surface so that the pointer is no longer over the top...
+    wl_surface_attach(surface, smaller_buffer, 0, 0);
+    wl_surface_commit(surface);
+
+    client.dispatch_until(
+        [&surface_entered]()
+        {
+            return !surface_entered;
+        });
+}
 
 TEST_F(ClientSurfaceEventsTest, buffer_release)
 {
