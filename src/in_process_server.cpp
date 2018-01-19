@@ -328,6 +328,10 @@ public:
     {
         leave_notifiers.push_back(on_leave);
     }
+    void add_pointer_motion_notification(PointerMotionNotifier const& on_motion)
+    {
+        motion_notifiers.push_back(on_motion);
+    }
 
     void dispatch_until(std::function<bool()> const& predicate)
     {
@@ -413,6 +417,19 @@ private:
         auto me = static_cast<Impl*>(ctx);
 
         me->current_pointer_location.value().coordinates = std::make_pair(x, y);
+
+        std::vector<decltype(motion_notifiers)::const_iterator> to_remove;
+        for (auto notifier = me->motion_notifiers.begin(); notifier != me->motion_notifiers.end(); ++notifier)
+        {
+            if (!(*notifier)(x, y))
+            {
+                to_remove.push_back(notifier);
+            }
+        }
+        for (auto removed : to_remove)
+        {
+            me->motion_notifiers.erase(removed);
+        }
     }
 
     static constexpr wl_pointer_listener pointer_listener = {
@@ -519,6 +536,7 @@ private:
     std::vector<std::shared_ptr<ShmBuffer>> client_buffers;
     std::vector<PointerEnterNotifier> enter_notifiers;
     std::vector<PointerLeaveNotifier> leave_notifiers;
+    std::vector<PointerMotionNotifier> motion_notifiers;
 };
 
 
@@ -571,6 +589,11 @@ void wlcs::Client::add_pointer_enter_notification(PointerEnterNotifier const& on
 void wlcs::Client::add_pointer_leave_notification(PointerLeaveNotifier const& on_leave)
 {
     impl->add_pointer_leave_notification(on_leave);
+}
+
+void wlcs::Client::add_pointer_motion_notification(PointerMotionNotifier const& on_motion)
+{
+    impl->add_pointer_motion_notification(on_motion);
 }
 
 void wlcs::Client::dispatch_until(std::function<bool()> const& predicate)

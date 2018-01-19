@@ -129,8 +129,11 @@ public:
         std::function<bool(wl_surface*, wl_fixed_t x, wl_fixed_t y)>;
     using PointerLeaveNotifier =
         std::function<bool(wl_surface*)>;
+    using PointerMotionNotifier =
+        std::function<bool(wl_fixed_t x, wl_fixed_t y)>;
     void add_pointer_enter_notification(PointerEnterNotifier const& on_enter);
     void add_pointer_leave_notification(PointerLeaveNotifier const& on_leave);
+    void add_pointer_motion_notification(PointerMotionNotifier const& on_motion);
 
     void dispatch_until(std::function<bool()> const& predicate);
     void roundtrip();
