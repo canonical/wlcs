@@ -432,13 +432,17 @@ private:
         }
     }
 
+    static void pointer_frame(void* /*ctx*/, wl_pointer* /*pointer*/)
+    {
+    }
+
     static constexpr wl_pointer_listener pointer_listener = {
         &Impl::pointer_enter,
         &Impl::pointer_leave,
         &Impl::pointer_motion,
         nullptr,    // button
         nullptr,    // axis
-        nullptr,    // frame
+        &Impl::pointer_frame,    // frame
         nullptr,    // axis_source
         nullptr,    // axis_stop
         nullptr     // axis_discrete
