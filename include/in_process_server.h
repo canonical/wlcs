@@ -135,6 +135,8 @@ public:
     void add_pointer_leave_notification(PointerLeaveNotifier const& on_leave);
     void add_pointer_motion_notification(PointerMotionNotifier const& on_motion);
 
+    void* acquire_interface(std::string const& name, wl_interface const* interface, uint32_t version);
+
     void dispatch_until(std::function<bool()> const& predicate);
     void roundtrip();
 private:

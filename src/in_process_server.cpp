@@ -333,6 +333,55 @@ public:
         motion_notifiers.push_back(on_motion);
     }
 
+    void* acquire_interface(std::string const& interface, wl_interface const* to_bind, uint32_t version)
+    {
+        wl_registry* temp_registry = wl_display_get_registry(display);
+
+        struct InterfaceResult
+        {
+            void* bound_interface;
+            std::string const& interface;
+            wl_interface const* to_bind;
+            uint32_t version;
+        } result{nullptr, interface, to_bind, version};
+
+        wl_registry_listener const listener{
+            [](
+                void* ctx,
+                wl_registry* registry,
+                uint32_t id,
+                char const* interface,
+                uint32_t version)
+            {
+                auto request = static_cast<InterfaceResult*>(ctx);
+
+                if ((request->interface == interface) &&
+                    version >= request->version)
+                {
+                    request->bound_interface =
+                        wl_registry_bind(registry, id, request->to_bind, version);
+                }
+            },
+            [](auto, auto, auto) {}
+        };
+
+        wl_registry_add_listener(
+            temp_registry,
+            &listener,
+            &result);
+
+        wl_display_roundtrip(display);
+
+        wl_registry_destroy(temp_registry);
+
+        if (result.bound_interface == nullptr)
+        {
+            BOOST_THROW_EXCEPTION((std::runtime_error{"Failed to acquire interface"}));
+        }
+
+        return result.bound_interface;
+    }
+
     void dispatch_until(std::function<bool()> const& predicate)
     {
         // TODO: Drive this with epoll on the fd and have a timerfd for timeout
@@ -608,6 +657,14 @@ void wlcs::Client::dispatch_until(std::function<bool()> const& predicate)
 void wlcs::Client::roundtrip()
 {
     impl->server_roundtrip();
+}
+
+void* wlcs::Client::acquire_interface(
+    std::string const& name,
+    wl_interface const* interface,
+    uint32_t version)
+{
+    return impl->acquire_interface(name, interface, version);
 }
 
 class wlcs::Surface::Impl
