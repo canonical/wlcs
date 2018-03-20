@@ -184,6 +184,8 @@ class SurfacePointerMotionTest :
 
 TEST_P(SurfacePointerMotionTest, pointer_movement)
 {
+    FAIL() << "Does anybody care that this test fails?";
+
     using namespace testing;
 
     auto pointer = the_server().create_pointer();
