@@ -64,6 +64,7 @@ add_library(
 
   tests/test_bad_buffer.cpp
   tests/test_surface_events.cpp
+  tests/test_subsurfaces.cpp
 )
 
 target_link_libraries(

@@ -90,6 +90,21 @@ private:
     std::unique_ptr<Impl> impl;
 };
 
+class Subsurface: public Surface
+{
+public:
+    Subsurface(Client& client, Surface* parent);
+    ~Subsurface();
+
+    operator wl_subsurface*() const;
+
+    void set_offset(int x, int y);
+
+private:
+    class Impl;
+    std::unique_ptr<Impl> impl;
+};
+
 class ShmBuffer
 {
 public:
@@ -118,6 +133,7 @@ public:
     operator wl_display*() const;
 
     wl_compositor* compositor() const;
+    wl_subcompositor* subcompositor() const;
     wl_shm* shm() const;
 
     Surface create_visible_surface(int width, int height);

@@ -275,6 +275,11 @@ public:
         return compositor;
     }
 
+    struct wl_subcompositor* wl_subcompositor() const
+    {
+        return subcompositor;
+    }
+
     struct wl_shm* wl_shm() const
     {
         return shm;
@@ -544,6 +549,11 @@ private:
             me->compositor = static_cast<struct wl_compositor*>(
                 wl_registry_bind(registry, id, &wl_compositor_interface, version));
         }
+        else if ("wl_subcompositor"s == interface)
+        {
+            me->subcompositor = static_cast<struct wl_subcompositor*>(
+                wl_registry_bind(registry, id, &wl_subcompositor_interface, version));
+        }
         else if ("wl_shell"s == interface)
         {
             me->shell = static_cast<struct wl_shell*>(
@@ -573,6 +583,7 @@ private:
     struct wl_display* display;
     struct wl_registry* registry = nullptr;
     struct wl_compositor* compositor = nullptr;
+    struct wl_subcompositor* subcompositor = nullptr;
     struct wl_shm* shm = nullptr;
     struct wl_shell_surface* shell_surface = nullptr;
     struct wl_shell* shell = nullptr;
@@ -612,6 +623,11 @@ wlcs::Client::operator wl_display*() const
 wl_compositor* wlcs::Client::compositor() const
 {
     return impl->wl_compositor();
+}
+
+wl_subcompositor* wlcs::Client::subcompositor() const
+{
+    return impl->wl_subcompositor();
 }
 
 wl_shm* wlcs::Client::shm() const
@@ -775,6 +791,40 @@ void wlcs::Surface::add_frame_callback(std::function<void(int)> const& on_frame)
 wlcs::Client& wlcs::Surface::owner() const
 {
     return impl->owner();
+}
+
+class wlcs::Subsurface::Impl
+{
+public:
+
+    Impl(Client& client, Surface* parent, Surface* surface)
+        : subsurface_{wl_subcompositor_get_subsurface(client.subcompositor(), *surface, *parent)}
+    {}
+
+    ~Impl()
+    {
+        wl_subsurface_destroy(subsurface_);
+    }
+
+    struct wl_subsurface* const subsurface_;
+};
+
+wlcs::Subsurface::Subsurface(Client& client, Surface* parent)
+    : Surface(client),
+      impl{std::make_unique<Impl>(client, parent, this)}
+{}
+
+wlcs::Subsurface::~Subsurface()
+{}
+
+wlcs::Subsurface::operator wl_subsurface*() const
+{
+    return impl->subsurface_;
+}
+
+void wlcs::Subsurface::set_offset(int x, int y)
+{
+    wl_subsurface_set_position(*this, x, y);
 }
 
 class wlcs::ShmBuffer::Impl

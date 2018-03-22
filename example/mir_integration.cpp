@@ -741,3 +741,9 @@ void wlcs_server_position_window_absolute(WlcsDisplayServer* server, wl_display*
         // TODO: Error handling.
     }
 }
+
+WlcsSubsurface* wlcs_server_get_subsurfaces(WlcsDisplayServer* server, wl_surface* surface)
+{
+    // TODO
+    return nullptr;
+}
