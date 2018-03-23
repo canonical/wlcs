@@ -259,7 +259,8 @@ public:
         if (shell) wl_shell_destroy(shell);
         if (compositor) wl_compositor_destroy(compositor);
         if (registry) wl_registry_destroy(registry);
-        if (shell_surface) wl_shell_surface_destroy(shell_surface);
+        for (auto shell_surface: wl_shell_surfaces) wl_shell_surface_destroy(shell_surface);
+        wl_shell_surfaces.clear();
         if (seat) wl_seat_destroy(seat);
         if (pointer) wl_pointer_destroy(pointer);
         wl_display_disconnect(display);
@@ -287,7 +288,8 @@ public:
     {
         Surface surface{client};
 
-        shell_surface = wl_shell_get_shell_surface(shell, surface);
+        wl_shell_surface * shell_surface = wl_shell_get_shell_surface(shell, surface);
+        wl_shell_surfaces.push_back(shell_surface);
         wl_shell_surface_set_toplevel(shell_surface);
 
         auto buffer = std::make_shared<ShmBuffer>(client, width, height);
@@ -574,7 +576,7 @@ private:
     struct wl_registry* registry = nullptr;
     struct wl_compositor* compositor = nullptr;
     struct wl_shm* shm = nullptr;
-    struct wl_shell_surface* shell_surface = nullptr;
+    std::vector<struct wl_shell_surface*> wl_shell_surfaces;
     struct wl_shell* shell = nullptr;
     struct wl_seat* seat = nullptr;
     struct wl_pointer* pointer = nullptr;
