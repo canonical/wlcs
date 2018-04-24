@@ -21,6 +21,8 @@
 
 #include <gmock/gmock.h>
 
+#include <memory>
+
 using namespace testing;
 using namespace wlcs;
 
@@ -35,8 +37,9 @@ struct StartedInProcessServer : InProcessServer
 
 auto static const any_width = 100;
 auto static const any_height = 100;
+auto static const any_mime_type = "AnyMimeType";
 
-struct ClientWithAVisibleSurface : Client
+struct CopyCutPasteClient : Client
 {
     using Client::Client;
     Surface surface = create_visible_surface(any_width, any_height);
@@ -44,12 +47,32 @@ struct ClientWithAVisibleSurface : Client
 
 struct CopyCutPaste : StartedInProcessServer
 {
-    ClientWithAVisibleSurface source{the_server()};
-    ClientWithAVisibleSurface sink{the_server()};
+    CopyCutPasteClient source{the_server()};
+    CopyCutPasteClient sink{the_server()};
+};
+
+class DataSource
+{
+public:
+    DataSource() = default;
+    explicit DataSource(struct wl_data_source* ds) : self{ds, deleter} {}
+
+    operator struct wl_data_source*() const { return self.get(); }
+
+    void reset() { self.reset(); }
+    void reset(struct wl_data_source* ds) { self.reset(ds, deleter); }
+
+    friend void wl_data_source_destroy(DataSource const&) = delete;
+
+private:
+    static void deleter(struct wl_data_source* ds) { wl_data_source_destroy(ds); }
+    std::shared_ptr<struct wl_data_source> self;
 };
 }
 
-TEST_F(CopyCutPaste, empty)
+TEST_F(CopyCutPaste, given_data_offer)
 {
-    // TODO
+    DataSource source_data{wl_data_device_manager_create_data_source(source.data_device_manager())};
+
+    wl_data_source_offer(source_data, any_mime_type);
 }
