@@ -120,6 +120,7 @@ public:
     wl_compositor* compositor() const;
     wl_shm* shm() const;
     wl_data_device_manager* data_device_manager() const;
+    wl_seat* seat() const;
 
     Surface create_visible_surface(int width, int height);
 

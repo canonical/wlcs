@@ -39,16 +39,10 @@ auto static const any_width = 100;
 auto static const any_height = 100;
 auto static const any_mime_type = "AnyMimeType";
 
-struct CopyCutPasteClient : Client
+struct CCnPClient : Client
 {
     using Client::Client;
     Surface surface = create_visible_surface(any_width, any_height);
-};
-
-struct CopyCutPaste : StartedInProcessServer
-{
-    CopyCutPasteClient source{the_server()};
-    CopyCutPasteClient sink{the_server()};
 };
 
 class DataSource
@@ -68,11 +62,39 @@ private:
     static void deleter(struct wl_data_source* ds) { wl_data_source_destroy(ds); }
     std::shared_ptr<struct wl_data_source> self;
 };
-}
 
-TEST_F(CopyCutPaste, given_data_offer)
+class DataDevice
 {
+public:
+    DataDevice() = default;
+    explicit DataDevice(struct wl_data_device* dd) : self{dd, deleter} {}
+
+    operator struct wl_data_device*() const { return self.get(); }
+
+    void reset() { self.reset(); }
+    void reset(struct wl_data_device* dd) { self.reset(dd, deleter); }
+
+    friend void wl_data_device_destroy(DataDevice const&) = delete;
+
+private:
+    static void deleter(struct wl_data_device* dd) { wl_data_device_destroy(dd); }
+    std::shared_ptr<struct wl_data_device> self;
+};
+
+struct CopyCutPaste : StartedInProcessServer
+{
+    CCnPClient source{the_server()};
     DataSource source_data{wl_data_device_manager_create_data_source(source.data_device_manager())};
 
+    CCnPClient sink{the_server()};
+    DataDevice sink_data{wl_data_device_manager_get_data_device(sink.data_device_manager(), sink.seat())};
+};
+}
+
+TEST_F(CopyCutPaste, given_source_offers_data_sink_sees_offer)
+{
+    // TODO hook up listener & set expectation
+
     wl_data_source_offer(source_data, any_mime_type);
+    // TODO pass offer to sink
 }

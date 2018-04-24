@@ -287,6 +287,11 @@ public:
         return data_device_manager;
     }
 
+    struct wl_seat* wl_seat() const
+    {
+        return seat;
+    }
+
     Surface create_visible_surface(
         Client& client,
         int width,
@@ -507,7 +512,7 @@ private:
 
     static void seat_capabilities(
         void* ctx,
-        wl_seat* seat,
+        struct wl_seat* seat,
         uint32_t capabilities)
     {
         auto me = static_cast<Impl*>(ctx);
@@ -521,7 +526,7 @@ private:
 
     static void seat_name(
         void*,
-        wl_seat*,
+        struct wl_seat*,
         char const*)
     {
     }
@@ -636,6 +641,11 @@ wl_shm* wlcs::Client::shm() const
 struct wl_data_device_manager* wlcs::Client::data_device_manager() const
 {
     return impl->wl_data_device_manager();
+}
+
+wl_seat* wlcs::Client::seat() const
+{
+    return impl->wl_seat();
 }
 
 wlcs::Surface wlcs::Client::create_visible_surface(int width, int height)
