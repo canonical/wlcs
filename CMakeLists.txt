@@ -58,6 +58,7 @@ add_library(
   include/helpers.h
   include/in_process_server.h
 
+  src/data_device.cpp
   src/helpers.cpp
   src/in_process_server.cpp
   src/main.cpp

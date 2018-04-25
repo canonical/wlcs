@@ -1,0 +1,110 @@
+/*
+ * Copyright © 2018 Canonical Ltd.
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 3,
+ * as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Authored by: Alan Griffiths <alan@octopull.co.uk>
+ */
+
+#include "data_device.h"
+
+wlcs::ActiveListeners wlcs::DataDeviceListener::active_listeners;
+constexpr wl_data_device_listener wlcs::DataDeviceListener::thunks;
+
+
+void wlcs::DataDeviceListener::data_offer(void* data, struct wl_data_device* wl_data_device, struct wl_data_offer* id)
+{
+    if (active_listeners.includes(data))
+        static_cast<DataDeviceListener*>(data)->data_offer(wl_data_device, id);
+}
+
+void wlcs::DataDeviceListener::enter(
+    void* data,
+    struct wl_data_device* wl_data_device,
+    uint32_t serial,
+    struct wl_surface* surface,
+    wl_fixed_t x,
+    wl_fixed_t y,
+    struct wl_data_offer* id)
+{
+    if (active_listeners.includes(data))
+        static_cast<DataDeviceListener*>(data)->enter(wl_data_device, serial, surface, x, y, id);
+}
+
+void wlcs::DataDeviceListener::leave(void* data, struct wl_data_device* wl_data_device)
+{
+    if (active_listeners.includes(data))
+        static_cast<DataDeviceListener*>(data)->leave(wl_data_device);
+}
+
+void wlcs::DataDeviceListener::motion(
+    void* data,
+    struct wl_data_device* wl_data_device,
+    uint32_t time,
+    wl_fixed_t x,
+    wl_fixed_t y)
+{
+    if (active_listeners.includes(data))
+        static_cast<DataDeviceListener*>(data)->motion(wl_data_device, time, x, y);
+}
+
+void wlcs::DataDeviceListener::drop(void* data, struct wl_data_device* wl_data_device)
+{
+    if (active_listeners.includes(data))
+        static_cast<DataDeviceListener*>(data)->drop(wl_data_device);
+}
+
+void wlcs::DataDeviceListener::selection(
+    void* data,
+    struct wl_data_device* wl_data_device,
+    struct wl_data_offer* id)
+{
+    if (active_listeners.includes(data))
+        static_cast<DataDeviceListener*>(data)->selection(wl_data_device, wl_data_device, id);
+}
+
+void wlcs::DataDeviceListener::data_offer(struct wl_data_device* /*wl_data_device*/, struct wl_data_offer* /*id*/)
+{
+}
+
+void wlcs::DataDeviceListener::enter(
+    struct wl_data_device* /*wl_data_device*/,
+    uint32_t /*serial*/,
+    struct wl_surface* /*surface*/,
+    wl_fixed_t /*x*/,
+    wl_fixed_t /*y*/,
+    struct wl_data_offer* /*id*/)
+{
+}
+
+void wlcs::DataDeviceListener::leave(struct wl_data_device* /*wl_data_device*/)
+{
+}
+
+void wlcs::DataDeviceListener::motion(
+    struct wl_data_device* /*wl_data_device*/,
+    uint32_t /*time*/,
+    wl_fixed_t /*x*/,
+    wl_fixed_t /*y*/)
+{
+}
+
+void wlcs::DataDeviceListener::drop(struct wl_data_device* /*wl_data_device*/)
+{
+}
+
+void wlcs::DataDeviceListener::selection(
+    struct wl_data_device* /*wl_data_device*/,
+    struct wl_data_offer* /*id*/)
+{
+}
