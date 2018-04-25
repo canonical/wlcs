@@ -42,7 +42,9 @@ auto static const any_mime_type = "AnyMimeType";
 
 struct CCnPClient : Client
 {
-    using Client::Client;
+    //This line read "using Client::Client;" until g++-5.4 choked on it
+    CCnPClient(Server& server) : Client(server) {}
+
     Surface const surface = create_visible_surface(any_width, any_height);
 };
 
