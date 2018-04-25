@@ -42,10 +42,14 @@ auto static const any_mime_type = "AnyMimeType";
 
 struct CCnPClient : Client
 {
-    //This line read "using Client::Client;" until g++-5.4 choked on it
-    CCnPClient(Server& server) : Client(server) {}
+    CCnPClient(Server& server) : Client(server)
+    {
+        wl_surface_attach(surface, *buffer, 0, 0);
+        wl_surface_commit(surface);
+    }
 
-    Surface const surface = create_visible_surface(any_width, any_height);
+    Surface const surface{create_visible_surface(any_width, any_height)};
+    std::shared_ptr<ShmBuffer> const buffer{std::make_shared<ShmBuffer>(*this, any_width, any_height)};
 };
 
 struct CopyCutPaste : StartedInProcessServer
