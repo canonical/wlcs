@@ -213,8 +213,18 @@ constexpr wl_data_device_listener DataDeviceListener::thunks;
 
 TEST_F(CopyCutPaste, given_source_offers_data_sink_sees_offer)
 {
+    struct MockDataDeviceListener : DataDeviceListener
+    {
+        using DataDeviceListener::DataDeviceListener;
+
+        MOCK_METHOD2(data_offer, void(struct wl_data_device* wl_data_device, struct wl_data_offer* id));
+    };
+
     // TODO set expectation
-    DataDeviceListener listener{sink_data};
+
+
+    MockDataDeviceListener listener{sink_data};
+    EXPECT_CALL(listener, data_offer(_,_));
 
     wl_data_source_offer(source_data, any_mime_type);
     // TODO pass offer to sink
