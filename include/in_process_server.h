@@ -122,6 +122,7 @@ public:
 
     Surface create_visible_surface(int width, int height);
 
+    wl_shell* shell() const;
     wl_surface* focused_window() const;
     std::pair<wl_fixed_t, wl_fixed_t> pointer_position() const;
 

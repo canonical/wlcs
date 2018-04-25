@@ -308,6 +308,11 @@ public:
         return surface;
     }
 
+    wl_shell* the_shell() const
+    {
+        return shell;
+    }
+
     wl_surface* focused_window() const
     {
         if (current_pointer_location)
@@ -624,6 +629,11 @@ wl_shm* wlcs::Client::shm() const
 wlcs::Surface wlcs::Client::create_visible_surface(int width, int height)
 {
     return impl->create_visible_surface(*this, width, height);
+}
+
+wl_shell* wlcs::Client::shell() const
+{
+    return impl->the_shell();
 }
 
 wl_surface* wlcs::Client::focused_window() const
