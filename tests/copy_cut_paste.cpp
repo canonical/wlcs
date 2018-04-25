@@ -43,7 +43,7 @@ auto static const any_mime_type = "AnyMimeType";
 struct CCnPClient : Client
 {
     using Client::Client;
-    Surface surface = create_visible_surface(any_width, any_height);
+    Surface const surface = create_visible_surface(any_width, any_height);
 };
 
 class DataSource
@@ -65,36 +65,6 @@ private:
     static void deleter(struct wl_data_source* ds) { wl_data_source_destroy(ds); }
 
     std::shared_ptr<struct wl_data_source> self;
-};
-
-class DataDevice
-{
-public:
-    DataDevice() = default;
-
-    explicit DataDevice(struct wl_data_device* dd) : self{dd, deleter} {}
-
-    operator struct wl_data_device*() const { return self.get(); }
-
-    void reset() { self.reset(); }
-
-    void reset(struct wl_data_device* dd) { self.reset(dd, deleter); }
-
-    friend void wl_data_device_destroy(DataDevice const&) = delete;
-
-private:
-    static void deleter(struct wl_data_device* dd) { wl_data_device_destroy(dd); }
-
-    std::shared_ptr<struct wl_data_device> self;
-};
-
-struct CopyCutPaste : StartedInProcessServer
-{
-    CCnPClient source{the_server()};
-    DataSource source_data{wl_data_device_manager_create_data_source(source.data_device_manager())};
-
-    CCnPClient sink{the_server()};
-    DataDevice sink_data{wl_data_device_manager_get_data_device(sink.data_device_manager(), sink.seat())};
 };
 
 class ActiveListeners
@@ -134,7 +104,6 @@ struct DataDeviceListener
     virtual ~DataDeviceListener() { active_listeners.del(this); }
 
     DataDeviceListener(DataDeviceListener const&) = delete;
-
     DataDeviceListener& operator=(DataDeviceListener const&) = delete;
 
     virtual void data_offer(
@@ -209,10 +178,41 @@ private:
 
 ActiveListeners DataDeviceListener::active_listeners;
 constexpr wl_data_device_listener DataDeviceListener::thunks;
+
+class DataDevice
+{
+public:
+    DataDevice() = default;
+
+    explicit DataDevice(struct wl_data_device* dd) : self{dd, deleter} {}
+
+    operator struct wl_data_device*() const { return self.get(); }
+
+    void reset() { self.reset(); }
+
+    void reset(struct wl_data_device* dd) { self.reset(dd, deleter); }
+
+    friend void wl_data_device_destroy(DataDevice const&) = delete;
+
+private:
+    static void deleter(struct wl_data_device* dd) { wl_data_device_destroy(dd); }
+
+    std::shared_ptr<struct wl_data_device> self;
+};
+
+struct CopyCutPaste : StartedInProcessServer
+{
+    CCnPClient source{the_server()};
+    CCnPClient sink{the_server()};
+};
 }
 
-TEST_F(CopyCutPaste, given_source_offers_data_sink_sees_offer)
+TEST_F(CopyCutPaste, given_source_has_offered_data_sink_sees_offer)
 {
+    DataSource source_data{wl_data_device_manager_create_data_source(source.data_device_manager())};
+    wl_data_source_offer(source_data, any_mime_type);
+    source.roundtrip();
+
     struct MockDataDeviceListener : DataDeviceListener
     {
         using DataDeviceListener::DataDeviceListener;
@@ -220,22 +220,18 @@ TEST_F(CopyCutPaste, given_source_offers_data_sink_sees_offer)
         MOCK_METHOD2(data_offer, void(struct wl_data_device* wl_data_device, struct wl_data_offer* id));
     };
 
-    // TODO set expectation
-
-
+    DataDevice sink_data{wl_data_device_manager_get_data_device(sink.data_device_manager(), sink.seat())};
     MockDataDeviceListener listener{sink_data};
     EXPECT_CALL(listener, data_offer(_,_));
 
-    wl_data_source_offer(source_data, any_mime_type);
-    // TODO pass offer to sink
+    sink.roundtrip();
+    sink.roundtrip();
 }
 
 ///////////////////////////////////////////
 // Should probably end up in a helper TU //
 namespace
 {
-//ActiveListeners DataDeviceListener::active_listeners;
-//constexpr wl_data_device_listener DataDeviceListener::thunks;
 
 void DataDeviceListener::data_offer(void* data, struct wl_data_device* wl_data_device, struct wl_data_offer* id)
 {

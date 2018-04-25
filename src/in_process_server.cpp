@@ -302,6 +302,7 @@ public:
         wl_shell_surface * shell_surface = wl_shell_get_shell_surface(shell, surface);
         wl_shell_surfaces.push_back(shell_surface);
         wl_shell_surface_set_toplevel(shell_surface);
+        wl_surface_commit(surface);
 
         auto buffer = std::make_shared<ShmBuffer>(client, width, height);
 
