@@ -51,6 +51,13 @@ struct CopyCutPaste : StartedInProcessServer
     CCnPClient source{the_server()};
     CCnPClient sink{the_server()};
 };
+
+struct MockDataDeviceListener : DataDeviceListener
+{
+    using DataDeviceListener::DataDeviceListener;
+
+    MOCK_METHOD2(data_offer, void(struct wl_data_device* wl_data_device, struct wl_data_offer* id));
+};
 }
 
 TEST_F(CopyCutPaste, given_source_has_offered_data_sink_sees_offer)
@@ -58,13 +65,6 @@ TEST_F(CopyCutPaste, given_source_has_offered_data_sink_sees_offer)
     DataSource source_data{wl_data_device_manager_create_data_source(source.data_device_manager())};
     wl_data_source_offer(source_data, any_mime_type);
     source.roundtrip();
-
-    struct MockDataDeviceListener : DataDeviceListener
-    {
-        using DataDeviceListener::DataDeviceListener;
-
-        MOCK_METHOD2(data_offer, void(struct wl_data_device* wl_data_device, struct wl_data_offer* id));
-    };
 
     DataDevice sink_data{wl_data_device_manager_get_data_device(sink.data_device_manager(), sink.seat())};
     MockDataDeviceListener listener{sink_data};
