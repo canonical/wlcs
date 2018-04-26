@@ -263,6 +263,7 @@ public:
         wl_shell_surfaces.clear();
         if (seat) wl_seat_destroy(seat);
         if (pointer) wl_pointer_destroy(pointer);
+        if (data_device_manager) wl_data_device_manager_destroy(data_device_manager);
         wl_display_disconnect(display);
     }
 
@@ -281,6 +282,16 @@ public:
         return shm;
     }
 
+    struct wl_data_device_manager* wl_data_device_manager() const
+    {
+        return data_device_manager;
+    }
+
+    struct wl_seat* wl_seat() const
+    {
+        return seat;
+    }
+
     Surface create_visible_surface(
         Client& client,
         int width,
@@ -291,6 +302,7 @@ public:
         wl_shell_surface * shell_surface = wl_shell_get_shell_surface(shell, surface);
         wl_shell_surfaces.push_back(shell_surface);
         wl_shell_surface_set_toplevel(shell_surface);
+        wl_surface_commit(surface);
 
         auto buffer = std::make_shared<ShmBuffer>(client, width, height);
 
@@ -506,7 +518,7 @@ private:
 
     static void seat_capabilities(
         void* ctx,
-        wl_seat* seat,
+        struct wl_seat* seat,
         uint32_t capabilities)
     {
         auto me = static_cast<Impl*>(ctx);
@@ -520,7 +532,7 @@ private:
 
     static void seat_name(
         void*,
-        wl_seat*,
+        struct wl_seat*,
         char const*)
     {
     }
@@ -565,6 +577,11 @@ private:
             // Ensure we receive the initial seat events.
             me->server_roundtrip();
         }
+        else if ("wl_data_device_manager"s == interface)
+        {
+            me->data_device_manager = static_cast<struct wl_data_device_manager*>(
+                wl_registry_bind(registry, id, &wl_data_device_manager_interface, version));
+        }
     }
 
     static void global_removed(void*, wl_registry*, uint32_t)
@@ -585,6 +602,7 @@ private:
     struct wl_shell* shell = nullptr;
     struct wl_seat* seat = nullptr;
     struct wl_pointer* pointer = nullptr;
+    struct wl_data_device_manager* data_device_manager = nullptr;
 
     struct PointerLocation
     {
@@ -624,6 +642,16 @@ wl_compositor* wlcs::Client::compositor() const
 wl_shm* wlcs::Client::shm() const
 {
     return impl->wl_shm();
+}
+
+struct wl_data_device_manager* wlcs::Client::data_device_manager() const
+{
+    return impl->wl_data_device_manager();
+}
+
+wl_seat* wlcs::Client::seat() const
+{
+    return impl->wl_seat();
 }
 
 wlcs::Surface wlcs::Client::create_visible_surface(int width, int height)

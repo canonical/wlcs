@@ -58,10 +58,12 @@ add_library(
   include/helpers.h
   include/in_process_server.h
 
+  src/data_device.cpp
   src/helpers.cpp
   src/in_process_server.cpp
   src/main.cpp
 
+  tests/copy_cut_paste.cpp
   tests/test_bad_buffer.cpp
   tests/test_surface_events.cpp
   tests/frame_submission.cpp
@@ -72,7 +74,7 @@ target_link_libraries(
 
   ${WAYLAND_CLIENT_LDFLAGS} ${WAYLAND_CLIENT_LIBRARIES}
 
-  ${GMOCK_BOTH_LIBRARIES}
+  ${GMOCK_LIBRARIES}
   ${GTEST_BOTH_LIBRARIES}
 )
 
