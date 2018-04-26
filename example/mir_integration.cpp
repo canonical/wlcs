@@ -61,6 +61,7 @@
 namespace mtf = mir_test_framework;
 namespace mi = mir::input;
 namespace mf = mir::frontend;
+using namespace std::chrono_literals;
 
 namespace std
 {
@@ -84,6 +85,8 @@ struct hash<::std::chrono::nanoseconds>
 
 namespace
 {
+auto constexpr a_long_time = 5s;
+
 using ClientFd = int;
 
 class ResourceMapper : public mir::scene::SessionListener
@@ -424,6 +427,8 @@ struct MirWlcsDisplayServer : mtf::AsyncServerRunner
     std::shared_ptr<InputEventListener> event_listener;
     std::shared_ptr<mir::Executor> executor;
     std::atomic<double> cursor_x{0}, cursor_y{0};
+
+    mir::test::Signal started;
 };
 
 class InputEventListener : public mir::input::SeatObserver
@@ -503,6 +508,8 @@ void wlcs_server_start(WlcsDisplayServer* server)
     auto runner = reinterpret_cast<MirWlcsDisplayServer*>(server);
 
     runner->start_server();
+
+    runner->started.wait_for(a_long_time);
 }
 
 void wlcs_server_stop(WlcsDisplayServer* server)
@@ -549,6 +556,8 @@ WlcsDisplayServer* wlcs_create_server(int argc, char const** argv)
                     runner->server.the_seat_observer_registrar()->register_interest(
                         runner->event_listener,
                         *runner->executor);
+
+                    runner->started.raise();
                 });
         });
 
@@ -670,7 +679,8 @@ WlcsPointer* wlcs_server_create_pointer(WlcsDisplayServer* server)
         mi::InputDeviceInfo{"mouse", uid, mi::DeviceCapability::pointer});
 
     mouse_added->wait_for(std::chrono::seconds{5});
-    runner->server.the_input_device_hub()->remove_observer(observer);
+    runner->executor->spawn([observer=std::move(observer), the_input_device_hub=runner->server.the_input_device_hub()]
+        { the_input_device_hub->remove_observer(observer); });
 
     auto fake_pointer = new FakePointer;
     fake_pointer->runner = runner;
