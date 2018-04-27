@@ -55,7 +55,6 @@ struct CCnPClient : Client
 struct CopyCutPaste : StartedInProcessServer
 {
     CCnPClient source{the_server()};
-    CCnPClient sink{the_server()};
 };
 
 struct MockDataDeviceListener : DataDeviceListener
@@ -72,6 +71,7 @@ TEST_F(CopyCutPaste, given_source_has_offered_data_sink_sees_offer)
     wl_data_source_offer(source_data, any_mime_type);
     source.roundtrip();
 
+    CCnPClient sink{the_server()};
     DataDevice sink_data{wl_data_device_manager_get_data_device(sink.data_device_manager(), sink.seat())};
     MockDataDeviceListener listener{sink_data};
     EXPECT_CALL(listener, data_offer(_,_));
