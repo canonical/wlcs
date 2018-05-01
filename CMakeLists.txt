@@ -73,7 +73,7 @@ add_library(
   tests/test_bad_buffer.cpp
   tests/test_surface_events.cpp
   tests/frame_submission.cpp
-)
+        tests/self_test.cpp)
 
 target_link_libraries(
   wlcs
