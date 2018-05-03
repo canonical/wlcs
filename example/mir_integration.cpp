@@ -206,6 +206,17 @@ public:
     }
 
 private:
+    struct Listeners;
+    struct ResourceListener
+    {
+        ResourceListener(Listeners* const listeners)
+            : listeners{listeners}
+        {
+        }
+
+        wl_listener resource_listener;
+        Listeners* const listeners;
+    };
     struct State
     {
         std::thread::id wayland_thread;
@@ -214,6 +225,7 @@ private:
 
         std::experimental::optional<wl_client*> latest_client;
         std::unordered_map<ClientFd, wl_client*> client_session_map;
+        std::unordered_map<wl_client*, ResourceListener> resource_listener;
     };
     wlcs::WaitableMutex<State> state;
 
@@ -225,7 +237,6 @@ private:
         }
 
         wl_listener client_listener;
-        wl_listener resource_listener;
 
         wl_resource* last_wl_surface{nullptr};
         wl_resource* last_wl_window{nullptr};
@@ -236,9 +247,9 @@ private:
     static void resource_created(wl_listener* listener, void* ctx)
     {
         auto resource = static_cast<wl_resource*>(ctx);
-        Listeners* listeners;
-        listeners =
-            wl_container_of(listener, listeners, resource_listener);
+        ResourceListener* resource_listener;
+        resource_listener =
+            wl_container_of(listener, resource_listener, resource_listener);
 
         bool const is_surface = strcmp(
             wl_resource_get_class(resource),
@@ -249,11 +260,11 @@ private:
 
         if (is_surface)
         {
-            listeners->last_wl_surface = resource;
+            resource_listener->listeners->last_wl_surface = resource;
         }
         else if (is_window)
         {
-            listeners->last_wl_window = resource;
+            resource_listener->listeners->last_wl_window = resource;
         }
     }
 
@@ -264,15 +275,17 @@ private:
         listeners =
             wl_container_of(listener, listeners, client_listener);
 
+        wl_listener* resource_listener;
         {
             auto state_accessor = listeners->state->lock();
             state_accessor->latest_client = client;
+            auto rl = state_accessor->resource_listener.emplace(client, listeners);
+            rl.first->second.resource_listener.notify = &resource_created;
+            resource_listener = &rl.first->second.resource_listener;
         }
         listeners->state->notify_all();
 
-        listeners->resource_listener.notify = &resource_created;
-
-        wl_client_add_resource_created_listener(client, &listeners->resource_listener);
+        wl_client_add_resource_created_listener(client, resource_listener);
     }
 };
 
