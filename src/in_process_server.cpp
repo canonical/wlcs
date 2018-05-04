@@ -266,6 +266,8 @@ public:
         if (seat) wl_seat_destroy(seat);
         if (pointer) wl_pointer_destroy(pointer);
         if (data_device_manager) wl_data_device_manager_destroy(data_device_manager);
+        if (xdg_shell_v6) zxdg_shell_v6_destroy(xdg_shell_v6);
+        if (xdg_shell_stable) xdg_wm_base_destroy(xdg_shell_stable);
         wl_display_disconnect(display);
     }
 
