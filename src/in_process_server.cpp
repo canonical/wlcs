@@ -20,10 +20,12 @@
 #include "display_server.h"
 #include "helpers.h"
 #include "pointer.h"
+#include "generated/wayland-client.h"
+#include "generated/xdg-shell-unstable-v6-client.h"
+#include "generated/xdg-shell-client.h"
 
 #include <boost/throw_exception.hpp>
 #include <stdexcept>
-#include <wayland-client.h>
 #include <memory>
 #include <vector>
 #include <algorithm>
@@ -582,6 +584,16 @@ private:
             me->data_device_manager = static_cast<struct wl_data_device_manager*>(
                 wl_registry_bind(registry, id, &wl_data_device_manager_interface, version));
         }
+        else if ("zxdg_shell_v6"s == interface)
+        {
+            me->xdg_shell_v6 = static_cast<struct zxdg_shell_v6*>(
+                wl_registry_bind(registry, id, &zxdg_shell_v6_interface, version));
+        }
+        else if ("xdg_wm_base"s == interface)
+        {
+            me->xdg_shell_stable = static_cast<struct xdg_wm_base*>(
+                wl_registry_bind(registry, id, &xdg_wm_base_interface, version));
+        }
     }
 
     static void global_removed(void*, wl_registry*, uint32_t)
@@ -603,6 +615,8 @@ private:
     struct wl_seat* seat = nullptr;
     struct wl_pointer* pointer = nullptr;
     struct wl_data_device_manager* data_device_manager = nullptr;
+    struct zxdg_shell_v6* xdg_shell_v6 = nullptr;
+    struct xdg_wm_base* xdg_shell_stable = nullptr;
 
     struct PointerLocation
     {
