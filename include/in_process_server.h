@@ -19,9 +19,12 @@
 #ifndef WLCS_IN_PROCESS_SERVER_H_
 #define WLCS_IN_PROCESS_SERVER_H_
 
+#include "generated/wayland-client.h"
+#include "generated/xdg-shell-unstable-v6-client.h"
+#include "generated/xdg-shell-client.h"
+
 #include <gtest/gtest.h>
 
-#include <wayland-client.h>
 #include <functional>
 
 struct WlcsPointer;
@@ -125,6 +128,8 @@ public:
     Surface create_visible_surface(int width, int height);
 
     wl_shell* shell() const;
+    zxdg_shell_v6* xdg_shell_v6() const;
+    xdg_wm_base* xdg_shell_stable() const;
     wl_surface* focused_window() const;
     std::pair<wl_fixed_t, wl_fixed_t> pointer_position() const;
 

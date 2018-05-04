@@ -327,6 +327,16 @@ public:
         return shell;
     }
 
+    zxdg_shell_v6* the_xdg_shell_v6() const
+    {
+        return xdg_shell_v6;
+    }
+
+    xdg_wm_base* the_xdg_shell_stable() const
+    {
+        return xdg_shell_stable;
+    }
+
     wl_surface* focused_window() const
     {
         if (current_pointer_location)
@@ -676,6 +686,16 @@ wlcs::Surface wlcs::Client::create_visible_surface(int width, int height)
 wl_shell* wlcs::Client::shell() const
 {
     return impl->the_shell();
+}
+
+zxdg_shell_v6* wlcs::Client::xdg_shell_v6() const
+{
+    return impl->the_xdg_shell_v6();
+}
+
+xdg_wm_base* wlcs::Client::xdg_shell_stable() const
+{
+    return impl->the_xdg_shell_stable();
 }
 
 wl_surface* wlcs::Client::focused_window() const
