@@ -33,28 +33,51 @@
 
 #include <memory>
 
-using XdgShellV6Test = wlcs::InProcessServer;
+class XdgSurfaceV6Test: public wlcs::InProcessServer
+{
+public:
 
-TEST_F(XdgShellV6Test, supports_xdg_shell_v6_protocol)
+    void SetUp() override
+    {
+        wlcs::InProcessServer::SetUp();
+        client = std::make_unique<wlcs::Client>(the_server());
+        surface = std::make_unique<wlcs::Surface>(*client);
+        shell_surface = zxdg_shell_v6_get_xdg_surface(client->xdg_shell_v6(), *surface);
+        toplevel = zxdg_surface_v6_get_toplevel(shell_surface);
+        wl_surface_commit(*surface);
+    }
+
+    void TearDown() override
+    {
+        client->roundtrip();
+        buffers.clear();
+        zxdg_toplevel_v6_destroy(toplevel);
+        zxdg_surface_v6_destroy(shell_surface);
+        surface.reset();
+        client.reset();
+        wlcs::InProcessServer::TearDown();
+    }
+
+    void attach_buffer(int width, int height)
+    {
+        buffers.push_back(wlcs::ShmBuffer{*client, width, height});
+        wl_surface_attach(*surface, buffers.back(), 0, 0);
+        wl_surface_commit(*surface);
+    }
+
+    std::unique_ptr<wlcs::Client> client;
+    std::unique_ptr<wlcs::Surface> surface;
+    std::vector<wlcs::ShmBuffer> buffers;
+    zxdg_surface_v6* shell_surface;
+    zxdg_toplevel_v6* toplevel;
+};
+
+TEST_F(XdgSurfaceV6Test, supports_xdg_shell_v6_protocol)
 {
     using namespace testing;
 
-    wlcs::Client client{the_server()};
+    attach_buffer(600, 400);
+    wl_surface_commit(*surface);
 
-    wlcs::Surface surface{client};
-
-    zxdg_surface_v6* xdg_shell_surface = zxdg_shell_v6_get_xdg_surface(client.xdg_shell_v6(), surface);
-    zxdg_toplevel_v6* toplevel = zxdg_surface_v6_get_toplevel(xdg_shell_surface);
-    wl_surface_commit(surface);
-
-    auto buffer = std::make_shared<wlcs::ShmBuffer>(client, 600, 400);
-    wl_surface_attach(surface, *buffer, 0, 0);
-    wl_surface_commit(surface);
-
-    client.roundtrip();
-
-    zxdg_toplevel_v6_destroy(toplevel);
-    zxdg_surface_v6_destroy(xdg_shell_surface);
-
-    client.roundtrip();
+    client->roundtrip();
 }
