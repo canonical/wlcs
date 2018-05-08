@@ -20,10 +20,12 @@
 #include "display_server.h"
 #include "helpers.h"
 #include "pointer.h"
+#include "generated/wayland-client.h"
+#include "generated/xdg-shell-unstable-v6-client.h"
+#include "generated/xdg-shell-client.h"
 
 #include <boost/throw_exception.hpp>
 #include <stdexcept>
-#include <wayland-client.h>
 #include <memory>
 #include <vector>
 #include <algorithm>
@@ -264,6 +266,8 @@ public:
         if (seat) wl_seat_destroy(seat);
         if (pointer) wl_pointer_destroy(pointer);
         if (data_device_manager) wl_data_device_manager_destroy(data_device_manager);
+        if (xdg_shell_v6) zxdg_shell_v6_destroy(xdg_shell_v6);
+        if (xdg_shell_stable) xdg_wm_base_destroy(xdg_shell_stable);
         wl_display_disconnect(display);
     }
 
@@ -323,6 +327,16 @@ public:
     wl_shell* the_shell() const
     {
         return shell;
+    }
+
+    zxdg_shell_v6* the_xdg_shell_v6() const
+    {
+        return xdg_shell_v6;
+    }
+
+    xdg_wm_base* the_xdg_shell_stable() const
+    {
+        return xdg_shell_stable;
     }
 
     wl_surface* focused_window() const
@@ -582,6 +596,16 @@ private:
             me->data_device_manager = static_cast<struct wl_data_device_manager*>(
                 wl_registry_bind(registry, id, &wl_data_device_manager_interface, version));
         }
+        else if ("zxdg_shell_v6"s == interface)
+        {
+            me->xdg_shell_v6 = static_cast<struct zxdg_shell_v6*>(
+                wl_registry_bind(registry, id, &zxdg_shell_v6_interface, version));
+        }
+        else if ("xdg_wm_base"s == interface)
+        {
+            me->xdg_shell_stable = static_cast<struct xdg_wm_base*>(
+                wl_registry_bind(registry, id, &xdg_wm_base_interface, version));
+        }
     }
 
     static void global_removed(void*, wl_registry*, uint32_t)
@@ -603,6 +627,8 @@ private:
     struct wl_seat* seat = nullptr;
     struct wl_pointer* pointer = nullptr;
     struct wl_data_device_manager* data_device_manager = nullptr;
+    struct zxdg_shell_v6* xdg_shell_v6 = nullptr;
+    struct xdg_wm_base* xdg_shell_stable = nullptr;
 
     struct PointerLocation
     {
@@ -662,6 +688,16 @@ wlcs::Surface wlcs::Client::create_visible_surface(int width, int height)
 wl_shell* wlcs::Client::shell() const
 {
     return impl->the_shell();
+}
+
+zxdg_shell_v6* wlcs::Client::xdg_shell_v6() const
+{
+    return impl->the_xdg_shell_v6();
+}
+
+xdg_wm_base* wlcs::Client::xdg_shell_stable() const
+{
+    return impl->the_xdg_shell_stable();
 }
 
 wl_surface* wlcs::Client::focused_window() const

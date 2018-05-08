@@ -120,12 +120,13 @@ public:
         auto state_accessor = state.lock();
         if (std::this_thread::get_id() == state_accessor->wayland_thread)
         {
-            if (listeners.last_wl_window == nullptr)
-            {
-                BOOST_THROW_EXCEPTION((
-                    std::runtime_error{
-                        "Called Shell::create_surface() without first creating a wl_shell_surface?"}));
-            }
+//             This breaks when an alternative shell (such ass XDG shell) is used
+//             if (listeners.last_wl_window == nullptr)
+//             {
+//                 BOOST_THROW_EXCEPTION((
+//                     std::runtime_error{
+//                         "Called Shell::create_surface() without first creating a wl_shell_surface?"}));
+//             }
 
             auto stream = surface->primary_buffer_stream();
             auto wl_surface = state_accessor->stream_map.at(stream);

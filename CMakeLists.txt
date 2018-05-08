@@ -51,6 +51,8 @@ pkg_check_modules(WAYLAND_CLIENT REQUIRED wayland-client)
 
 include_directories(include)
 
+add_subdirectory(src/protocol/)
+
 add_library(
   wlcs SHARED
 
@@ -62,6 +64,10 @@ add_library(
   src/helpers.cpp
   src/in_process_server.cpp
   src/main.cpp
+
+  src/generated/wayland.c
+  src/generated/xdg-shell-unstable-v6.c
+  src/generated/xdg-shell.c
 
   tests/copy_cut_paste.cpp
   tests/test_bad_buffer.cpp
@@ -78,3 +84,4 @@ target_link_libraries(
   ${GTEST_BOTH_LIBRARIES}
 )
 
+add_dependencies(wlcs wlcs_protocols)
