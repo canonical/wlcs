@@ -134,6 +134,7 @@ public:
             });
 
         wl_surface_commit(*surface);
+        client->roundtrip();
     }
 
     void TearDown() override
@@ -188,21 +189,11 @@ public:
 TEST_F(XdgSurfaceV6Test, supports_xdg_shell_v6_protocol)
 {
     using namespace testing;
-
-    attach_buffer(600, 400);
-    wl_surface_commit(*surface);
-
-    client->roundtrip();
 }
 
 TEST_F(XdgSurfaceV6Test, configure_event)
 {
     using namespace testing;
-
-    attach_buffer(400, 400);
-    wl_surface_commit(*surface);
-
-    dispatch_until_configure();
 
     attach_buffer(200, 300);
     wl_surface_commit(*surface);
@@ -213,11 +204,6 @@ TEST_F(XdgSurfaceV6Test, configure_event)
 TEST_F(XdgSurfaceV6Test, maximize)
 {
     using namespace testing;
-
-    attach_buffer(400, 400);
-    wl_surface_commit(*surface);
-
-    dispatch_until_configure();
 
     // default values
     EXPECT_EQ(window_width, 0);
@@ -239,7 +225,6 @@ TEST_F(XdgSurfaceV6Test, unmaximize)
 {
     using namespace testing;
 
-    attach_buffer(400, 400);
     zxdg_toplevel_v6_set_maximized(toplevel);
     wl_surface_commit(*surface);
 
@@ -254,7 +239,5 @@ TEST_F(XdgSurfaceV6Test, unmaximize)
 
     dispatch_until_configure();
 
-    EXPECT_EQ(window_width, 0);
-    EXPECT_EQ(window_height, 0);
     EXPECT_FALSE(window_maximized);
 }
