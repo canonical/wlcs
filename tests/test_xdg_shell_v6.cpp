@@ -219,11 +219,6 @@ TEST_F(XdgSurfaceV6Test, maximize)
 
     dispatch_until_configure();
 
-    attach_buffer(200, 300);
-    wl_surface_commit(*surface);
-
-    dispatch_until_configure();
-
     // default values
     EXPECT_EQ(window_width, 0);
     EXPECT_EQ(window_height, 0);
@@ -238,4 +233,28 @@ TEST_F(XdgSurfaceV6Test, maximize)
     EXPECT_TRUE(window_maximized);
     EXPECT_GT(window_width, 0);
     EXPECT_GT(window_height, 0);
+}
+
+TEST_F(XdgSurfaceV6Test, unmaximize)
+{
+    using namespace testing;
+
+    attach_buffer(400, 400);
+    zxdg_toplevel_v6_set_maximized(toplevel);
+    wl_surface_commit(*surface);
+
+    dispatch_until_configure();
+
+    EXPECT_TRUE(window_maximized);
+    EXPECT_GT(window_width, 0);
+    EXPECT_GT(window_height, 0);
+
+    zxdg_toplevel_v6_unset_maximized(toplevel);
+    wl_surface_commit(*surface);
+
+    dispatch_until_configure();
+
+    EXPECT_EQ(window_width, 0);
+    EXPECT_EQ(window_height, 0);
+    EXPECT_FALSE(window_maximized);
 }
