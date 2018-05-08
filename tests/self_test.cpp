@@ -36,9 +36,6 @@ struct StartedInProcessServer : InProcessServer
     void SetUp() override {}
 };
 
-auto static const any_width = 100;
-auto static const any_height = 100;
-
 struct SelfTest : StartedInProcessServer
 {
     Client client1{the_server()};
