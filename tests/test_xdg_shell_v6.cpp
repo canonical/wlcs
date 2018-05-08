@@ -33,10 +33,10 @@
 
 #include <memory>
 
-class XdgToplevelListener
+class XdgListener
 {
 public:
-    XdgToplevelListener(zxdg_surface_v6* shell_surface,
+    XdgListener(zxdg_surface_v6* shell_surface,
                         zxdg_toplevel_v6* toplevel,
                         std::function<void(uint32_t serial)> surface_configure,
                         std::function<void(int32_t width, int32_t height, struct wl_array *states)> configure, std::function<void()> close)
@@ -63,25 +63,32 @@ private:
 
     static void surface_confgure_thunk(void *data, struct zxdg_surface_v6 */*surface*/, uint32_t serial)
     {
-        static_cast<XdgToplevelListener*>(data)->surface_configure(serial);
+        static_cast<XdgListener*>(data)->surface_configure(serial);
     }
 
     static void configure_thunk(void *data, struct zxdg_toplevel_v6 */*toplevel*/, int32_t width, int32_t height, struct wl_array *states)
     {
-        static_cast<XdgToplevelListener*>(data)->configure(width, height, states);
+        static_cast<XdgListener*>(data)->configure(width, height, states);
     }
 
     static void close_thunk(void *data, struct zxdg_toplevel_v6 */*zxdg_toplevel_v6*/)
     {
-        static_cast<XdgToplevelListener*>(data)->close();
+        static_cast<XdgListener*>(data)->close();
     }
 };
 
-class DefaultXdgToplevelListener: public XdgToplevelListener
+class XdgSurfaceV6Test: public wlcs::InProcessServer
 {
 public:
-    DefaultXdgToplevelListener(zxdg_surface_v6* shell_surface, zxdg_toplevel_v6* toplevel)
-        : XdgToplevelListener{
+    void SetUp() override
+    {
+        wlcs::InProcessServer::SetUp();
+        client = std::make_unique<wlcs::Client>(the_server());
+        surface = std::make_unique<wlcs::Surface>(*client);
+        shell_surface = zxdg_shell_v6_get_xdg_surface(client->xdg_shell_v6(), *surface);
+        toplevel = zxdg_surface_v6_get_toplevel(shell_surface);
+
+        listener = std::make_unique<XdgListener>(
             shell_surface,
             toplevel,
             [this](uint32_t serial){
@@ -92,8 +99,8 @@ public:
             [this](int32_t width_, int32_t height_, struct wl_array *states)
             {
                 // toplevel configure
-                width = width_;
-                height = height_;
+                window_width = width_;
+                window_height = height_;
                 window_maximized = false;
                 window_fullscreen = false;
                 window_resizing = false;
@@ -123,34 +130,9 @@ public:
             [this]()
             {
                 // toplevel close
-                should_close = true;
-            }}
-    {
-    }
+                window_should_close = true;
+            });
 
-    int configure_events_count{0};
-
-    bool window_maximized{false};
-    bool window_fullscreen{false};
-    bool window_resizing{false};
-    bool window_activated{false};
-
-    int width{-1};
-    int height{-1};
-
-    bool should_close{false};
-};
-
-class XdgSurfaceV6Test: public wlcs::InProcessServer
-{
-public:
-    void SetUp() override
-    {
-        wlcs::InProcessServer::SetUp();
-        client = std::make_unique<wlcs::Client>(the_server());
-        surface = std::make_unique<wlcs::Surface>(*client);
-        shell_surface = zxdg_shell_v6_get_xdg_surface(client->xdg_shell_v6(), *surface);
-        toplevel = zxdg_surface_v6_get_toplevel(shell_surface);
         wl_surface_commit(*surface);
     }
 
@@ -162,6 +144,7 @@ public:
         zxdg_surface_v6_destroy(shell_surface);
         surface.reset();
         client.reset();
+        listener.reset();
         wlcs::InProcessServer::TearDown();
     }
 
@@ -172,11 +155,34 @@ public:
         wl_surface_commit(*surface);
     }
 
+    void dispatch_until_configure()
+    {
+        client->dispatch_until(
+            [prev_count = configure_events_count, &current_count = configure_events_count]()
+            {
+                return current_count > prev_count;
+            });
+    }
+
     std::unique_ptr<wlcs::Client> client;
     std::unique_ptr<wlcs::Surface> surface;
     std::vector<wlcs::ShmBuffer> buffers;
     zxdg_surface_v6* shell_surface;
     zxdg_toplevel_v6* toplevel;
+
+    std::unique_ptr<XdgListener> listener;
+
+    int configure_events_count{0};
+
+    bool window_maximized{false};
+    bool window_fullscreen{false};
+    bool window_resizing{false};
+    bool window_activated{false};
+
+    int window_width{-1};
+    int window_height{-1};
+
+    bool window_should_close{false};
 };
 
 TEST_F(XdgSurfaceV6Test, supports_xdg_shell_v6_protocol)
@@ -189,73 +195,47 @@ TEST_F(XdgSurfaceV6Test, supports_xdg_shell_v6_protocol)
     client->roundtrip();
 }
 
-TEST_F(XdgSurfaceV6Test, get_configure)
+TEST_F(XdgSurfaceV6Test, configure_event)
 {
     using namespace testing;
 
-    bool got_configure{false};
-
-    XdgToplevelListener listener{shell_surface, toplevel,
-        [&](uint32_t serial){
-            // surface configure
-            zxdg_surface_v6_ack_configure(shell_surface, serial);
-        },
-        [&](int32_t, int32_t, struct wl_array *)
-        {
-            // toplevel configure
-            got_configure = true;
-        },
-        [&]()
-        {
-            // toplevel close
-        }};
-
     attach_buffer(400, 400);
     wl_surface_commit(*surface);
-    client->roundtrip();
 
-    got_configure = false;
+    dispatch_until_configure();
+
     attach_buffer(200, 300);
     wl_surface_commit(*surface);
 
-    client->dispatch_until(
-        [&got_configure]()
-        {
-            return got_configure;
-        });
+    dispatch_until_configure();
 }
 
 TEST_F(XdgSurfaceV6Test, maximize)
 {
     using namespace testing;
 
-    auto listener = new DefaultXdgToplevelListener{shell_surface, toplevel};
-
     attach_buffer(400, 400);
-    wl_surface_commit(*surface);client->roundtrip();
+    wl_surface_commit(*surface);
 
-    client->dispatch_until(
-        [prev_count = listener->configure_events_count, &current_count = listener->configure_events_count]()
-        {
-            return current_count > prev_count;
-        });
+    dispatch_until_configure();
+
+    attach_buffer(200, 300);
+    wl_surface_commit(*surface);
+
+    dispatch_until_configure();
 
     // default values
-    EXPECT_EQ(listener->width, 0);
-    EXPECT_EQ(listener->height, 0);
-    EXPECT_FALSE(listener->window_maximized);
+    EXPECT_EQ(window_width, 0);
+    EXPECT_EQ(window_height, 0);
+    EXPECT_FALSE(window_maximized);
 
     //zxdg_surface_v6_set_window_geometry(shell_surface, 0, 0, 200, 300);
     zxdg_toplevel_v6_set_maximized(toplevel);
     wl_surface_commit(*surface);
 
-    client->dispatch_until(
-        [prev_count = listener->configure_events_count, &current_count = listener->configure_events_count]()
-        {
-            return current_count > prev_count;
-        });
+    dispatch_until_configure();
 
-    EXPECT_TRUE(listener->window_maximized);
-    EXPECT_GT(listener->width, 0);
-    EXPECT_GT(listener->height, 0);
+    EXPECT_TRUE(window_maximized);
+    EXPECT_GT(window_width, 0);
+    EXPECT_GT(window_height, 0);
 }
