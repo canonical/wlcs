@@ -33,6 +33,45 @@
 
 #include <memory>
 
+class XdgToplevelListener
+{
+public:
+    XdgToplevelListener(zxdg_surface_v6* shell_surface,
+                        zxdg_toplevel_v6* toplevel,
+                        std::function<void(uint32_t serial)> surface_configure,
+                        std::function<void(int32_t width, int32_t height, struct wl_array *states)> configure, std::function<void()> close)
+        : surface_configure{surface_configure},
+          configure{configure},
+          close{close}
+    {
+        static struct zxdg_surface_v6_listener const surface_listener = {surface_confgure_thunk};
+        static struct zxdg_toplevel_v6_listener const toplevel_listener = {configure_thunk, close_thunk};
+
+        zxdg_surface_v6_add_listener(shell_surface, &surface_listener, this);
+        zxdg_toplevel_v6_add_listener(toplevel, &toplevel_listener, this);
+    }
+
+private:
+    std::function<void(uint32_t serial)> surface_configure;
+    std::function<void(int32_t width, int32_t height, struct wl_array *states)> configure;
+    std::function<void()> close;
+
+    static void surface_confgure_thunk(void *data, struct zxdg_surface_v6 */*surface*/, uint32_t serial)
+    {
+        static_cast<XdgToplevelListener*>(data)->surface_configure(serial);
+    }
+
+    static void configure_thunk(void *data, struct zxdg_toplevel_v6 */*toplevel*/, int32_t width, int32_t height, struct wl_array *states)
+    {
+        static_cast<XdgToplevelListener*>(data)->configure(width, height, states);
+    }
+
+    static void close_thunk(void *data, struct zxdg_toplevel_v6 */*zxdg_toplevel_v6*/)
+    {
+        static_cast<XdgToplevelListener*>(data)->close();
+    }
+};
+
 class XdgSurfaceV6Test: public wlcs::InProcessServer
 {
 public:
@@ -80,4 +119,90 @@ TEST_F(XdgSurfaceV6Test, supports_xdg_shell_v6_protocol)
     wl_surface_commit(*surface);
 
     client->roundtrip();
+}
+
+TEST_F(XdgSurfaceV6Test, configure_requests)
+{
+    using namespace testing;
+
+    bool got_configure{false};
+    bool window_maximized{false}, window_fullscreen{false}, window_resizing{false}, window_activated{false};
+    int width{-1}, height{-1};
+
+    XdgToplevelListener listener{shell_surface, toplevel,
+        [&](uint32_t serial){
+            // surface configure
+            zxdg_surface_v6_ack_configure(shell_surface, serial);
+        },
+        [&](int32_t width_, int32_t height_, struct wl_array *states)
+        {
+            (void)states;
+            // toplevel configure
+            got_configure = true;
+            width = width_;
+            height = height_;
+            window_maximized = false;
+            window_fullscreen = false;
+            window_resizing = false;
+            window_activated = false;
+            zxdg_toplevel_v6_state* item;
+            for (item = static_cast<zxdg_toplevel_v6_state*>(states->data);
+                 item < static_cast<zxdg_toplevel_v6_state*>(states->data) + states->size;
+                 item++)
+            {
+                switch (*item)
+                {
+                    case ZXDG_TOPLEVEL_V6_STATE_MAXIMIZED:
+                        window_maximized = true;
+                        break;
+                    case ZXDG_TOPLEVEL_V6_STATE_FULLSCREEN:
+                        window_fullscreen = true;
+                        break;
+                    case ZXDG_TOPLEVEL_V6_STATE_RESIZING:
+                        window_resizing = true;
+                        break;
+                    case ZXDG_TOPLEVEL_V6_STATE_ACTIVATED:
+                        window_activated = true;
+                        break;
+                }
+            }
+        },
+        [&]()
+        {
+            // toplevel close
+        }};
+
+    attach_buffer(400, 400);
+    wl_surface_commit(*surface);
+    client->roundtrip();
+
+    got_configure = false;
+    attach_buffer(200, 300);
+    wl_surface_commit(*surface);
+
+    client->dispatch_until(
+        [&got_configure]()
+        {
+            return got_configure;
+        });
+
+    // default values
+    EXPECT_EQ(width, 0);
+    EXPECT_EQ(height, 0);
+    EXPECT_FALSE(window_maximized);
+
+    got_configure = false;
+    //zxdg_surface_v6_set_window_geometry(shell_surface, 0, 0, 200, 300);
+    zxdg_toplevel_v6_set_maximized(toplevel);
+    wl_surface_commit(*surface);
+
+    client->dispatch_until(
+        [&got_configure]()
+        {
+            return got_configure;
+        });
+
+    EXPECT_GT(width, 0);
+    EXPECT_GT(height, 0);
+    EXPECT_TRUE(window_maximized);
 }
