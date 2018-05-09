@@ -33,60 +33,87 @@
 
 #include <memory>
 
-using XdgSurfaceV6Test = wlcs::XdgSurfaceV6;
+using XdgSurfaceV6Test = wlcs::InProcessServer;
+using XdgToplevelV6Test = wlcs::InProcessServer;
 
 TEST_F(XdgSurfaceV6Test, supports_xdg_shell_v6_protocol)
 {
     using namespace testing;
+
+    wlcs::Client client{the_server()};
+    wlcs::Surface surface{client};
+    wlcs::XdgSurfaceV6 xdg_surface{client, surface};
 }
 
-TEST_F(XdgSurfaceV6Test, configure_event)
+TEST_F(XdgToplevelV6Test, xdg_surface_gets_configure_event)
 {
     using namespace testing;
 
-    attach_buffer(200, 300);
-    wl_surface_commit(*surface);
+    wlcs::Client client{the_server()};
+    wlcs::Surface surface{client};
+    wlcs::XdgSurfaceV6 xdg_surface{client, surface};
+    wlcs::XdgToplevelV6 toplevel{xdg_surface};
+    xdg_surface.attach_buffer(200, 200);
+    wl_surface_commit(surface);
 
-    dispatch_until_configure();
+    xdg_surface.dispatch_until_configure();
 }
 
-TEST_F(XdgSurfaceV6Test, maximize)
+TEST_F(XdgToplevelV6Test, maximize)
 {
     using namespace testing;
+
+    wlcs::Client client{the_server()};
+    wlcs::Surface surface{client};
+    wlcs::XdgSurfaceV6 xdg_surface{client, surface};
+    wlcs::XdgToplevelV6 toplevel{xdg_surface};
+    xdg_surface.attach_buffer(200, 200);
+    wl_surface_commit(surface);
+
+    xdg_surface.dispatch_until_configure();
 
     // default values
-    EXPECT_EQ(window_width, 0);
-    EXPECT_EQ(window_height, 0);
-    EXPECT_FALSE(window_maximized);
+    EXPECT_EQ(toplevel.window_width, 0);
+    EXPECT_EQ(toplevel.window_height, 0);
+    EXPECT_FALSE(toplevel.window_maximized);
 
     //zxdg_surface_v6_set_window_geometry(shell_surface, 0, 0, 200, 300);
     zxdg_toplevel_v6_set_maximized(toplevel);
-    wl_surface_commit(*surface);
+    wl_surface_commit(surface);
 
-    dispatch_until_configure();
+    xdg_surface.dispatch_until_configure();
 
-    EXPECT_TRUE(window_maximized);
-    EXPECT_GT(window_width, 0);
-    EXPECT_GT(window_height, 0);
+    EXPECT_TRUE(toplevel.window_maximized);
+    EXPECT_GT(toplevel.window_width, 0);
+    EXPECT_GT(toplevel.window_height, 0);
 }
 
-TEST_F(XdgSurfaceV6Test, unmaximize)
+TEST_F(XdgToplevelV6Test, unmaximize)
 {
     using namespace testing;
 
+    wlcs::Client client{the_server()};
+    wlcs::Surface surface{client};
+    wlcs::XdgSurfaceV6 xdg_surface{client, surface};
+    wlcs::XdgToplevelV6 toplevel{xdg_surface};
+    xdg_surface.attach_buffer(600, 600);
+    wl_surface_commit(surface);
+
+    EXPECT_FALSE(toplevel.window_maximized);
+
     zxdg_toplevel_v6_set_maximized(toplevel);
-    wl_surface_commit(*surface);
+    wl_surface_commit(surface);
 
-    dispatch_until_configure();
+    xdg_surface.dispatch_until_configure();
 
-    EXPECT_TRUE(window_maximized);
-    EXPECT_GT(window_width, 0);
-    EXPECT_GT(window_height, 0);
+    EXPECT_TRUE(toplevel.window_maximized);
+    EXPECT_GT(toplevel.window_width, 0);
+    EXPECT_GT(toplevel.window_height, 0);
 
     zxdg_toplevel_v6_unset_maximized(toplevel);
-    wl_surface_commit(*surface);
+    wl_surface_commit(surface);
 
-    dispatch_until_configure();
+    xdg_surface.dispatch_until_configure();
 
-    EXPECT_FALSE(window_maximized);
+    EXPECT_FALSE(toplevel.window_maximized);
 }
