@@ -63,6 +63,7 @@ add_library(
   src/data_device.cpp
   src/helpers.cpp
   src/in_process_server.cpp
+  src/xdg_shell_v6.cpp
   src/main.cpp
 
   src/generated/wayland.c
