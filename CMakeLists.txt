@@ -74,7 +74,8 @@ add_library(
   tests/test_bad_buffer.cpp
   tests/test_surface_events.cpp
   tests/frame_submission.cpp
-  tests/test_xdg_shell_v6.cpp
+  tests/test_xdg_surface_v6.cpp
+  tests/test_xdg_toplevel_v6.cpp
 )
 
 target_link_libraries(

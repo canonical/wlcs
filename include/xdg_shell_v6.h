@@ -33,24 +33,8 @@ public:
 
     operator zxdg_surface_v6*() const {return shell_surface;}
 
-    void attach_buffer(int width, int height)
-    {
-        buffers.push_back(wlcs::ShmBuffer{*client, width, height});
-        wl_surface_attach(*surface, buffers.back(), 0, 0);
-    }
-
-    void dispatch_until_configure()
-    {
-        client->dispatch_until(
-            [prev_count = configure_events_count, &current_count = configure_events_count]()
-            {
-                return current_count > prev_count;
-            });
-    }
-
     wlcs::Client* const client;
     wlcs::Surface* const surface;
-    std::vector<wlcs::ShmBuffer> buffers;
     zxdg_surface_v6* shell_surface;
 
     int configure_events_count{0};

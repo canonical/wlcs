@@ -33,8 +33,6 @@ wlcs::XdgSurfaceV6::XdgSurfaceV6(wlcs::Client& client, wlcs::Surface& surface)
 
 wlcs::XdgSurfaceV6::~XdgSurfaceV6()
 {
-    client->roundtrip();
-    buffers.clear();
     zxdg_surface_v6_destroy(shell_surface);
 }
 
@@ -52,9 +50,6 @@ wlcs::XdgToplevelV6::XdgToplevelV6(XdgSurfaceV6& shell_surface_)
     toplevel = zxdg_surface_v6_get_toplevel(shell_surface->shell_surface);
     static struct zxdg_toplevel_v6_listener const listener = {configure_thunk, close_thunk};
     zxdg_toplevel_v6_add_listener(toplevel, &listener, this);
-
-    wl_surface_commit(*shell_surface->surface);
-    shell_surface->client->roundtrip();
 }
 
 wlcs::XdgToplevelV6::~XdgToplevelV6()
