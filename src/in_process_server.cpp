@@ -311,7 +311,6 @@ public:
         auto buffer = std::make_shared<ShmBuffer>(client, width, height);
 
         wl_surface_attach(surface, *buffer, 0, 0);
-        wl_surface_commit(surface);
 
         /*
          * We can't drive buffer cleanup by the buffer.release() event, as that's not
@@ -321,6 +320,10 @@ public:
          */
         client_buffers.push_back(buffer);
 
+        bool surface_rendered{false};
+        surface.add_frame_callback([&surface_rendered](auto) { surface_rendered = true; });
+        wl_surface_commit(surface);
+        dispatch_until([&surface_rendered]() { return surface_rendered; });
         return surface;
     }
 
