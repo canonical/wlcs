@@ -1,7 +1,7 @@
 /*
  * Copyright © 2012 Intel Corporation
  * Copyright © 2013 Collabora, Ltd.
- * Copyright © 2017 Canonical Ltd.
+ * Copyright © 2018 Canonical Ltd.
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
