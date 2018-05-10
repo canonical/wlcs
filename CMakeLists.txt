@@ -76,7 +76,7 @@ add_library(
   tests/frame_submission.cpp
   tests/test_xdg_surface_v6.cpp
   tests/test_xdg_toplevel_v6.cpp
-)
+  tests/self_test.cpp)
 
 target_link_libraries(
   wlcs

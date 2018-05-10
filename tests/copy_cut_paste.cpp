@@ -65,7 +65,7 @@ struct MockDataDeviceListener : DataDeviceListener
 };
 }
 
-TEST_F(CopyCutPaste, given_source_has_offered_data_sink_sees_offer)
+TEST_F(CopyCutPaste, DISABLED_given_source_has_offered_data_sink_sees_offer)
 {
     DataSource source_data{wl_data_device_manager_create_data_source(source.data_device_manager())};
     wl_data_source_offer(source_data, any_mime_type);
