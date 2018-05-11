@@ -42,16 +42,11 @@ public:
     wlcs::Surface* const surface;
     zxdg_surface_v6* shell_surface;
 
-    int configure_events_count{0};
-
     std::vector<std::function<void(uint32_t)>> configure_notifiers;
 
 private:
-    void configure(uint32_t serial);
-
-    static void confgure_thunk(void *data, struct zxdg_surface_v6 *, uint32_t serial)
+    static void configure_thunk(void *data, struct zxdg_surface_v6 *, uint32_t serial)
     {
-        static_cast<XdgSurfaceV6*>(data)->configure(serial);
         for (auto& notifier : static_cast<XdgSurfaceV6*>(data)->configure_notifiers)
         {
             notifier(serial);
@@ -93,27 +88,13 @@ public:
     XdgSurfaceV6* const shell_surface;
     zxdg_toplevel_v6* toplevel;
 
-    bool window_maximized{false};
-    bool window_fullscreen{false};
-    bool window_resizing{false};
-    bool window_activated{false};
-
-    int window_width{-1};
-    int window_height{-1};
-
-    bool window_should_close{false};
-
     std::vector<std::function<void(int32_t, int32_t, struct wl_array *)>> configure_notifiers;
     std::vector<std::function<void()>> close_notifiers;
 
 private:
-    void configure(int32_t width_, int32_t height_, struct wl_array *states);
-    void close();
-
     static void configure_thunk(void *data, struct zxdg_toplevel_v6 *, int32_t width, int32_t height,
                                 struct wl_array *states)
     {
-        static_cast<XdgToplevelV6*>(data)->configure(width, height, states);
         for (auto& notifier : static_cast<XdgToplevelV6*>(data)->configure_notifiers)
         {
             notifier(width, height, states);
@@ -122,7 +103,6 @@ private:
 
     static void close_thunk(void *data, struct zxdg_toplevel_v6 *)
     {
-        static_cast<XdgToplevelV6*>(data)->close();
         for (auto& notifier : static_cast<XdgToplevelV6*>(data)->close_notifiers)
         {
             notifier();

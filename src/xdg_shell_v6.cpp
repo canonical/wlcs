@@ -36,12 +36,6 @@ wlcs::XdgSurfaceV6::~XdgSurfaceV6()
     zxdg_surface_v6_destroy(shell_surface);
 }
 
-void wlcs::XdgSurfaceV6::configure(uint32_t serial)
-{
-    zxdg_surface_v6_ack_configure(this->shell_surface, serial);
-    configure_events_count++;
-}
-
 // XdgToplevelV6
 
 wlcs::XdgToplevelV6::State::State(int32_t width, int32_t height, struct wl_array *states)
@@ -86,40 +80,4 @@ wlcs::XdgToplevelV6::XdgToplevelV6(XdgSurfaceV6& shell_surface_)
 wlcs::XdgToplevelV6::~XdgToplevelV6()
 {
     zxdg_toplevel_v6_destroy(toplevel);
-}
-
-void wlcs::XdgToplevelV6::configure(int32_t width_, int32_t height_, struct wl_array *states)
-{
-    window_width = width_;
-    window_height = height_;
-    window_maximized = false;
-    window_fullscreen = false;
-    window_resizing = false;
-    window_activated = false;
-    zxdg_toplevel_v6_state* item;
-    for (item = static_cast<zxdg_toplevel_v6_state*>(states->data);
-            (char*)item < static_cast<char*>(states->data) + states->size;
-            item++)
-    {
-        switch (*item)
-        {
-            case ZXDG_TOPLEVEL_V6_STATE_MAXIMIZED:
-                window_maximized = true;
-                break;
-            case ZXDG_TOPLEVEL_V6_STATE_FULLSCREEN:
-                window_fullscreen = true;
-                break;
-            case ZXDG_TOPLEVEL_V6_STATE_RESIZING:
-                window_resizing = true;
-                break;
-            case ZXDG_TOPLEVEL_V6_STATE_ACTIVATED:
-                window_activated = true;
-                break;
-        }
-    }
-}
-
-void wlcs::XdgToplevelV6::close()
-{
-    window_should_close = true;
 }

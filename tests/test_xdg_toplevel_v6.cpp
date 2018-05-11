@@ -57,15 +57,6 @@ public:
         wl_surface_attach(surface, buffers.back(), 0, 0);
     }
 
-    void dispatch_until_configure()
-    {
-        client.dispatch_until(
-            [prev_count = xdg_surface.configure_events_count, &current_count = xdg_surface.configure_events_count]()
-            {
-                return current_count > prev_count;
-            });
-    }
-
     wlcs::Client client;
     wlcs::Surface surface;
     wlcs::XdgSurfaceV6 xdg_surface;
