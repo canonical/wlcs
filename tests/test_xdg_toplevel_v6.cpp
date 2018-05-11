@@ -31,6 +31,8 @@
 
 #include <gmock/gmock.h>
 
+#include <experimental/optional>
+
 using XdgToplevelV6Test = wlcs::InProcessServer;
 
 class XdgToplevelWindow
@@ -76,20 +78,39 @@ TEST_F(XdgToplevelV6Test, default_configuration)
     using namespace testing;
 
     XdgToplevelWindow window{the_server()};
+
+    int surface_configure_count{0};
+    window.xdg_surface.add_configure_notification([&](uint32_t serial)
+        {
+            zxdg_surface_v6_ack_configure(window.xdg_surface.shell_surface, serial);
+            surface_configure_count++;
+        });
+
+    std::experimental::optional<wlcs::XdgToplevelV6::State> state;
+    window.toplevel.add_configure_notification([&state] (int32_t width, int32_t height, struct wl_array *states)
+        {
+            state = wlcs::XdgToplevelV6::State{width, height, states};
+        });
+
     wl_surface_commit(window.surface);
     window.client.roundtrip();
     window.attach_buffer(600, 400);
     wl_surface_commit(window.surface);
 
-    window.dispatch_until_configure();
+    window.client.dispatch_until(
+        [prev_count = surface_configure_count, &current_count = surface_configure_count]()
+        {
+            return current_count > prev_count;
+        });
 
     // default values
-    EXPECT_EQ(window.toplevel.window_width, 0);
-    EXPECT_EQ(window.toplevel.window_height, 0);
-    EXPECT_FALSE(window.toplevel.window_maximized);
-    EXPECT_FALSE(window.toplevel.window_fullscreen);
-    EXPECT_FALSE(window.toplevel.window_resizing);
-    EXPECT_TRUE(window.toplevel.window_activated);
+    ASSERT_NE(state, std::experimental::nullopt);
+    EXPECT_EQ(state.value().width, 0);
+    EXPECT_EQ(state.value().height, 0);
+    EXPECT_FALSE(state.value().maximized);
+    EXPECT_FALSE(state.value().fullscreen);
+    EXPECT_FALSE(state.value().resizing);
+    EXPECT_TRUE(state.value().activated);
 }
 
 TEST_F(XdgToplevelV6Test, correct_configuration_when_maximized)
@@ -97,24 +118,47 @@ TEST_F(XdgToplevelV6Test, correct_configuration_when_maximized)
     using namespace testing;
 
     XdgToplevelWindow window{the_server()};
+
+    int surface_configure_count{0};
+    window.xdg_surface.add_configure_notification([&](uint32_t serial)
+        {
+            zxdg_surface_v6_ack_configure(window.xdg_surface.shell_surface, serial);
+            surface_configure_count++;
+        });
+
+    std::experimental::optional<wlcs::XdgToplevelV6::State> state;
+    window.toplevel.add_configure_notification([&state] (int32_t width, int32_t height, struct wl_array *states)
+        {
+            state = wlcs::XdgToplevelV6::State{width, height, states};
+        });
+
     wl_surface_commit(window.surface);
     window.client.roundtrip();
     window.attach_buffer(200, 200);
     wl_surface_commit(window.surface);
 
-    window.dispatch_until_configure();
+    window.client.dispatch_until(
+        [prev_count = surface_configure_count, &current_count = surface_configure_count]()
+        {
+            return current_count > prev_count;
+        });
 
     zxdg_toplevel_v6_set_maximized(window.toplevel);
     wl_surface_commit(window.surface);
 
-    window.dispatch_until_configure();
+    window.client.dispatch_until(
+        [prev_count = surface_configure_count, &current_count = surface_configure_count]()
+        {
+            return current_count > prev_count;
+        });
 
-    EXPECT_GT(window.toplevel.window_width, 0);
-    EXPECT_GT(window.toplevel.window_height, 0);
-    EXPECT_TRUE(window.toplevel.window_maximized);
-    EXPECT_FALSE(window.toplevel.window_fullscreen);
-    EXPECT_FALSE(window.toplevel.window_resizing);
-    EXPECT_TRUE(window.toplevel.window_activated);
+    ASSERT_NE(state, std::experimental::nullopt);
+    EXPECT_GT(state.value().width, 0);
+    EXPECT_GT(state.value().height, 0);
+    EXPECT_TRUE(state.value().maximized);
+    EXPECT_FALSE(state.value().fullscreen);
+    EXPECT_FALSE(state.value().resizing);
+    EXPECT_TRUE(state.value().activated);
 }
 
 TEST_F(XdgToplevelV6Test, correct_configuration_when_maximized_and_unmaximized)
@@ -122,25 +166,52 @@ TEST_F(XdgToplevelV6Test, correct_configuration_when_maximized_and_unmaximized)
     using namespace testing;
 
     XdgToplevelWindow window{the_server()};
+
+    int surface_configure_count{0};
+    window.xdg_surface.add_configure_notification([&](uint32_t serial)
+        {
+            zxdg_surface_v6_ack_configure(window.xdg_surface.shell_surface, serial);
+            surface_configure_count++;
+        });
+
+    std::experimental::optional<wlcs::XdgToplevelV6::State> state;
+    window.toplevel.add_configure_notification([&state] (int32_t width, int32_t height, struct wl_array *states)
+        {
+            state = wlcs::XdgToplevelV6::State{width, height, states};
+        });
+
     wl_surface_commit(window.surface);
     window.client.roundtrip();
     window.attach_buffer(200, 200);
     wl_surface_commit(window.surface);
 
-    window.dispatch_until_configure();
+    window.client.dispatch_until(
+        [prev_count = surface_configure_count, &current_count = surface_configure_count]()
+        {
+            return current_count > prev_count;
+        });
 
     zxdg_toplevel_v6_set_maximized(window.toplevel);
     wl_surface_commit(window.surface);
 
-    window.dispatch_until_configure();
+    window.client.dispatch_until(
+        [prev_count = surface_configure_count, &current_count = surface_configure_count]()
+        {
+            return current_count > prev_count;
+        });
 
     zxdg_toplevel_v6_unset_maximized(window.toplevel);
     wl_surface_commit(window.surface);
 
-    window.dispatch_until_configure();
+    window.client.dispatch_until(
+        [prev_count = surface_configure_count, &current_count = surface_configure_count]()
+        {
+            return current_count > prev_count;
+        });
 
-    EXPECT_FALSE(window.toplevel.window_maximized);
-    EXPECT_FALSE(window.toplevel.window_fullscreen);
-    EXPECT_FALSE(window.toplevel.window_resizing);
-    EXPECT_TRUE(window.toplevel.window_activated);
+    ASSERT_NE(state, std::experimental::nullopt);
+    EXPECT_FALSE(state.value().maximized);
+    EXPECT_FALSE(state.value().fullscreen);
+    EXPECT_FALSE(state.value().resizing);
+    EXPECT_TRUE(state.value().activated);
 }

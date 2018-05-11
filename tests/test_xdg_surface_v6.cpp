@@ -50,17 +50,25 @@ TEST_F(XdgSurfaceV6Test, gets_configure_event)
     wlcs::Client client{the_server()};
     wlcs::Surface surface{client};
     wlcs::XdgSurfaceV6 xdg_surface{client, surface};
+
+    int surface_configure_count{0};
+    xdg_surface.add_configure_notification([&](uint32_t serial)
+        {
+            zxdg_surface_v6_ack_configure(xdg_surface.shell_surface, serial);
+            surface_configure_count++;
+        });
+
     wlcs::XdgToplevelV6 toplevel{xdg_surface};
     wlcs::ShmBuffer buffer{client, 600, 400};
     wl_surface_attach(surface, buffer, 0, 0);
 
     client.roundtrip();
 
-    ASSERT_EQ(xdg_surface.configure_events_count, 0);
+    ASSERT_EQ(surface_configure_count, 0);
 
     wl_surface_commit(surface);
 
     client.roundtrip();
 
-    ASSERT_EQ(xdg_surface.configure_events_count, 1);
+    ASSERT_EQ(surface_configure_count, 1);
 }

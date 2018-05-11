@@ -27,7 +27,7 @@ wlcs::XdgSurfaceV6::XdgSurfaceV6(wlcs::Client& client, wlcs::Surface& surface)
     if (!client.xdg_shell_v6())
         throw std::runtime_error("XDG shell unstable V6 not supported by compositor");
     shell_surface = zxdg_shell_v6_get_xdg_surface(client.xdg_shell_v6(), surface);
-    static struct zxdg_surface_v6_listener const listener = {confgure_thunk};
+    static struct zxdg_surface_v6_listener const listener = {configure_thunk};
     zxdg_surface_v6_add_listener(shell_surface, &listener, this);
 }
 
