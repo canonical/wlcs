@@ -44,6 +44,37 @@ void wlcs::XdgSurfaceV6::configure(uint32_t serial)
 
 // XdgToplevelV6
 
+wlcs::XdgToplevelV6::State::State(int32_t width, int32_t height, struct wl_array *states)
+    : width{width},
+      height{height},
+      maximized{false},
+      fullscreen{false},
+      resizing{false},
+      activated{false}
+{
+    zxdg_toplevel_v6_state* item;
+    for (item = static_cast<zxdg_toplevel_v6_state*>(states->data);
+         (char*)item < static_cast<char*>(states->data) + states->size;
+         item++)
+    {
+        switch (*item)
+        {
+            case ZXDG_TOPLEVEL_V6_STATE_MAXIMIZED:
+                maximized = true;
+                break;
+            case ZXDG_TOPLEVEL_V6_STATE_FULLSCREEN:
+                fullscreen = true;
+                break;
+            case ZXDG_TOPLEVEL_V6_STATE_RESIZING:
+                resizing = true;
+                break;
+            case ZXDG_TOPLEVEL_V6_STATE_ACTIVATED:
+                activated = true;
+                break;
+        }
+    }
+}
+
 wlcs::XdgToplevelV6::XdgToplevelV6(XdgSurfaceV6& shell_surface_)
     : shell_surface{&shell_surface_}
 {

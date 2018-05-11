@@ -38,7 +38,7 @@ TEST_F(XdgSurfaceV6Test, supports_xdg_shell_v6_protocol)
     using namespace testing;
 
     wlcs::Client client{the_server()};
-    ASSERT_TRUE(client.xdg_shell_v6() != nullptr);
+    ASSERT_THAT(client.xdg_shell_v6(), NotNull());
     wlcs::Surface surface{client};
     wlcs::XdgSurfaceV6 xdg_surface{client, surface};
 }

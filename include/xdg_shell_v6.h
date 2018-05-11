@@ -31,6 +31,11 @@ public:
     XdgSurfaceV6(wlcs::Client& client, wlcs::Surface& surface);
     ~XdgSurfaceV6();
 
+    void add_configure_notification(std::function<void(uint32_t)> notification)
+    {
+        configure_notifiers.push_back(notification);
+    }
+
     operator zxdg_surface_v6*() const {return shell_surface;}
 
     wlcs::Client* const client;
@@ -39,20 +44,49 @@ public:
 
     int configure_events_count{0};
 
+    std::vector<std::function<void(uint32_t)>> configure_notifiers;
+
 private:
     void configure(uint32_t serial);
 
     static void confgure_thunk(void *data, struct zxdg_surface_v6 *, uint32_t serial)
     {
         static_cast<XdgSurfaceV6*>(data)->configure(serial);
+        for (auto& notifier : static_cast<XdgSurfaceV6*>(data)->configure_notifiers)
+        {
+            notifier(serial);
+        }
     }
 };
 
 class XdgToplevelV6
 {
 public:
+    struct State
+    {
+        State(int32_t width, int32_t height, struct wl_array *states);
+
+        int width;
+        int height;
+
+        bool maximized;
+        bool fullscreen;
+        bool resizing;
+        bool activated;
+    };
+
     XdgToplevelV6(XdgSurfaceV6& shell_surface_);
     ~XdgToplevelV6();
+
+    void add_configure_notification(std::function<void(int32_t, int32_t, struct wl_array *)> notification)
+    {
+        configure_notifiers.push_back(notification);
+    }
+
+    void add_close_notification(std::function<void(int32_t, int32_t, struct wl_array *)> notification)
+    {
+        configure_notifiers.push_back(notification);
+    }
 
     operator zxdg_toplevel_v6*() const {return toplevel;}
 
@@ -69,6 +103,9 @@ public:
 
     bool window_should_close{false};
 
+    std::vector<std::function<void(int32_t, int32_t, struct wl_array *)>> configure_notifiers;
+    std::vector<std::function<void()>> close_notifiers;
+
 private:
     void configure(int32_t width_, int32_t height_, struct wl_array *states);
     void close();
@@ -77,11 +114,19 @@ private:
                                 struct wl_array *states)
     {
         static_cast<XdgToplevelV6*>(data)->configure(width, height, states);
+        for (auto& notifier : static_cast<XdgToplevelV6*>(data)->configure_notifiers)
+        {
+            notifier(width, height, states);
+        }
     }
 
     static void close_thunk(void *data, struct zxdg_toplevel_v6 *)
     {
         static_cast<XdgToplevelV6*>(data)->close();
+        for (auto& notifier : static_cast<XdgToplevelV6*>(data)->close_notifiers)
+        {
+            notifier();
+        }
     }
 };
 
