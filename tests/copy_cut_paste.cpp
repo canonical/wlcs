@@ -28,15 +28,10 @@
 using namespace testing;
 using namespace wlcs;
 
+using CopyCutPaste = wlcs::InProcessServer;
+
 namespace
 {
-struct StartedInProcessServer : InProcessServer
-{
-    StartedInProcessServer() { InProcessServer::SetUp(); }
-
-    void SetUp() override {}
-};
-
 auto static const any_width = 100;
 auto static const any_height = 100;
 auto static const any_mime_type = "AnyMimeType";
@@ -65,11 +60,6 @@ struct CCnPClient : Client
     std::shared_ptr<ShmBuffer> const buffer{std::make_shared<ShmBuffer>(*this, any_width, any_height)};
 };
 
-struct CopyCutPaste : StartedInProcessServer
-{
-    CCnPClient source{the_server()};
-};
-
 struct MockDataDeviceListener : DataDeviceListener
 {
     using DataDeviceListener::DataDeviceListener;
@@ -80,6 +70,7 @@ struct MockDataDeviceListener : DataDeviceListener
 
 TEST_F(CopyCutPaste, given_source_has_offered_data_sink_sees_offer)
 {
+    CCnPClient source{the_server()};
     DataSource source_data{wl_data_device_manager_create_data_source(source.data_device_manager())};
     wl_data_source_offer(source_data, any_mime_type);
     source.roundtrip();
