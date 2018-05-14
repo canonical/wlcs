@@ -149,3 +149,43 @@ TEST_F(BadBufferTest, client_lies_about_buffer_size)
 
     FAIL() << "Expected protocol error not raised";
 }
+
+// This should be identical to the first tests case of the previous test. It tests if a 2nd instance of the server can
+// successfully handle a bad buffer. There have been issues with the server installing a SIGBUS handler (via
+// wl_shm_buffer_begin_access()) that only works for the first server instance.
+
+using SecondBadBufferTest = wlcs::InProcessServer;
+
+TEST_F(SecondBadBufferTest, DISABLED_test_truncated_shm_file)
+{
+	using namespace testing;
+
+	wlcs::Client client{the_server()};
+
+	bool buffer_consumed{false};
+
+	auto surface = client.create_visible_surface(200, 200);
+
+	wl_buffer* bad_buffer = create_bad_shm_buffer(client, 200, 200);
+
+	wl_surface_attach(surface, bad_buffer, 0, 0);
+	wl_surface_damage(surface, 0, 0, 200, 200);
+
+	surface.add_frame_callback([&buffer_consumed](int) { buffer_consumed = true; });
+
+	wl_surface_commit(surface);
+
+	try
+	{
+		client.dispatch_until([&buffer_consumed]() { return buffer_consumed; });
+	}
+	catch (wlcs::ProtocolError const& err)
+	{
+		wl_buffer_destroy(bad_buffer);
+		EXPECT_THAT(err.error_code(), Eq(WL_SHM_ERROR_INVALID_FD));
+		EXPECT_THAT(err.interface(), Eq(&wl_buffer_interface));
+		return;
+	}
+
+	FAIL() << "Expected protocol error not raised";
+}
