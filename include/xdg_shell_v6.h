@@ -49,8 +49,6 @@ private:
         }
     }
 
-    wlcs::Client* const client;
-    wlcs::Surface* const surface;
     zxdg_surface_v6* shell_surface;
 };
 

@@ -21,8 +21,6 @@
 // XdgSurfaceV6
 
 wlcs::XdgSurfaceV6::XdgSurfaceV6(wlcs::Client& client, wlcs::Surface& surface)
-    : client{&client},
-      surface{&surface}
 {
     if (!client.xdg_shell_v6())
         throw std::runtime_error("XDG shell unstable V6 not supported by compositor");
