@@ -95,13 +95,13 @@ TEST_F(XdgToplevelV6Test, default_configuration)
         });
 
     // default values
-    ASSERT_NE(state, std::experimental::nullopt);
-    EXPECT_EQ(state.value().width, 0);
-    EXPECT_EQ(state.value().height, 0);
-    EXPECT_FALSE(state.value().maximized);
-    EXPECT_FALSE(state.value().fullscreen);
-    EXPECT_FALSE(state.value().resizing);
-    EXPECT_TRUE(state.value().activated);
+    ASSERT_THAT(state, Ne(std::experimental::nullopt));
+    EXPECT_THAT(state.value().width, Eq(0));
+    EXPECT_THAT(state.value().height, Eq(0));
+    EXPECT_THAT(state.value().maximized, Eq(false));
+    EXPECT_THAT(state.value().fullscreen, Eq(false));
+    EXPECT_THAT(state.value().resizing, Eq(false));
+    EXPECT_THAT(state.value().activated, Eq(true));
 }
 
 TEST_F(XdgToplevelV6Test, correct_configuration_when_maximized)
@@ -143,13 +143,13 @@ TEST_F(XdgToplevelV6Test, correct_configuration_when_maximized)
             return current_count > prev_count;
         });
 
-    ASSERT_NE(state, std::experimental::nullopt);
-    EXPECT_GT(state.value().width, 0);
-    EXPECT_GT(state.value().height, 0);
-    EXPECT_TRUE(state.value().maximized);
-    EXPECT_FALSE(state.value().fullscreen);
-    EXPECT_FALSE(state.value().resizing);
-    EXPECT_TRUE(state.value().activated);
+    ASSERT_THAT(state, Ne(std::experimental::nullopt));
+    EXPECT_THAT(state.value().width, Gt(0));
+    EXPECT_THAT(state.value().height, Gt(0));
+    EXPECT_THAT(state.value().maximized, Eq(true));
+    EXPECT_THAT(state.value().fullscreen, Eq(false));
+    EXPECT_THAT(state.value().resizing, Eq(false));
+    EXPECT_THAT(state.value().activated, Eq(true));
 }
 
 TEST_F(XdgToplevelV6Test, correct_configuration_when_maximized_and_unmaximized)
@@ -200,9 +200,9 @@ TEST_F(XdgToplevelV6Test, correct_configuration_when_maximized_and_unmaximized)
             return current_count > prev_count;
         });
 
-    ASSERT_NE(state, std::experimental::nullopt);
-    EXPECT_FALSE(state.value().maximized);
-    EXPECT_FALSE(state.value().fullscreen);
-    EXPECT_FALSE(state.value().resizing);
-    EXPECT_TRUE(state.value().activated);
+    ASSERT_THAT(state, Ne(std::experimental::nullopt));
+    EXPECT_THAT(state.value().maximized, Eq(false));
+    EXPECT_THAT(state.value().fullscreen, Eq(false));
+    EXPECT_THAT(state.value().resizing, Eq(false));
+    EXPECT_THAT(state.value().activated, Eq(true));
 }

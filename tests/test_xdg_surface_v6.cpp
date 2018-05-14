@@ -64,11 +64,11 @@ TEST_F(XdgSurfaceV6Test, gets_configure_event)
 
     client.roundtrip();
 
-    ASSERT_EQ(surface_configure_count, 0);
+    EXPECT_THAT(surface_configure_count, Eq(0));
 
     wl_surface_commit(surface);
 
     client.roundtrip();
 
-    ASSERT_EQ(surface_configure_count, 1);
+    EXPECT_THAT(surface_configure_count, Eq(1));
 }
