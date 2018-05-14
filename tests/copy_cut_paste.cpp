@@ -19,6 +19,7 @@
 #include "data_device.h"
 #include "helpers.h"
 #include "in_process_server.h"
+#include "wayland-client-protocol.h"
 
 #include <gmock/gmock.h>
 
@@ -42,13 +43,25 @@ auto static const any_mime_type = "AnyMimeType";
 
 struct CCnPClient : Client
 {
-    CCnPClient(Server& server) : Client(server)
+    CCnPClient(Server& server)
+        : Client(server),
+          surface{*this},
+          shell_surface{wl_shell_get_shell_surface(shell(), surface)}
     {
+        wl_shell_surface_set_toplevel(shell_surface);
+        wl_surface_commit(surface);
+
         wl_surface_attach(surface, *buffer, 0, 0);
         wl_surface_commit(surface);
     }
 
-    Surface const surface{create_visible_surface(any_width, any_height)};
+    ~CCnPClient()
+    {
+        wl_shell_surface_destroy(shell_surface);
+    }
+
+    Surface const surface;
+    wl_shell_surface* const shell_surface;
     std::shared_ptr<ShmBuffer> const buffer{std::make_shared<ShmBuffer>(*this, any_width, any_height)};
 };
 
