@@ -72,7 +72,7 @@ wlcs::XdgToplevelV6::State::State(int32_t width, int32_t height, struct wl_array
 wlcs::XdgToplevelV6::XdgToplevelV6(XdgSurfaceV6& shell_surface_)
     : shell_surface{&shell_surface_}
 {
-    toplevel = zxdg_surface_v6_get_toplevel(shell_surface->shell_surface);
+    toplevel = zxdg_surface_v6_get_toplevel(*shell_surface);
     static struct zxdg_toplevel_v6_listener const listener = {configure_thunk, close_thunk};
     zxdg_toplevel_v6_add_listener(toplevel, &listener, this);
 }

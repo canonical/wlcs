@@ -73,7 +73,7 @@ TEST_F(XdgToplevelV6Test, default_configuration)
     int surface_configure_count{0};
     window.xdg_surface.add_configure_notification([&](uint32_t serial)
         {
-            zxdg_surface_v6_ack_configure(window.xdg_surface.shell_surface, serial);
+            zxdg_surface_v6_ack_configure(window.xdg_surface, serial);
             surface_configure_count++;
         });
 
@@ -113,7 +113,7 @@ TEST_F(XdgToplevelV6Test, correct_configuration_when_maximized)
     int surface_configure_count{0};
     window.xdg_surface.add_configure_notification([&](uint32_t serial)
         {
-            zxdg_surface_v6_ack_configure(window.xdg_surface.shell_surface, serial);
+            zxdg_surface_v6_ack_configure(window.xdg_surface, serial);
             surface_configure_count++;
         });
 
@@ -161,7 +161,7 @@ TEST_F(XdgToplevelV6Test, correct_configuration_when_maximized_and_unmaximized)
     int surface_configure_count{0};
     window.xdg_surface.add_configure_notification([&](uint32_t serial)
         {
-            zxdg_surface_v6_ack_configure(window.xdg_surface.shell_surface, serial);
+            zxdg_surface_v6_ack_configure(window.xdg_surface, serial);
             surface_configure_count++;
         });
 

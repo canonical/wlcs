@@ -38,10 +38,6 @@ public:
 
     operator zxdg_surface_v6*() const {return shell_surface;}
 
-    wlcs::Client* const client;
-    wlcs::Surface* const surface;
-    zxdg_surface_v6* shell_surface;
-
     std::vector<std::function<void(uint32_t)>> configure_notifiers;
 
 private:
@@ -52,6 +48,10 @@ private:
             notifier(serial);
         }
     }
+
+    wlcs::Client* const client;
+    wlcs::Surface* const surface;
+    zxdg_surface_v6* shell_surface;
 };
 
 class XdgToplevelV6

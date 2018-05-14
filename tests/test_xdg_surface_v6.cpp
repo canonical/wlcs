@@ -54,7 +54,7 @@ TEST_F(XdgSurfaceV6Test, gets_configure_event)
     int surface_configure_count{0};
     xdg_surface.add_configure_notification([&](uint32_t serial)
         {
-            zxdg_surface_v6_ack_configure(xdg_surface.shell_surface, serial);
+            zxdg_surface_v6_ack_configure(xdg_surface, serial);
             surface_configure_count++;
         });
 
