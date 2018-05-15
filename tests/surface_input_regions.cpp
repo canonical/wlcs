@@ -25,12 +25,12 @@
 
 using namespace testing;
 
-// No tests use SUBTRACT_RECT as that is not yet implemented in Mir
+// No tests use Subtract as that is not yet implemented in Mir
 
-enum RegionAction
+enum class RegionAction
 {
-    ADD_RECT,
-    SUBTRACT_RECT
+    Add,
+    Subtract
 };
 
 struct InputRegion
@@ -90,14 +90,12 @@ TEST_P(InputRegionPointerEnterTest, pointer_enter_and_leave_input_region)
     {
         switch(e.action)
         {
-        case ADD_RECT:
+        case RegionAction::Add:
             wl_region_add(wl_region, e.x, e.y, e.width, e.height);
             break;
-        case SUBTRACT_RECT:
+        case RegionAction::Subtract:
             wl_region_subtract(wl_region, e.x, e.y, e.width, e.height);
             break;
-        default:
-            FAIL() << "unknown RegionAction";
         }
     }
     wl_surface_set_input_region(wl_surface, wl_region);
@@ -130,7 +128,7 @@ TEST_P(InputRegionPointerEnterTest, pointer_enter_and_leave_input_region)
 }
 
 InputRegion const full_surface_region{"full surface", {
-    {ADD_RECT, 0, 0, RegionAndMotion::window_width, RegionAndMotion::window_height}}};
+    {RegionAction::Add, 0, 0, RegionAndMotion::window_width, RegionAndMotion::window_height}}};
 
 INSTANTIATE_TEST_CASE_P(
     NormalRegion,
@@ -158,7 +156,7 @@ int const region_inset_x = 12;
 int const region_inset_y = 17;
 
 InputRegion const smaller_region{"smaller", {{
-    ADD_RECT,
+    RegionAction::Add,
     region_inset_x,
     region_inset_y,
     RegionAndMotion::window_width - region_inset_x * 2,
@@ -192,7 +190,7 @@ int const region_outset_x = 12;
 int const region_outset_y = 17;
 
 InputRegion const larger_region{"larger", {{
-    ADD_RECT,
+    RegionAction::Add,
     - region_outset_x,
     - region_outset_y,
     RegionAndMotion::window_width + region_outset_x * 2,
@@ -223,9 +221,9 @@ INSTANTIATE_TEST_CASE_P(
 int const small_rect_inset = 16;
 
 InputRegion const multi_rect_region{"multi rect", {
-    {ADD_RECT, 0, 0,
+    {RegionAction::Add, 0, 0,
      RegionAndMotion::window_width, RegionAndMotion::window_height / 2},
-    {ADD_RECT, small_rect_inset, RegionAndMotion::window_height / 2,
+    {RegionAction::Add, small_rect_inset, RegionAndMotion::window_height / 2,
      RegionAndMotion::window_width - small_rect_inset * 2, RegionAndMotion::window_height / 2}}};
 
 INSTANTIATE_TEST_CASE_P(
