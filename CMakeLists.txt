@@ -70,13 +70,14 @@ add_library(
   src/generated/xdg-shell-unstable-v6.c
   src/generated/xdg-shell.c
 
-  tests/copy_cut_paste.cpp
   tests/test_bad_buffer.cpp
+  tests/copy_cut_paste.cpp
   tests/test_surface_events.cpp
   tests/frame_submission.cpp
-  tests/test_xdg_surface_v6.cpp
-  tests/test_xdg_toplevel_v6.cpp
-  tests/self_test.cpp)
+  tests/xdg_surface_v6.cpp
+  tests/xdg_toplevel_v6.cpp
+  tests/self_test.cpp
+)
 
 target_link_libraries(
   wlcs
