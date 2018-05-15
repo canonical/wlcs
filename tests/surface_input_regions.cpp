@@ -29,8 +29,8 @@ using namespace testing;
 
 enum class RegionAction
 {
-    Add,
-    Subtract
+    add,
+    subtract,
 };
 
 struct InputRegion
@@ -90,10 +90,10 @@ TEST_P(InputRegionPointerEnterTest, pointer_enter_and_leave_input_region)
     {
         switch(e.action)
         {
-        case RegionAction::Add:
+        case RegionAction::add:
             wl_region_add(wl_region, e.x, e.y, e.width, e.height);
             break;
-        case RegionAction::Subtract:
+        case RegionAction::subtract:
             wl_region_subtract(wl_region, e.x, e.y, e.width, e.height);
             break;
         }
@@ -128,7 +128,7 @@ TEST_P(InputRegionPointerEnterTest, pointer_enter_and_leave_input_region)
 }
 
 InputRegion const full_surface_region{"full surface", {
-    {RegionAction::Add, 0, 0, RegionAndMotion::window_width, RegionAndMotion::window_height}}};
+    {RegionAction::add, 0, 0, RegionAndMotion::window_width, RegionAndMotion::window_height}}};
 
 INSTANTIATE_TEST_CASE_P(
     NormalRegion,
@@ -156,7 +156,7 @@ int const region_inset_x = 12;
 int const region_inset_y = 17;
 
 InputRegion const smaller_region{"smaller", {{
-    RegionAction::Add,
+    RegionAction::add,
     region_inset_x,
     region_inset_y,
     RegionAndMotion::window_width - region_inset_x * 2,
@@ -190,7 +190,7 @@ int const region_outset_x = 12;
 int const region_outset_y = 17;
 
 InputRegion const larger_region{"larger", {{
-    RegionAction::Add,
+    RegionAction::add,
     - region_outset_x,
     - region_outset_y,
     RegionAndMotion::window_width + region_outset_x * 2,
@@ -221,9 +221,9 @@ INSTANTIATE_TEST_CASE_P(
 int const small_rect_inset = 16;
 
 InputRegion const multi_rect_region{"multi rect", {
-    {RegionAction::Add, 0, 0,
+    {RegionAction::add, 0, 0,
      RegionAndMotion::window_width, RegionAndMotion::window_height / 2},
-    {RegionAction::Add, small_rect_inset, RegionAndMotion::window_height / 2,
+    {RegionAction::add, small_rect_inset, RegionAndMotion::window_height / 2,
      RegionAndMotion::window_width - small_rect_inset * 2, RegionAndMotion::window_height / 2}}};
 
 INSTANTIATE_TEST_CASE_P(
