@@ -25,7 +25,7 @@
 
 using namespace testing;
 
-// No tests use Subtract as that is not yet implemented in Mir
+// No tests use subtract as that is not yet implemented in Mir
 
 enum class RegionAction
 {
