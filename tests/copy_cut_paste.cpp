@@ -61,6 +61,13 @@ struct MockDataDeviceListener : DataDeviceListener
     MOCK_METHOD2(data_offer, void(struct wl_data_device* wl_data_device, struct wl_data_offer* id));
 };
 
+struct MockDataOfferListener : DataOfferListener
+{
+    using DataOfferListener::DataOfferListener;
+
+    MOCK_METHOD2(offer, void(struct wl_data_offer* data_offer, char const* MimeType));
+};
+
 struct CCnPSink : Client
 {
     using Client::Client;
@@ -79,6 +86,8 @@ struct CopyCutPaste : StartedInProcessServer
     CCnPSource source{the_server()};
     CCnPSink sink{the_server()};
 
+    MockDataOfferListener mdol;
+
     void TearDown() override
     {
         source.roundtrip();
@@ -92,7 +101,10 @@ TEST_F(CopyCutPaste, given_source_has_offered_when_sink_gets_focus_it_sees_offer
 {
     source.offer(any_mime_type);
 
-    EXPECT_CALL(sink.listener, data_offer(_,_));
+    EXPECT_CALL(mdol, offer(_, StrEq(any_mime_type)));
+    EXPECT_CALL(sink.listener, data_offer(_,_))
+        .WillOnce(Invoke([&](struct wl_data_device*, struct wl_data_offer* id)
+        { mdol.listen_to(id); }));
 
     sink.create_surface_with_focus();
 }
@@ -101,7 +113,10 @@ TEST_F(CopyCutPaste, given_sink_has_focus_when_source_makes_offer_sink_sees_offe
 {
     auto sink_surface_with_focus = sink.create_surface_with_focus();
 
-    EXPECT_CALL(sink.listener, data_offer(_,_));
+    EXPECT_CALL(mdol, offer(_, StrEq(any_mime_type)));
+    EXPECT_CALL(sink.listener, data_offer(_,_))
+        .WillOnce(Invoke([&](struct wl_data_device*, struct wl_data_offer* id)
+        { mdol.listen_to(id); }));
 
     source.offer(any_mime_type);
 }
