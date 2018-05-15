@@ -42,7 +42,8 @@ auto static const any_mime_type = "AnyMimeType";
 
 struct CCnPSource : Client
 {
-    using Client::Client;
+    // Can't use "using Client::Client;" because Xenial
+    CCnPSource(Server& server) : Client{server} {}
 
     Surface const surface{create_visible_surface(any_width, any_height)};
     DataSource data{wl_data_device_manager_create_data_source(data_device_manager())};
@@ -70,7 +71,8 @@ struct MockDataOfferListener : DataOfferListener
 
 struct CCnPSink : Client
 {
-    using Client::Client;
+    // Can't use "using Client::Client;" because Xenial
+    CCnPSink(Server& server) : Client{server} {}
 
     DataDevice sink_data{wl_data_device_manager_get_data_device(data_device_manager(), seat())};
     MockDataDeviceListener listener{sink_data};
