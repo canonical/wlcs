@@ -25,6 +25,8 @@
 
 using namespace testing;
 
+// No tests use SUBTRACT_RECT as that is not yet implemented in Mir
+
 enum RegionAction
 {
     ADD_RECT,
@@ -131,7 +133,7 @@ InputRegion const full_surface_region{"full surface", {
     {ADD_RECT, 0, 0, RegionAndMotion::window_width, RegionAndMotion::window_height}}};
 
 INSTANTIATE_TEST_CASE_P(
-    NormalRegionEdge,
+    NormalRegion,
     InputRegionPointerEnterTest,
     testing::Values(
         RegionAndMotion{
@@ -163,7 +165,7 @@ InputRegion const smaller_region{"smaller", {{
     RegionAndMotion::window_height - region_inset_y * 2}}};
 
 INSTANTIATE_TEST_CASE_P(
-    SmallerRegionEdge,
+    SmallerRegion,
     InputRegionPointerEnterTest,
     testing::Values(
         RegionAndMotion{
@@ -182,4 +184,72 @@ INSTANTIATE_TEST_CASE_P(
             "Top-centre", smaller_region,
             RegionAndMotion::window_width / 2, region_inset_y - 1,
             0, 1}
+    ));
+
+// If a region is larger then the surface it should be clipped
+
+int const region_outset_x = 12;
+int const region_outset_y = 17;
+
+InputRegion const larger_region{"larger", {{
+    ADD_RECT,
+    - region_outset_x,
+    - region_outset_y,
+    RegionAndMotion::window_width + region_outset_x * 2,
+    RegionAndMotion::window_height + region_outset_y * 2}}};
+
+INSTANTIATE_TEST_CASE_P(
+    ClippedLargerRegion,
+    InputRegionPointerEnterTest,
+    testing::Values(
+        RegionAndMotion{
+            "Centre-left", larger_region,
+            -1, RegionAndMotion::window_height / 2,
+            10, 0},
+        RegionAndMotion{
+            "Bottom-centre", larger_region,
+            RegionAndMotion::window_width / 2, RegionAndMotion::window_height,
+            0, -1},
+        RegionAndMotion{
+            "Centre-right", larger_region,
+            RegionAndMotion::window_width, RegionAndMotion::window_height / 2,
+            -1, 0},
+        RegionAndMotion{
+            "Top-centre", larger_region,
+            RegionAndMotion::window_width / 2, -1,
+            0, 1}
+    ));
+
+int const small_rect_inset = 16;
+
+InputRegion const multi_rect_region{"multi rect", {
+    {ADD_RECT, 0, 0,
+     RegionAndMotion::window_width, RegionAndMotion::window_height / 2},
+    {ADD_RECT, small_rect_inset, RegionAndMotion::window_height / 2,
+     RegionAndMotion::window_width - small_rect_inset * 2, RegionAndMotion::window_height / 2}}};
+
+INSTANTIATE_TEST_CASE_P(
+    MultiRectRegion,
+    InputRegionPointerEnterTest,
+    testing::Values(
+        RegionAndMotion{
+            "Top-left-edge", multi_rect_region,
+            -1, RegionAndMotion::window_height / 4,
+            1, 0},
+        RegionAndMotion{
+            "Top-right-edge", multi_rect_region,
+            RegionAndMotion::window_width, RegionAndMotion::window_height / 4,
+            -1, 0},
+        RegionAndMotion{
+            "Bottom-left-edge", multi_rect_region,
+            small_rect_inset - 1, RegionAndMotion::window_height * 3 / 4,
+            1, 0},
+        RegionAndMotion{
+            "Bottom-right-edge", multi_rect_region,
+            RegionAndMotion::window_width - small_rect_inset, RegionAndMotion::window_height * 3 / 4,
+            -1, 0},
+        RegionAndMotion{
+            "Step-edge", multi_rect_region,
+            small_rect_inset / 2, RegionAndMotion::window_height / 2,
+            0, -1}
     ));
