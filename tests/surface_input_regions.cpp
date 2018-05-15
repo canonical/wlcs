@@ -227,7 +227,7 @@ InputRegion const multi_rect_region{"multi rect", {
      RegionAndMotion::window_width - small_rect_inset * 2, RegionAndMotion::window_height / 2}}};
 
 INSTANTIATE_TEST_CASE_P(
-    MultiRectRegion,
+    MultiRectRegionEdges,
     InputRegionPointerEnterTest,
     testing::Values(
         RegionAndMotion{
@@ -247,7 +247,53 @@ INSTANTIATE_TEST_CASE_P(
             RegionAndMotion::window_width - small_rect_inset, RegionAndMotion::window_height * 3 / 4,
             -1, 0},
         RegionAndMotion{
-            "Step-edge", multi_rect_region,
+            "Step-bottom-edge", multi_rect_region,
             small_rect_inset / 2, RegionAndMotion::window_height / 2,
             0, -1}
+    ));
+
+INSTANTIATE_TEST_CASE_P(
+    MultiRectRegionCorners,
+    InputRegionPointerEnterTest,
+    testing::Values(
+        RegionAndMotion{
+            "Top-left", multi_rect_region,
+            -1, -1,
+            1, 1},
+        RegionAndMotion{
+            "Bottom-left", multi_rect_region,
+            small_rect_inset -1, RegionAndMotion::window_height,
+            1, -1},
+        RegionAndMotion{
+            "Bottom-right", multi_rect_region,
+            RegionAndMotion::window_width - small_rect_inset, RegionAndMotion::window_height,
+            -1, -1},
+        RegionAndMotion{
+            "Top-right", multi_rect_region,
+            RegionAndMotion::window_width, -1,
+            -1, 1},
+        RegionAndMotion{
+            "Step-corner-left", multi_rect_region,
+            -1, RegionAndMotion::window_height / 2,
+            1, -1},
+        RegionAndMotion{
+            "Step-corner-right", multi_rect_region,
+            RegionAndMotion::window_width, RegionAndMotion::window_height / 2,
+            -1, -1},
+        RegionAndMotion{
+            "Step-inside-horiz-left", multi_rect_region,
+            small_rect_inset - 1, RegionAndMotion::window_height / 2,
+            1, 0},
+        RegionAndMotion{
+            "Step-inside-horiz-right", multi_rect_region,
+            RegionAndMotion::window_width - small_rect_inset, RegionAndMotion::window_height / 2,
+            -1, 0},
+        RegionAndMotion{
+            "Step-inside-diag-left", multi_rect_region,
+            small_rect_inset - 1, RegionAndMotion::window_height / 2,
+            1, -1},
+        RegionAndMotion{
+            "Step-inside-diag-right", multi_rect_region,
+            RegionAndMotion::window_width - small_rect_inset, RegionAndMotion::window_height / 2,
+            -1, -1}
     ));
