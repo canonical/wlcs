@@ -157,6 +157,41 @@ private:
         };
 };
 
+struct DataOfferListener
+{
+    DataOfferListener() { active_listeners.add(this); }
+    virtual ~DataOfferListener() { active_listeners.del(this); }
+
+    DataOfferListener(DataOfferListener const&) = delete;
+    DataOfferListener& operator=(DataOfferListener const&) = delete;
+
+    void listen_to(struct wl_data_offer* data_offer)
+    {
+        wl_data_offer_add_listener(data_offer, &thunks, this);
+    }
+
+    virtual void offer(struct wl_data_offer* data_offer, char const* mime_type);
+
+    virtual void source_actions(struct wl_data_offer* data_offer, uint32_t dnd_actions);
+
+    virtual void action(struct wl_data_offer* data_offer, uint32_t dnd_action);
+
+private:
+    static void offer(void* data, struct wl_data_offer* data_offer, char const* mime_type);
+
+    static void source_actions(void* data, struct wl_data_offer* data_offer, uint32_t dnd_actions);
+
+    static void action(void* data, struct wl_data_offer* data_offer, uint32_t dnd_action);
+
+    static ActiveListeners active_listeners;
+    constexpr static wl_data_offer_listener thunks =
+        {
+            &offer,
+            &source_actions,
+            &action
+        };
+};
+
 class DataDevice
 {
 public:

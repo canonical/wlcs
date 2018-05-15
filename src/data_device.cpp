@@ -108,3 +108,37 @@ void wlcs::DataDeviceListener::selection(
     struct wl_data_offer* /*id*/)
 {
 }
+
+
+wlcs::ActiveListeners wlcs::DataOfferListener::active_listeners;
+constexpr wl_data_offer_listener wlcs::DataOfferListener::thunks;
+
+void wlcs::DataOfferListener::offer(void* data, struct wl_data_offer* data_offer, char const* mime_type)
+{
+    if (active_listeners.includes(data))
+        static_cast<DataOfferListener*>(data)->offer(data_offer, mime_type);
+}
+
+void wlcs::DataOfferListener::source_actions(void* data, struct wl_data_offer* data_offer, uint32_t dnd_actions)
+{
+    if (active_listeners.includes(data))
+        static_cast<DataOfferListener*>(data)->source_actions(data_offer, dnd_actions);
+}
+
+void wlcs::DataOfferListener::action(void* data, struct wl_data_offer* data_offer, uint32_t dnd_action)
+{
+    if (active_listeners.includes(data))
+        static_cast<DataOfferListener*>(data)->action(data_offer, dnd_action);
+}
+
+void wlcs::DataOfferListener::offer(struct wl_data_offer* /*data_offer*/, char const* /*mime_type*/)
+{
+}
+
+void wlcs::DataOfferListener::source_actions(struct wl_data_offer* /*data_offer*/, uint32_t /*dnd_actions*/)
+{
+}
+
+void wlcs::DataOfferListener::action(struct wl_data_offer* /*data_offer*/, uint32_t /*dnd_action*/)
+{
+}

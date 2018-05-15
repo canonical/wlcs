@@ -19,7 +19,6 @@
 #include "data_device.h"
 #include "helpers.h"
 #include "in_process_server.h"
-#include "wayland-client-protocol.h"
 
 #include <gmock/gmock.h>
 
@@ -28,36 +27,32 @@
 using namespace testing;
 using namespace wlcs;
 
-using CopyCutPaste = wlcs::InProcessServer;
-
 namespace
 {
+struct StartedInProcessServer : InProcessServer
+{
+    StartedInProcessServer() { InProcessServer::SetUp(); }
+
+    void SetUp() override {}
+};
+
 auto static const any_width = 100;
 auto static const any_height = 100;
 auto static const any_mime_type = "AnyMimeType";
 
-struct CCnPClient : Client
+struct CCnPSource : Client
 {
-    CCnPClient(Server& server)
-        : Client(server),
-          surface{*this},
-          shell_surface{wl_shell_get_shell_surface(shell(), surface)}
+    // Can't use "using Client::Client;" because Xenial
+    CCnPSource(Server& server) : Client{server} {}
+
+    Surface const surface{create_visible_surface(any_width, any_height)};
+    DataSource data{wl_data_device_manager_create_data_source(data_device_manager())};
+
+    void offer(char const* mime_type)
     {
-        wl_shell_surface_set_toplevel(shell_surface);
-        wl_surface_commit(surface);
-
-        wl_surface_attach(surface, *buffer, 0, 0);
-        wl_surface_commit(surface);
+        wl_data_source_offer(data, mime_type);
+        roundtrip();
     }
-
-    ~CCnPClient()
-    {
-        wl_shell_surface_destroy(shell_surface);
-    }
-
-    Surface const surface;
-    wl_shell_surface* const shell_surface;
-    std::shared_ptr<ShmBuffer> const buffer{std::make_shared<ShmBuffer>(*this, any_width, any_height)};
 };
 
 struct MockDataDeviceListener : DataDeviceListener
@@ -66,20 +61,64 @@ struct MockDataDeviceListener : DataDeviceListener
 
     MOCK_METHOD2(data_offer, void(struct wl_data_device* wl_data_device, struct wl_data_offer* id));
 };
+
+struct MockDataOfferListener : DataOfferListener
+{
+    using DataOfferListener::DataOfferListener;
+
+    MOCK_METHOD2(offer, void(struct wl_data_offer* data_offer, char const* MimeType));
+};
+
+struct CCnPSink : Client
+{
+    // Can't use "using Client::Client;" because Xenial
+    CCnPSink(Server& server) : Client{server} {}
+
+    DataDevice sink_data{wl_data_device_manager_get_data_device(data_device_manager(), seat())};
+    MockDataDeviceListener listener{sink_data};
+
+    Surface create_surface_with_focus()
+    {
+        return Surface{create_visible_surface(any_width, any_height)};
+    }
+};
+
+struct CopyCutPaste : StartedInProcessServer
+{
+    CCnPSource source{the_server()};
+    CCnPSink sink{the_server()};
+
+    MockDataOfferListener mdol;
+
+    void TearDown() override
+    {
+        source.roundtrip();
+        sink.roundtrip();
+        StartedInProcessServer::TearDown();
+    }
+};
 }
 
-TEST_F(CopyCutPaste, given_source_has_offered_data_sink_sees_offer)
+TEST_F(CopyCutPaste, given_source_has_offered_when_sink_gets_focus_it_sees_offer)
 {
-    CCnPClient source{the_server()};
-    DataSource source_data{wl_data_device_manager_create_data_source(source.data_device_manager())};
-    wl_data_source_offer(source_data, any_mime_type);
-    source.roundtrip();
+    source.offer(any_mime_type);
 
-    CCnPClient sink{the_server()};
-    DataDevice sink_data{wl_data_device_manager_get_data_device(sink.data_device_manager(), sink.seat())};
-    MockDataDeviceListener listener{sink_data};
-    EXPECT_CALL(listener, data_offer(_,_));
+    EXPECT_CALL(mdol, offer(_, StrEq(any_mime_type)));
+    EXPECT_CALL(sink.listener, data_offer(_,_))
+        .WillOnce(Invoke([&](struct wl_data_device*, struct wl_data_offer* id)
+        { mdol.listen_to(id); }));
 
-    sink.roundtrip();
-    sink.roundtrip();
+    sink.create_surface_with_focus();
+}
+
+TEST_F(CopyCutPaste, given_sink_has_focus_when_source_makes_offer_sink_sees_offer)
+{
+    auto sink_surface_with_focus = sink.create_surface_with_focus();
+
+    EXPECT_CALL(mdol, offer(_, StrEq(any_mime_type)));
+    EXPECT_CALL(sink.listener, data_offer(_,_))
+        .WillOnce(Invoke([&](struct wl_data_device*, struct wl_data_offer* id)
+        { mdol.listen_to(id); }));
+
+    source.offer(any_mime_type);
 }
