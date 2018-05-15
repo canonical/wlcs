@@ -84,7 +84,6 @@ TEST_P(InputRegionPointerEnterTest, pointer_enter_and_leave_input_region)
     auto const wl_surface = static_cast<struct wl_surface*>(surface);
 
     auto const wl_region = wl_compositor_create_region(client.compositor());
-
     for (auto const& e: params.region.elements)
     {
         switch(e.action)
@@ -99,12 +98,10 @@ TEST_P(InputRegionPointerEnterTest, pointer_enter_and_leave_input_region)
             FAIL() << "unknown RegionAction";
         }
     }
-
     wl_surface_set_input_region(wl_surface, wl_region);
-
     wl_region_destroy(wl_region);
-
     wl_surface_commit(wl_surface);
+    client.roundtrip();
 
     pointer.move_to(top_left_x + params.initial_x, top_left_y + params.initial_y);
 
@@ -134,17 +131,7 @@ InputRegion const full_surface_region{"full surface", {
     {ADD_RECT, 0, 0, RegionAndMotion::window_width, RegionAndMotion::window_height}}};
 
 INSTANTIATE_TEST_CASE_P(
-    PointerCrossingRegionCorner,
-    InputRegionPointerEnterTest,
-    testing::Values(
-        RegionAndMotion{"Top-left", full_surface_region, -1, -1, 1, 1},
-        RegionAndMotion{"Bottom-left", full_surface_region, -1, RegionAndMotion::window_height, 1, -1},
-        RegionAndMotion{"Bottom-right", full_surface_region, RegionAndMotion::window_width, RegionAndMotion::window_height, -1, -1},
-        RegionAndMotion{"Top-right", full_surface_region, RegionAndMotion::window_width, -1, -1, 1}
-    ));
-
-INSTANTIATE_TEST_CASE_P(
-    PointerCrossingSurfaceEdge,
+    NormalRegionEdge,
     InputRegionPointerEnterTest,
     testing::Values(
         RegionAndMotion{
@@ -162,5 +149,37 @@ INSTANTIATE_TEST_CASE_P(
         RegionAndMotion{
             "Top-centre", full_surface_region,
             RegionAndMotion::window_width / 2, -1,
+            0, 1}
+    ));
+
+int const region_inset_x = 12;
+int const region_inset_y = 17;
+
+InputRegion const smaller_region{"smaller", {{
+    ADD_RECT,
+    region_inset_x,
+    region_inset_y,
+    RegionAndMotion::window_width - region_inset_x * 2,
+    RegionAndMotion::window_height - region_inset_y * 2}}};
+
+INSTANTIATE_TEST_CASE_P(
+    SmallerRegionEdge,
+    InputRegionPointerEnterTest,
+    testing::Values(
+        RegionAndMotion{
+            "Centre-left", smaller_region,
+            region_inset_x - 1, RegionAndMotion::window_height / 2,
+            1, 0},
+        RegionAndMotion{
+            "Bottom-centre", smaller_region,
+            RegionAndMotion::window_width / 2, RegionAndMotion::window_height - region_inset_y,
+            0, -1},
+        RegionAndMotion{
+            "Centre-right", smaller_region,
+            RegionAndMotion::window_width - region_inset_x, RegionAndMotion::window_height / 2,
+            -1, 0},
+        RegionAndMotion{
+            "Top-centre", smaller_region,
+            RegionAndMotion::window_width / 2, region_inset_y - 1,
             0, 1}
     ));
