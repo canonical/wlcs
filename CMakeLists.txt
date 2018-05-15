@@ -63,6 +63,7 @@ add_library(
   src/data_device.cpp
   src/helpers.cpp
   src/in_process_server.cpp
+  src/xdg_shell_v6.cpp
   src/main.cpp
 
   src/generated/wayland.c
@@ -73,6 +74,8 @@ add_library(
   tests/copy_cut_paste.cpp
   tests/test_surface_events.cpp
   tests/frame_submission.cpp
+  tests/xdg_surface_v6.cpp
+  tests/xdg_toplevel_v6.cpp
   tests/self_test.cpp
 )
 
