@@ -20,6 +20,7 @@
 #include "display_server.h"
 #include "helpers.h"
 #include "pointer.h"
+#include "xdg_shell_v6.h"
 #include "generated/wayland-client.h"
 #include "generated/xdg-shell-unstable-v6-client.h"
 #include "generated/xdg-shell-client.h"
