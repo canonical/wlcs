@@ -82,6 +82,7 @@ public:
 
     operator wl_surface*() const;
 
+    void attach_buffer(int width, int height);
     void add_frame_callback(std::function<void(int)> const& on_frame);
 
     bool has_focus() const;

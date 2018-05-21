@@ -59,8 +59,7 @@ TEST_F(XdgSurfaceV6Test, gets_configure_event)
         });
 
     wlcs::XdgToplevelV6 toplevel{xdg_surface};
-    wlcs::ShmBuffer buffer{client, 600, 400};
-    wl_surface_attach(surface, buffer, 0, 0);
+    surface.attach_buffer(600, 400);
 
     client.roundtrip();
 

@@ -308,17 +308,7 @@ public:
         wl_shell_surface_set_toplevel(shell_surface);
         wl_surface_commit(surface);
 
-        auto buffer = std::make_shared<ShmBuffer>(client, width, height);
-
-        wl_surface_attach(surface, *buffer, 0, 0);
-
-        /*
-         * We can't drive buffer cleanup by the buffer.release() event, as that's not
-         * guaranteed to be sent in the case of error or server shutdown.
-         *
-         * Just keep the buffers alive for the lifetime of the client.
-         */
-        client_buffers.push_back(buffer);
+        surface.attach_buffer(width, height);
 
         bool surface_rendered{false};
         surface.add_frame_callback([&surface_rendered](auto) { surface_rendered = true; });
@@ -781,6 +771,13 @@ public:
         return surface_;
     }
 
+    void attach_buffer(int width, int height)
+    {
+        auto buffer = std::make_shared<ShmBuffer>(owner_, width, height);
+        buffers.push_back(buffer);
+        wl_surface_attach(surface_, *buffer, 0, 0);
+    }
+
     void add_frame_callback(std::function<void(uint32_t)> const& on_frame)
     {
         std::unique_ptr<std::function<void(uint32_t)>> holder{
@@ -826,6 +823,7 @@ private:
 
     struct wl_surface* const surface_;
     Client& owner_;
+    std::vector<std::shared_ptr<ShmBuffer>> buffers;
 };
 
 std::vector<std::pair<wlcs::Surface::Impl const*, wl_callback*>> wlcs::Surface::Impl::pending_callbacks;
@@ -844,6 +842,11 @@ wlcs::Surface::Surface(Surface&&) = default;
 wlcs::Surface::operator wl_surface*() const
 {
     return impl->surface();
+}
+
+void wlcs::Surface::attach_buffer(int width, int height)
+{
+    impl->attach_buffer(width, height);
 }
 
 void wlcs::Surface::add_frame_callback(std::function<void(int)> const& on_frame)
