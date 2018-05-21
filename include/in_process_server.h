@@ -93,6 +93,21 @@ private:
     std::unique_ptr<Impl> impl;
 };
 
+class Subsurface: public Surface
+{
+public:
+    Subsurface(Surface& parent);
+    ~Subsurface();
+
+    operator wl_subsurface*() const;
+
+    Surface& parent();
+
+private:
+    class Impl;
+    std::unique_ptr<Impl> impl;
+};
+
 class ShmBuffer
 {
 public:
@@ -121,6 +136,7 @@ public:
     operator wl_display*() const;
 
     wl_compositor* compositor() const;
+    wl_subcompositor* subcompositor() const;
     wl_shm* shm() const;
     wl_data_device_manager* data_device_manager() const;
     wl_seat* seat() const;
