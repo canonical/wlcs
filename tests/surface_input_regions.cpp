@@ -358,3 +358,13 @@ INSTANTIATE_TEST_CASE_P(
             RegionAndMotion::window_width - small_rect_inset, RegionAndMotion::window_height / 2,
             -1, -1}
     ));
+
+// TODO: surface with empty input region
+
+// TODO: input on subsurface
+
+// TODO: XDG shell and wl_shell
+
+// TODO: touch input on surface
+
+// TODO: touch input on subsurface
