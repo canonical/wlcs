@@ -96,7 +96,10 @@ private:
 class Subsurface: public Surface
 {
 public:
+    static Subsurface create_visible(Surface& parent, int x, int y, int width, int height);
+
     Subsurface(Surface& parent);
+    Subsurface(Subsurface &&);
     ~Subsurface();
 
     operator wl_subsurface*() const;

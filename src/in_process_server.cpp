@@ -886,11 +886,29 @@ public:
     Surface& parent_;
 };
 
+wlcs::Subsurface wlcs::Subsurface::create_visible(Surface& parent, int x, int y, int width, int height)
+{
+    wlcs::Subsurface subsurface{parent};
+    wl_subsurface_set_position(subsurface, x, y);
+
+    subsurface.attach_buffer(width, height);
+
+    bool surface_rendered{false};
+    subsurface.add_frame_callback([&surface_rendered](auto) { surface_rendered = true; });
+    wl_surface_commit(subsurface);
+    wl_surface_commit(parent);
+    parent.owner().dispatch_until([&surface_rendered]() { return surface_rendered; });
+
+    return subsurface;
+}
+
 wlcs::Subsurface::Subsurface(wlcs::Surface& parent)
     : Surface{parent.owner()},
       impl{std::make_unique<wlcs::Subsurface::Impl>(parent.owner(), *this, parent)}
 {
 }
+
+wlcs::Subsurface::Subsurface(Subsurface &&) = default;
 
 wlcs::Subsurface::~Subsurface() = default;
 
