@@ -29,6 +29,8 @@ class XdgSurfaceV6
 {
 public:
     XdgSurfaceV6(wlcs::Client& client, wlcs::Surface& surface);
+    XdgSurfaceV6(XdgSurfaceV6 const&) = delete;
+    XdgSurfaceV6& operator=(XdgSurfaceV6 const&) = delete;
     ~XdgSurfaceV6();
 
     void add_configure_notification(std::function<void(uint32_t)> notification)
@@ -69,6 +71,8 @@ public:
     };
 
     XdgToplevelV6(XdgSurfaceV6& shell_surface_);
+    XdgToplevelV6(XdgToplevelV6 const&) = delete;
+    XdgToplevelV6& operator=(XdgToplevelV6 const&) = delete;
     ~XdgToplevelV6();
 
     void add_configure_notification(std::function<void(int32_t, int32_t, struct wl_array *)> notification)
