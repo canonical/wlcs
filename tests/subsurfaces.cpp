@@ -37,7 +37,7 @@ TEST_F(SubsurfaceTest, subsurface_can_be_created)
     EXPECT_THAT(&subsurface.parent(), Eq(&main_surface));
 }
 
-TEST_F(SubsurfaceTest, subsurface_gets_pointer_input)
+TEST_F(SubsurfaceTest, gets_pointer_input)
 {
     wlcs::Client client{the_server()};
     wlcs::Surface main_surface{client.create_visible_surface(200, 300)};
@@ -59,7 +59,7 @@ TEST_F(SubsurfaceTest, subsurface_gets_pointer_input)
                     wl_fixed_from_int(5))));
 }
 
-TEST_F(SubsurfaceTest, subsurface_pointer_input_offset)
+TEST_F(SubsurfaceTest, pointer_input_offset)
 {
     wlcs::Client client{the_server()};
     wlcs::Surface main_surface{client.create_visible_surface(200, 300)};
@@ -81,7 +81,30 @@ TEST_F(SubsurfaceTest, subsurface_pointer_input_offset)
                     wl_fixed_from_int(13))));
 }
 
-TEST_F(SubsurfaceTest, subsurface_empty_input_region_fallthrough)
+// appears to work in normal Mir, but breaks in WLCS
+TEST_F(SubsurfaceTest, DISABLED_extends_parent_region)
+{
+    wlcs::Client client{the_server()};
+    wlcs::Surface main_surface{client.create_visible_surface(200, 300)};
+
+    the_server().move_surface_to(main_surface, 20, 30);
+    client.roundtrip();
+
+    auto subsurface{wlcs::Subsurface::create_visible(main_surface, -10, 275, 50, 50)};
+
+    auto pointer = the_server().create_pointer();
+    pointer.move_to(15, 340);
+    client.roundtrip();
+
+    EXPECT_THAT(client.focused_window(), Ne((wl_surface*)main_surface)) << "input fell through to main surface";
+    EXPECT_THAT(client.focused_window(), Eq((wl_surface*)subsurface));
+    EXPECT_THAT(client.pointer_position(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(5),
+                    wl_fixed_from_int(35))));
+}
+
+TEST_F(SubsurfaceTest, empty_input_region_fallthrough)
 {
     wlcs::Client client{the_server()};
     wlcs::Surface main_surface{client.create_visible_surface(200, 300)};
@@ -109,7 +132,7 @@ TEST_F(SubsurfaceTest, subsurface_empty_input_region_fallthrough)
                     wl_fixed_from_int(10))));
 }
 
-TEST_F(SubsurfaceTest, subsurface_gets_input_over_surface_with_empty_region)
+TEST_F(SubsurfaceTest, gets_input_over_surface_with_empty_region)
 {
     wlcs::Client client{the_server()};
     wlcs::Surface main_surface{client.create_visible_surface(200, 300)};
@@ -137,8 +160,7 @@ TEST_F(SubsurfaceTest, subsurface_gets_input_over_surface_with_empty_region)
                     wl_fixed_from_int(13))));
 }
 
-// TODO: William will submit PR to Mir that fixes tested behavior. Enable when that lands.
-TEST_F(SubsurfaceTest, DISABLED_one_subsurface_to_another_fallthrough)
+TEST_F(SubsurfaceTest, one_subsurface_to_another_fallthrough)
 {
     wlcs::Client client{the_server()};
     wlcs::Surface main_surface{client.create_visible_surface(200, 300)};
