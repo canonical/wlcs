@@ -296,10 +296,14 @@ public:
         return seat;
     }
 
-    Surface create_visible_surface(
-        Client& client,
-        int width,
-        int height)
+    ShmBuffer& create_buffer(Client& client, int width, int height)
+    {
+        auto buffer = std::make_shared<ShmBuffer>(client, width, height);
+        client_buffers.push_back(buffer);
+        return *buffer;
+    }
+
+    Surface create_visible_surface(Client& client, int width, int height)
     {
         Surface surface{client};
 
@@ -673,6 +677,11 @@ wl_seat* wlcs::Client::seat() const
     return impl->wl_seat();
 }
 
+wlcs::ShmBuffer& wlcs::Client::create_buffer(int width, int height)
+{
+    return impl->create_buffer(*this, width, height);
+}
+
 wlcs::Surface wlcs::Client::create_visible_surface(int width, int height)
 {
     return impl->create_visible_surface(*this, width, height);
@@ -773,9 +782,8 @@ public:
 
     void attach_buffer(int width, int height)
     {
-        auto buffer = std::make_shared<ShmBuffer>(owner_, width, height);
-        buffers.push_back(buffer);
-        wl_surface_attach(surface_, *buffer, 0, 0);
+        auto& buffer = owner_.create_buffer(width, height);
+        wl_surface_attach(surface_, buffer, 0, 0);
     }
 
     void add_frame_callback(std::function<void(uint32_t)> const& on_frame)
@@ -823,7 +831,6 @@ private:
 
     struct wl_surface* const surface_;
     Client& owner_;
-    std::vector<std::shared_ptr<ShmBuffer>> buffers;
 };
 
 std::vector<std::pair<wlcs::Surface::Impl const*, wl_callback*>> wlcs::Surface::Impl::pending_callbacks;
