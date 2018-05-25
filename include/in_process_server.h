@@ -28,6 +28,7 @@
 #include <functional>
 
 struct WlcsPointer;
+struct WlcsTouch;
 
 namespace wlcs
 {
@@ -49,6 +50,24 @@ private:
     std::unique_ptr<Impl> impl;
 };
 
+class Touch
+{
+public:
+    ~Touch();
+    Touch(Touch&&);
+
+    void down_at(int x, int y);
+    void move_to(int x, int y);
+    void up();
+
+private:
+    friend class Server;
+    Touch(WlcsTouch* raw_device);
+
+    class Impl;
+    std::unique_ptr<Impl> impl;
+};
+
 class Surface;
 
 class Server
@@ -60,6 +79,7 @@ public:
     int create_client_socket();
 
     Pointer create_pointer();
+    Touch create_touch();
 
     void move_surface_to(Surface& surface, int x, int y);
 

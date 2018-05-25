@@ -20,6 +20,7 @@
 #include "display_server.h"
 #include "helpers.h"
 #include "pointer.h"
+#include "touch.h"
 #include "xdg_shell_v6.h"
 #include "generated/wayland-client.h"
 #include "generated/xdg-shell-unstable-v6-client.h"
@@ -36,6 +37,11 @@ class ShimNotImplemented : public std::logic_error
 {
 public:
     ShimNotImplemented() : std::logic_error("Function not implemented in display server shim")
+    {
+    }
+
+    ShimNotImplemented(const std::string& name)
+        : std::logic_error("Function '" + name + "()' not implemented in display server shim")
     {
     }
 };
@@ -84,6 +90,62 @@ void wlcs::Pointer::move_to(int x, int y)
 void wlcs::Pointer::move_by(int dx, int dy)
 {
     impl->move_by(dx, dy);
+}
+
+class wlcs::Touch::Impl
+{
+public:
+    Impl(WlcsTouch* raw_device)
+        : touch{raw_device, &wlcs_destroy_touch}
+    {
+    }
+
+    void down_at(int x, int y)
+    {
+        if (!wlcs_touch_down)
+            BOOST_THROW_EXCEPTION((ShimNotImplemented{"wlcs_touch_down"}));
+        wlcs_touch_down(touch.get(), x, y);
+    }
+
+    void move_to(int x, int y)
+    {
+        if (!wlcs_touch_move)
+            BOOST_THROW_EXCEPTION((ShimNotImplemented{"wlcs_touch_move"}));
+        wlcs_touch_move(touch.get(), x, y);
+    }
+
+    void up()
+    {
+        if (!wlcs_touch_up)
+            BOOST_THROW_EXCEPTION((ShimNotImplemented{"wlcs_touch_up"}));
+        wlcs_touch_up(touch.get());
+    }
+
+private:
+    std::unique_ptr<WlcsTouch, decltype(&wlcs_destroy_touch)> const touch;
+};
+
+wlcs::Touch::~Touch() = default;
+wlcs::Touch::Touch(Touch&&) = default;
+
+wlcs::Touch::Touch(WlcsTouch* raw_device)
+    : impl{std::make_unique<Impl>(raw_device)}
+{
+}
+
+void wlcs::Touch::down_at(int x, int y)
+{
+    impl->down_at(x, y);
+}
+
+void wlcs::Touch::move_to(int x, int y)
+{
+    impl->move_to(x, y);
+}
+
+void wlcs::Touch::up()
+{
+    impl->up();
 }
 
 class wlcs::Server::Impl
@@ -184,6 +246,16 @@ wlcs::Pointer wlcs::Server::create_pointer()
     }
 
     return Pointer{wlcs_server_create_pointer(impl->wlcs_server())};
+}
+
+wlcs::Touch wlcs::Server::create_touch()
+{
+    if (!wlcs_server_create_touch || !wlcs_destroy_touch)
+    {
+        BOOST_THROW_EXCEPTION((ShimNotImplemented{}));
+    }
+
+    return Touch{wlcs_server_create_touch(impl->wlcs_server())};
 }
 
 wlcs::InProcessServer::InProcessServer()
