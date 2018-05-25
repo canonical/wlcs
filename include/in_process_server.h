@@ -126,7 +126,7 @@ public:
     wl_data_device_manager* data_device_manager() const;
     wl_seat* seat() const;
 
-    ShmBuffer& create_buffer(int width, int height);
+    ShmBuffer const& create_buffer(int width, int height);
     Surface create_visible_surface(int width, int height);
 
     wl_shell* shell() const;

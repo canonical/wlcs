@@ -296,7 +296,7 @@ public:
         return seat;
     }
 
-    ShmBuffer& create_buffer(Client& client, int width, int height)
+    ShmBuffer const& create_buffer(Client& client, int width, int height)
     {
         auto buffer = std::make_shared<ShmBuffer>(client, width, height);
         client_buffers.push_back(buffer);
@@ -677,7 +677,7 @@ wl_seat* wlcs::Client::seat() const
     return impl->wl_seat();
 }
 
-wlcs::ShmBuffer& wlcs::Client::create_buffer(int width, int height)
+wlcs::ShmBuffer const& wlcs::Client::create_buffer(int width, int height)
 {
     return impl->create_buffer(*this, width, height);
 }
