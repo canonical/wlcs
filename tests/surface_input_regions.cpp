@@ -165,41 +165,30 @@ TEST_P(InputRegionPointerEnterTest, touch_enter_leave)
     auto touch = the_server().create_touch();
     int touch_x = top_left_x + params.initial_x;
     int touch_y = top_left_y + params.initial_y;
+
     touch.down_at(touch_x, touch_y);
-
     client.roundtrip();
-    usleep(100000);
-    client.roundtrip();
-
     EXPECT_THAT(client.touched_window(), Ne(wl_surface));
-
     /* move touch; it should now be inside the surface */
     touch.up();
+
     touch.down_at(touch_x + params.dx, touch_y + params.dy);
-
     client.roundtrip();
-    usleep(100000);
-    client.roundtrip();
-
     EXPECT_THAT(client.touched_window(), Eq(wl_surface));
     EXPECT_THAT(client.touch_position(),
                 Eq(std::make_pair(
                     wl_fixed_from_int(params.initial_x + params.dx),
                     wl_fixed_from_int(params.initial_y + params.dy))));
 
+    std::cout << "calling touch.up()..." << std::endl;
     /* move touch back; it should now be outside the surface */
     touch.up();
+
     touch.down_at(touch_x, touch_y);
-
     client.roundtrip();
-    usleep(100000);
-    client.roundtrip();
-
     EXPECT_THAT(client.touched_window(), Ne(wl_surface));
-
     touch.up();
-    client.roundtrip();
-    usleep(100000);
+
     client.roundtrip();
 }
 

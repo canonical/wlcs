@@ -825,6 +825,8 @@ void wlcs_touch_down(WlcsTouch* touch, int x, int y)
            .with_action(mir::input::synthesis::TouchParameters::Action::Tap)
            .at_position({x, y})
            .with_event_time(event_time));
+
+    event_sent->wait_for(std::chrono::seconds{5});
 }
 
 void wlcs_touch_move(WlcsTouch* touch, int x, int y)
@@ -844,6 +846,8 @@ void wlcs_touch_move(WlcsTouch* touch, int x, int y)
             .with_action(mir::input::synthesis::TouchParameters::Action::Move)
             .at_position({x, y})
             .with_event_time(event_time));
+
+    event_sent->wait_for(std::chrono::seconds{5});
 }
 
 void wlcs_touch_up(WlcsTouch* touch)
@@ -860,6 +864,8 @@ void wlcs_touch_up(WlcsTouch* touch)
             .with_action(mir::input::synthesis::TouchParameters::Action::Release)
             .at_position({device->last_x, device->last_y})
             .with_event_time(event_time));
+
+    event_sent->wait_for(std::chrono::seconds{5});
 }
 
 void wlcs_server_position_window_absolute(WlcsDisplayServer* server, wl_display* client, wl_surface* surface, int x, int y)
