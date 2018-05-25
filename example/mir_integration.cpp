@@ -36,6 +36,7 @@
 #include <mir/log.h>
 #include "display_server.h"
 #include "pointer.h"
+#include "touch.h"
 
 #include "mutex.h"
 
@@ -736,6 +737,129 @@ void wlcs_pointer_move_absolute(WlcsPointer* pointer, wl_fixed_t x, wl_fixed_t y
     auto rel_y = wl_fixed_to_double(y) - device->runner->cursor_y;
 
     wlcs_pointer_move_relative(pointer, wl_fixed_from_double(rel_x), wl_fixed_from_double(rel_y));
+}
+
+struct FakeTouch
+{
+    decltype(mtf::add_fake_input_device(mi::InputDeviceInfo())) touch;
+    int last_x{0}, last_y{0};
+    MirWlcsDisplayServer* runner;
+};
+
+WlcsTouch* wlcs_server_create_touch(WlcsDisplayServer* server)
+{
+    auto runner = reinterpret_cast<MirWlcsDisplayServer*>(server);
+
+    auto constexpr uid = "touch-uid";
+
+    class DeviceObserver : public mir::input::InputDeviceObserver
+    {
+    public:
+        DeviceObserver(std::shared_ptr<mir::test::Signal> const& done)
+            : done{done}
+        {
+        }
+
+        void device_added(std::shared_ptr<mir::input::Device> const& device) override
+        {
+            if (device->unique_id() == uid)
+                seen_device = true;
+        }
+
+        void device_changed(std::shared_ptr<mir::input::Device> const&) override
+        {
+        }
+
+        void device_removed(std::shared_ptr<mir::input::Device> const&) override
+        {
+        }
+
+        void changes_complete() override
+        {
+            if (seen_device)
+                done->raise();
+        }
+
+    private:
+        std::shared_ptr<mir::test::Signal> const done;
+        bool seen_device{false};
+    };
+
+    auto touch_added = std::make_shared<mir::test::Signal>();
+    auto observer = std::make_shared<DeviceObserver>(touch_added);
+    runner->server.the_input_device_hub()->add_observer(observer);
+
+    auto fake_touch_dev = mtf::add_fake_input_device(
+        mi::InputDeviceInfo{"touch", uid, mi::DeviceCapability::multitouch});
+
+    touch_added->wait_for(std::chrono::seconds{5});
+    runner->executor->spawn([observer=std::move(observer), the_input_device_hub=runner->server.the_input_device_hub()]
+        { the_input_device_hub->remove_observer(observer); });
+
+    auto fake_touch = new FakeTouch;
+    fake_touch->runner = runner;
+    fake_touch->touch = std::move(fake_touch_dev);
+
+    return reinterpret_cast<WlcsTouch*>(fake_touch);
+}
+
+void wlcs_destroy_touch(WlcsTouch* touch)
+{
+    delete reinterpret_cast<FakeTouch*>(touch);
+}
+
+void wlcs_touch_down(WlcsTouch* touch, int x, int y)
+{
+    auto device = reinterpret_cast<FakeTouch*>(touch);
+
+    auto event_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
+       std::chrono::steady_clock::now().time_since_epoch());
+
+    auto event_sent = device->runner->event_listener->expect_event_with_time(event_time);
+
+    device->last_x = x;
+    device->last_y = y;
+
+    device->touch->emit_event(
+       mir::input::synthesis::a_touch_event()
+           .with_action(mir::input::synthesis::TouchParameters::Action::Tap)
+           .at_position({x, y})
+           .with_event_time(event_time));
+}
+
+void wlcs_touch_move(WlcsTouch* touch, int x, int y)
+{
+    auto device = reinterpret_cast<FakeTouch*>(touch);
+
+    auto event_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
+       std::chrono::steady_clock::now().time_since_epoch());
+
+    auto event_sent = device->runner->event_listener->expect_event_with_time(event_time);
+
+    device->last_x = x;
+    device->last_y = y;
+
+    device->touch->emit_event(
+        mir::input::synthesis::a_touch_event()
+            .with_action(mir::input::synthesis::TouchParameters::Action::Move)
+            .at_position({x, y})
+            .with_event_time(event_time));
+}
+
+void wlcs_touch_up(WlcsTouch* touch)
+{
+    auto device = reinterpret_cast<FakeTouch*>(touch);
+
+    auto event_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
+       std::chrono::steady_clock::now().time_since_epoch());
+
+    auto event_sent = device->runner->event_listener->expect_event_with_time(event_time);
+
+    device->touch->emit_event(
+        mir::input::synthesis::a_touch_event()
+            .with_action(mir::input::synthesis::TouchParameters::Action::Release)
+            .at_position({device->last_x, device->last_y})
+            .with_event_time(event_time));
 }
 
 void wlcs_server_position_window_absolute(WlcsDisplayServer* server, wl_display* client, wl_surface* surface, int x, int y)
