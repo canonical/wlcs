@@ -50,11 +50,12 @@ find_package(GtestGmock)
 pkg_check_modules(WAYLAND_CLIENT REQUIRED wayland-client)
 
 include_directories(include)
+include_directories(${GMOCK_INCLUDE_DIR} ${GTEST_INCLUDE_DIR})
 
 add_subdirectory(src/protocol/)
 
 add_library(
-  wlcs SHARED
+  wlcs STATIC
 
   include/display_server.h
   include/helpers.h
