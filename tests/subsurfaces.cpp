@@ -26,27 +26,35 @@
 
 using namespace testing;
 
-using SubsurfaceTest = wlcs::InProcessServer;
+class SubsurfaceTest : public wlcs::StartedInProcessServer
+{
+public:
+    SubsurfaceTest()
+    {
+        the_server().move_surface_to(main_surface, 20, 30);
+        client.roundtrip();
+    }
+
+    void move_subsurface_to(int x, int y)
+    {
+        wl_subsurface_set_position(subsurface, x, y);
+        wl_surface_commit(subsurface);
+        wl_surface_commit(main_surface);
+        client.roundtrip();
+    }
+
+    wlcs::Client client{the_server()};
+    wlcs::Surface main_surface{client.create_visible_surface(200, 300)};
+    wlcs::Subsurface subsurface{wlcs::Subsurface::create_visible(main_surface, 0, 0, 50, 50)};
+};
 
 TEST_F(SubsurfaceTest, subsurface_can_be_created)
 {
-    wlcs::Client client{the_server()};
-    ASSERT_THAT(client.subcompositor(), NotNull());
-    wlcs::Surface main_surface{client.create_visible_surface(200, 300)};
-    wlcs::Subsurface subsurface{main_surface};
     EXPECT_THAT(&subsurface.parent(), Eq(&main_surface));
 }
 
 TEST_F(SubsurfaceTest, gets_pointer_input)
 {
-    wlcs::Client client{the_server()};
-    wlcs::Surface main_surface{client.create_visible_surface(200, 300)};
-
-    the_server().move_surface_to(main_surface, 20, 30);
-    client.roundtrip();
-
-    auto subsurface{wlcs::Subsurface::create_visible(main_surface, 0, 0, 50, 50)};
-
     auto pointer = the_server().create_pointer();
     pointer.move_to(30, 35);
     client.roundtrip();
@@ -61,13 +69,10 @@ TEST_F(SubsurfaceTest, gets_pointer_input)
 
 TEST_F(SubsurfaceTest, pointer_input_offset)
 {
-    wlcs::Client client{the_server()};
-    wlcs::Surface main_surface{client.create_visible_surface(200, 300)};
-
-    the_server().move_surface_to(main_surface, 20, 30);
+    wl_subsurface_set_position(subsurface, 8, 17);
+    wl_surface_commit(subsurface);
+    wl_surface_commit(main_surface);
     client.roundtrip();
-
-    auto subsurface{wlcs::Subsurface::create_visible(main_surface, 8, 17, 50, 50)};
 
     auto pointer = the_server().create_pointer();
     pointer.move_to(35, 60);
@@ -82,15 +87,9 @@ TEST_F(SubsurfaceTest, pointer_input_offset)
 }
 
 // appears to work in normal Mir, but breaks in WLCS
-TEST_F(SubsurfaceTest, DISABLED_extends_parent_region)
+TEST_F(SubsurfaceTest, extends_parent_region)
 {
-    wlcs::Client client{the_server()};
-    wlcs::Surface main_surface{client.create_visible_surface(200, 300)};
-
-    the_server().move_surface_to(main_surface, 20, 30);
-    client.roundtrip();
-
-    auto subsurface{wlcs::Subsurface::create_visible(main_surface, -10, 275, 50, 50)};
+    move_subsurface_to(-10, 275);
 
     auto pointer = the_server().create_pointer();
     pointer.move_to(15, 340);
@@ -106,13 +105,8 @@ TEST_F(SubsurfaceTest, DISABLED_extends_parent_region)
 
 TEST_F(SubsurfaceTest, empty_input_region_fallthrough)
 {
-    wlcs::Client client{the_server()};
-    wlcs::Surface main_surface{client.create_visible_surface(200, 300)};
+    move_subsurface_to(-10, 275);
 
-    the_server().move_surface_to(main_surface, 20, 30);
-    client.roundtrip();
-
-    auto subsurface{wlcs::Subsurface::create_visible(main_surface, 5, 5, 50, 50)};
     auto const wl_region = wl_compositor_create_region(client.compositor());
     wl_surface_set_input_region(subsurface, wl_region);
     wl_region_destroy(wl_region);
@@ -134,13 +128,7 @@ TEST_F(SubsurfaceTest, empty_input_region_fallthrough)
 
 TEST_F(SubsurfaceTest, gets_input_over_surface_with_empty_region)
 {
-    wlcs::Client client{the_server()};
-    wlcs::Surface main_surface{client.create_visible_surface(200, 300)};
-
-    the_server().move_surface_to(main_surface, 20, 30);
-    client.roundtrip();
-
-    auto subsurface{wlcs::Subsurface::create_visible(main_surface, 8, 17, 50, 50)};
+    move_subsurface_to(8, 17);
 
     auto const wl_region = wl_compositor_create_region(client.compositor());
     wl_surface_set_input_region(main_surface, wl_region);
@@ -162,13 +150,8 @@ TEST_F(SubsurfaceTest, gets_input_over_surface_with_empty_region)
 
 TEST_F(SubsurfaceTest, one_subsurface_to_another_fallthrough)
 {
-    wlcs::Client client{the_server()};
-    wlcs::Surface main_surface{client.create_visible_surface(200, 300)};
+    move_subsurface_to(0, 5);
 
-    the_server().move_surface_to(main_surface, 20, 30);
-    client.roundtrip();
-
-    auto subsurface_bottom{wlcs::Subsurface::create_visible(main_surface, 0, 5, 50, 50)};
     auto subsurface_top{wlcs::Subsurface::create_visible(main_surface, 0, 0, 50, 50)};
 
     auto const wl_region = wl_compositor_create_region(client.compositor());
@@ -193,7 +176,7 @@ TEST_F(SubsurfaceTest, one_subsurface_to_another_fallthrough)
     pointer.move_to(30, 40);
     client.roundtrip();
 
-    EXPECT_THAT(client.focused_window(), Eq((wl_surface*)subsurface_bottom)) << "lower subsurface not focused";
+    EXPECT_THAT(client.focused_window(), Eq((wl_surface*)subsurface)) << "lower subsurface not focused";
     EXPECT_THAT(client.pointer_position(),
                 Eq(std::make_pair(
                     wl_fixed_from_int(10),
