@@ -82,6 +82,7 @@ public:
 
     operator wl_surface*() const;
 
+    void attach_buffer(int width, int height);
     void add_frame_callback(std::function<void(int)> const& on_frame);
 
     bool has_focus() const;
@@ -144,6 +145,7 @@ public:
     wl_data_device_manager* data_device_manager() const;
     wl_seat* seat() const;
 
+    ShmBuffer const& create_buffer(int width, int height);
     Surface create_visible_surface(int width, int height);
 
     wl_shell* shell() const;

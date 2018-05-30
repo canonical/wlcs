@@ -48,20 +48,12 @@ public:
     ~XdgToplevelWindow()
     {
         client.roundtrip();
-        buffers.clear();
-    }
-
-    void attach_buffer(int width, int height)
-    {
-        buffers.push_back(wlcs::ShmBuffer{client, width, height});
-        wl_surface_attach(surface, buffers.back(), 0, 0);
     }
 
     wlcs::Client client;
     wlcs::Surface surface;
     wlcs::XdgSurfaceV6 xdg_surface;
     wlcs::XdgToplevelV6 toplevel;
-    std::vector<wlcs::ShmBuffer> buffers;
 };
 
 TEST_F(XdgToplevelV6Test, default_configuration)
@@ -85,7 +77,7 @@ TEST_F(XdgToplevelV6Test, default_configuration)
 
     wl_surface_commit(window.surface);
     window.client.roundtrip();
-    window.attach_buffer(600, 400);
+    window.surface.attach_buffer(600, 400);
     wl_surface_commit(window.surface);
 
     window.client.dispatch_until(
@@ -125,7 +117,7 @@ TEST_F(XdgToplevelV6Test, correct_configuration_when_maximized)
 
     wl_surface_commit(window.surface);
     window.client.roundtrip();
-    window.attach_buffer(200, 200);
+    window.surface.attach_buffer(200, 200);
     wl_surface_commit(window.surface);
 
     window.client.dispatch_until(
@@ -173,7 +165,7 @@ TEST_F(XdgToplevelV6Test, correct_configuration_when_maximized_and_unmaximized)
 
     wl_surface_commit(window.surface);
     window.client.roundtrip();
-    window.attach_buffer(200, 200);
+    window.surface.attach_buffer(200, 200);
     wl_surface_commit(window.surface);
 
     window.client.dispatch_until(

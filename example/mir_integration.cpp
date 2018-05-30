@@ -120,13 +120,12 @@ public:
         auto state_accessor = state.lock();
         if (std::this_thread::get_id() == state_accessor->wayland_thread)
         {
-//             This breaks when an alternative shell (such ass XDG shell) is used
-//             if (listeners.last_wl_window == nullptr)
-//             {
-//                 BOOST_THROW_EXCEPTION((
-//                     std::runtime_error{
-//                         "Called Shell::create_surface() without first creating a wl_shell_surface?"}));
-//             }
+            if (listeners.last_wl_window == nullptr)
+            {
+                BOOST_THROW_EXCEPTION((
+                    std::runtime_error{
+                        "Called Shell::create_surface() without first creating a wl_shell_surface?"}));
+            }
 
             auto stream = surface->primary_buffer_stream();
             auto wl_surface = state_accessor->stream_map.at(stream);
@@ -254,9 +253,13 @@ private:
         bool const is_surface = strcmp(
             wl_resource_get_class(resource),
             "wl_surface") == 0;
+
         bool const is_window = strcmp(
-            wl_resource_get_class(resource),
-            "wl_shell_surface") == 0;   // Extend to also accept eg: xdg_shell_surface later.
+                wl_resource_get_class(resource),
+                "wl_shell_surface") == 0 ||
+            strcmp(
+                wl_resource_get_class(resource),
+                "zxdg_surface_v6") == 0;
 
         if (is_surface)
         {
