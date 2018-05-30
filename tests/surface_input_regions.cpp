@@ -169,7 +169,6 @@ TEST_P(InputRegionPointerEnterTest, touch_enter_leave)
     touch.down_at(touch_x, touch_y);
     client.roundtrip();
     EXPECT_THAT(client.touched_window(), Ne(wl_surface));
-    /* move touch; it should now be inside the surface */
     touch.up();
 
     touch.down_at(touch_x + params.dx, touch_y + params.dy);
@@ -179,9 +178,6 @@ TEST_P(InputRegionPointerEnterTest, touch_enter_leave)
                 Eq(std::make_pair(
                     wl_fixed_from_int(params.initial_x + params.dx),
                     wl_fixed_from_int(params.initial_y + params.dy))));
-
-    std::cout << "calling touch.up()..." << std::endl;
-    /* move touch back; it should now be outside the surface */
     touch.up();
 
     touch.down_at(touch_x, touch_y);
