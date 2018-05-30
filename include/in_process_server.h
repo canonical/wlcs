@@ -224,6 +224,16 @@ private:
     Server server;
 };
 
+class StartedInProcessServer : public InProcessServer
+{
+public:
+    StartedInProcessServer() { InProcessServer::SetUp(); }
+    ~StartedInProcessServer() { InProcessServer::TearDown(); }
+
+    void SetUp() override {}
+    void TearDown() override {}
+};
+
 }
 
 #endif //WLCS_IN_PROCESS_SERVER_H_
