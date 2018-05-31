@@ -96,7 +96,7 @@ TEST_F(XdgToplevelV6Test, default_configuration)
     EXPECT_THAT(state.value().activated, Eq(true));
 }
 
-TEST_F(XdgToplevelV6Test, correct_configuration_when_maximized)
+TEST_F(XdgToplevelV6Test, correct_configuration_when_maximized_and_unmaximized)
 {
     using namespace testing;
 
@@ -142,9 +142,24 @@ TEST_F(XdgToplevelV6Test, correct_configuration_when_maximized)
     EXPECT_THAT(state.value().fullscreen, Eq(false));
     EXPECT_THAT(state.value().resizing, Eq(false));
     EXPECT_THAT(state.value().activated, Eq(true));
+
+    zxdg_toplevel_v6_unset_maximized(window.toplevel);
+    wl_surface_commit(window.surface);
+
+    window.client.dispatch_until(
+        [prev_count = surface_configure_count, &current_count = surface_configure_count]()
+        {
+            return current_count > prev_count;
+        });
+
+    ASSERT_THAT(state, Ne(std::experimental::nullopt));
+    EXPECT_THAT(state.value().maximized, Eq(false));
+    EXPECT_THAT(state.value().fullscreen, Eq(false));
+    EXPECT_THAT(state.value().resizing, Eq(false));
+    EXPECT_THAT(state.value().activated, Eq(true));
 }
 
-TEST_F(XdgToplevelV6Test, correct_configuration_when_maximized_and_unmaximized)
+TEST_F(XdgToplevelV6Test, correct_configuration_when_fullscreened_and_restored)
 {
     using namespace testing;
 
@@ -174,7 +189,7 @@ TEST_F(XdgToplevelV6Test, correct_configuration_when_maximized_and_unmaximized)
             return current_count > prev_count;
         });
 
-    zxdg_toplevel_v6_set_maximized(window.toplevel);
+    zxdg_toplevel_v6_set_fullscreen(window.toplevel, nullptr);
     wl_surface_commit(window.surface);
 
     window.client.dispatch_until(
@@ -183,7 +198,15 @@ TEST_F(XdgToplevelV6Test, correct_configuration_when_maximized_and_unmaximized)
             return current_count > prev_count;
         });
 
-    zxdg_toplevel_v6_unset_maximized(window.toplevel);
+    ASSERT_THAT(state, Ne(std::experimental::nullopt));
+    EXPECT_THAT(state.value().width, Gt(0));
+    EXPECT_THAT(state.value().height, Gt(0));
+    EXPECT_THAT(state.value().maximized, Eq(false)); // is this right? should it not be maximized, even when fullscreen?
+    EXPECT_THAT(state.value().fullscreen, Eq(true));
+    EXPECT_THAT(state.value().resizing, Eq(false));
+    EXPECT_THAT(state.value().activated, Eq(true));
+
+    zxdg_toplevel_v6_unset_fullscreen(window.toplevel);
     wl_surface_commit(window.surface);
 
     window.client.dispatch_until(
