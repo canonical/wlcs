@@ -78,6 +78,10 @@ public:
             });
     }
 
+    operator wl_surface*() const {return surface;}
+    operator zxdg_surface_v6*() const {return xdg_surface;}
+    operator zxdg_toplevel_v6*() const {return toplevel;}
+
     wlcs::Client& client;
     wlcs::Surface surface;
     wlcs::XdgSurfaceV6 xdg_surface;
@@ -112,8 +116,8 @@ TEST_F(XdgToplevelV6Configuration, maximized_and_unmaximized)
     wlcs::Client client{the_server()};
     XdgToplevelWindow window{client};
 
-    zxdg_toplevel_v6_set_maximized(window.toplevel);
-    wl_surface_commit(window.surface);
+    zxdg_toplevel_v6_set_maximized(window);
+    wl_surface_commit(window);
     window.dispatch_until_configure();
 
     ASSERT_THAT(window.state, Ne(std::experimental::nullopt));
@@ -125,8 +129,8 @@ TEST_F(XdgToplevelV6Configuration, maximized_and_unmaximized)
     EXPECT_THAT(state.resizing, Eq(false));
     EXPECT_THAT(state.activated, Eq(true));
 
-    zxdg_toplevel_v6_unset_maximized(window.toplevel);
-    wl_surface_commit(window.surface);
+    zxdg_toplevel_v6_unset_maximized(window);
+    wl_surface_commit(window);
     window.dispatch_until_configure();
 
     ASSERT_THAT(window.state, Ne(std::experimental::nullopt));
@@ -144,8 +148,8 @@ TEST_F(XdgToplevelV6Configuration, fullscreened_and_restored)
     wlcs::Client client{the_server()};
     XdgToplevelWindow window{client};
 
-    zxdg_toplevel_v6_set_fullscreen(window.toplevel, nullptr);
-    wl_surface_commit(window.surface);
+    zxdg_toplevel_v6_set_fullscreen(window, nullptr);
+    wl_surface_commit(window);
     window.dispatch_until_configure();
 
     ASSERT_THAT(window.state, Ne(std::experimental::nullopt));
@@ -157,8 +161,8 @@ TEST_F(XdgToplevelV6Configuration, fullscreened_and_restored)
     EXPECT_THAT(state.resizing, Eq(false));
     EXPECT_THAT(state.activated, Eq(true));
 
-    zxdg_toplevel_v6_unset_fullscreen(window.toplevel);
-    wl_surface_commit(window.surface);
+    zxdg_toplevel_v6_unset_fullscreen(window);
+    wl_surface_commit(window);
     window.dispatch_until_configure();
 
     ASSERT_THAT(window.state, Ne(std::experimental::nullopt));
