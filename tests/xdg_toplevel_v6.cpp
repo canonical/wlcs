@@ -40,8 +40,8 @@ class XdgToplevelWindow
 public:
     int const window_width = 200, window_height = 320;
 
-    XdgToplevelWindow(wlcs::Server& server)
-        : client{server},
+    XdgToplevelWindow(wlcs::Client& client)
+        : client{client},
           surface{client},
           xdg_surface{client, surface},
           toplevel{xdg_surface}
@@ -78,7 +78,7 @@ public:
             });
     }
 
-    wlcs::Client client;
+    wlcs::Client& client;
     wlcs::Surface surface;
     wlcs::XdgSurfaceV6 xdg_surface;
     wlcs::XdgToplevelV6 toplevel;
@@ -91,7 +91,8 @@ TEST_F(XdgToplevelV6Configuration, default)
 {
     using namespace testing;
 
-    XdgToplevelWindow window{the_server()};
+    wlcs::Client client{the_server()};
+    XdgToplevelWindow window{client};
 
     // default values
     ASSERT_THAT(window.state, Ne(std::experimental::nullopt));
@@ -108,7 +109,8 @@ TEST_F(XdgToplevelV6Configuration, maximized_and_unmaximized)
 {
     using namespace testing;
 
-    XdgToplevelWindow window{the_server()};
+    wlcs::Client client{the_server()};
+    XdgToplevelWindow window{client};
 
     zxdg_toplevel_v6_set_maximized(window.toplevel);
     wl_surface_commit(window.surface);
@@ -139,7 +141,8 @@ TEST_F(XdgToplevelV6Configuration, fullscreened_and_restored)
 {
     using namespace testing;
 
-    XdgToplevelWindow window{the_server()};
+    wlcs::Client client{the_server()};
+    XdgToplevelWindow window{client};
 
     zxdg_toplevel_v6_set_fullscreen(window.toplevel, nullptr);
     wl_surface_commit(window.surface);
