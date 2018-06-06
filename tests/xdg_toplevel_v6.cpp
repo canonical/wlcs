@@ -170,3 +170,45 @@ TEST_F(XdgToplevelV6Configuration, fullscreened_and_restored)
     EXPECT_THAT(state.resizing, Eq(false));
     EXPECT_THAT(state.activated, Eq(true));
 }
+
+TEST_F(XdgToplevelV6Configuration, switched_activated_window)
+{
+    using namespace testing;
+
+    wlcs::Client client{the_server()};
+
+    ConfigurationWindow window_a{client};
+    int const a_x = 12, a_y = 15;
+
+    the_server().move_surface_to(window_a, a_x, a_y);
+
+    ConfigurationWindow window_b{client};
+    int const b_x = a_x + window_a.window_width + 27, b_y = 15;
+    the_server().move_surface_to(window_b, b_x, b_y);
+
+    auto pointer = the_server().create_pointer();
+
+    pointer.move_to(a_x + 10, a_y + 10);
+    pointer.left_click();
+    client.roundtrip();
+
+    ASSERT_THAT(window_a.state, Ne(std::experimental::nullopt));
+    auto state_a = window_a.state.value();
+    EXPECT_THAT(state_a.activated, Eq(true));
+
+    ASSERT_THAT(window_a.state, Ne(std::experimental::nullopt));
+    auto state_b = window_b.state.value();
+    EXPECT_THAT(state_b.activated, Eq(false));
+
+    pointer.move_to(b_x + 10, b_y + 10);
+    pointer.left_click();
+    client.roundtrip();
+
+    ASSERT_THAT(window_a.state, Ne(std::experimental::nullopt));
+    state_a = window_a.state.value();
+    EXPECT_THAT(state_a.activated, Eq(false));
+
+    ASSERT_THAT(window_a.state, Ne(std::experimental::nullopt));
+    state_b = window_b.state.value();
+    EXPECT_THAT(state_b.activated, Eq(true));
+}
