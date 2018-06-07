@@ -28,6 +28,8 @@ typedef struct WlcsPointer WlcsPointer;
 
 void wlcs_pointer_move_absolute(WlcsPointer* pointer, wl_fixed_t x, wl_fixed_t y) __attribute__((weak));
 void wlcs_pointer_move_relative(WlcsPointer* pointer, wl_fixed_t dx, wl_fixed_t dy) __attribute__((weak));
+void wlcs_pointer_button_up(WlcsPointer* pointer, int button) __attribute__((weak));
+void wlcs_pointer_button_down(WlcsPointer* pointer, int button) __attribute__((weak));
 
 #ifdef __cplusplus
 }

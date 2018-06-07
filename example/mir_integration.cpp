@@ -741,6 +741,40 @@ void wlcs_pointer_move_absolute(WlcsPointer* pointer, wl_fixed_t x, wl_fixed_t y
     wlcs_pointer_move_relative(pointer, wl_fixed_from_double(rel_x), wl_fixed_from_double(rel_y));
 }
 
+void wlcs_pointer_button_down(WlcsPointer* pointer, int button)
+{
+    auto device = reinterpret_cast<FakePointer*>(pointer);
+
+    auto event_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::steady_clock::now().time_since_epoch());
+
+    auto event_sent = device->runner->event_listener->expect_event_with_time(event_time);
+
+    device->pointer->emit_event(
+        mir::input::synthesis::a_button_down_event()
+            .of_button(button)
+            .with_event_time(event_time));
+
+    event_sent->wait_for(std::chrono::seconds{5});
+}
+
+void wlcs_pointer_button_up(WlcsPointer* pointer, int button)
+{
+    auto device = reinterpret_cast<FakePointer*>(pointer);
+
+    auto event_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::steady_clock::now().time_since_epoch());
+
+    auto event_sent = device->runner->event_listener->expect_event_with_time(event_time);
+
+    device->pointer->emit_event(
+        mir::input::synthesis::a_button_up_event()
+            .of_button(button)
+            .with_event_time(event_time));
+
+    event_sent->wait_for(std::chrono::seconds{5});
+}
+
 struct FakeTouch
 {
     decltype(mtf::add_fake_input_device(mi::InputDeviceInfo())) touch;
