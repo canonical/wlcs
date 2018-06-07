@@ -90,7 +90,7 @@ public:
     wlcs::XdgToplevelV6 toplevel;
 
     int surface_configure_count{0};
-    std::experimental::optional<wlcs::XdgToplevelV6::State> state;
+    wlcs::XdgToplevelV6::State state{0, 0, nullptr};
 };
 
 TEST_F(XdgToplevelV6Configuration, default)
@@ -99,10 +99,9 @@ TEST_F(XdgToplevelV6Configuration, default)
 
     wlcs::Client client{the_server()};
     ConfigurationWindow window{client};
+    auto& state = window.state;
 
     // default values
-    ASSERT_THAT(window.state, Ne(std::experimental::nullopt));
-    auto state = window.state.value();
     EXPECT_THAT(state.width, Eq(0));
     EXPECT_THAT(state.height, Eq(0));
     EXPECT_THAT(state.maximized, Eq(false));
@@ -117,12 +116,11 @@ TEST_F(XdgToplevelV6Configuration, maximized_and_unmaximized)
 
     wlcs::Client client{the_server()};
     ConfigurationWindow window{client};
+    auto& state = window.state;
 
     zxdg_toplevel_v6_set_maximized(window);
     window.dispatch_until_configure();
 
-    ASSERT_THAT(window.state, Ne(std::experimental::nullopt));
-    auto state = window.state.value();
     EXPECT_THAT(state.width, Gt(0));
     EXPECT_THAT(state.height, Gt(0));
     EXPECT_THAT(state.maximized, Eq(true));
@@ -133,8 +131,6 @@ TEST_F(XdgToplevelV6Configuration, maximized_and_unmaximized)
     zxdg_toplevel_v6_unset_maximized(window);
     window.dispatch_until_configure();
 
-    ASSERT_THAT(window.state, Ne(std::experimental::nullopt));
-    state = window.state.value();
     EXPECT_THAT(state.maximized, Eq(false));
     EXPECT_THAT(state.fullscreen, Eq(false));
     EXPECT_THAT(state.resizing, Eq(false));
@@ -147,12 +143,11 @@ TEST_F(XdgToplevelV6Configuration, fullscreened_and_restored)
 
     wlcs::Client client{the_server()};
     ConfigurationWindow window{client};
+    auto& state = window.state;
 
     zxdg_toplevel_v6_set_fullscreen(window, nullptr);
     window.dispatch_until_configure();
 
-    ASSERT_THAT(window.state, Ne(std::experimental::nullopt));
-    auto state = window.state.value();
     EXPECT_THAT(state.width, Gt(0));
     EXPECT_THAT(state.height, Gt(0));
     EXPECT_THAT(state.maximized, Eq(false)); // is this right? should it not be maximized, even when fullscreen?
@@ -163,8 +158,6 @@ TEST_F(XdgToplevelV6Configuration, fullscreened_and_restored)
     zxdg_toplevel_v6_unset_fullscreen(window);
     window.dispatch_until_configure();
 
-    ASSERT_THAT(window.state, Ne(std::experimental::nullopt));
-    state = window.state.value();
     EXPECT_THAT(state.maximized, Eq(false));
     EXPECT_THAT(state.fullscreen, Eq(false));
     EXPECT_THAT(state.resizing, Eq(false));
@@ -178,11 +171,12 @@ TEST_F(XdgToplevelV6Configuration, switched_activated_window)
     wlcs::Client client{the_server()};
 
     ConfigurationWindow window_a{client};
+    auto& state_a = window_a.state;
     int const a_x = 12, a_y = 15;
-
     the_server().move_surface_to(window_a, a_x, a_y);
 
     ConfigurationWindow window_b{client};
+    auto& state_b = window_b.state;
     int const b_x = a_x + window_a.window_width + 27, b_y = 15;
     the_server().move_surface_to(window_b, b_x, b_y);
 
@@ -192,23 +186,13 @@ TEST_F(XdgToplevelV6Configuration, switched_activated_window)
     pointer.left_click();
     client.roundtrip();
 
-    ASSERT_THAT(window_a.state, Ne(std::experimental::nullopt));
-    auto state_a = window_a.state.value();
     EXPECT_THAT(state_a.activated, Eq(true));
-
-    ASSERT_THAT(window_a.state, Ne(std::experimental::nullopt));
-    auto state_b = window_b.state.value();
     EXPECT_THAT(state_b.activated, Eq(false));
 
     pointer.move_to(b_x + 10, b_y + 10);
     pointer.left_click();
     client.roundtrip();
 
-    ASSERT_THAT(window_a.state, Ne(std::experimental::nullopt));
-    state_a = window_a.state.value();
     EXPECT_THAT(state_a.activated, Eq(false));
-
-    ASSERT_THAT(window_a.state, Ne(std::experimental::nullopt));
-    state_b = window_b.state.value();
     EXPECT_THAT(state_b.activated, Eq(true));
 }
