@@ -33,6 +33,7 @@
 
 #include <experimental/optional>
 
+using namespace testing;
 using XdgToplevelV6Configuration = wlcs::InProcessServer;
 
 class ConfigurationWindow
@@ -93,10 +94,8 @@ public:
     wlcs::XdgToplevelV6::State state{0, 0, nullptr};
 };
 
-TEST_F(XdgToplevelV6Configuration, default)
+TEST_F(XdgToplevelV6Configuration, defaults)
 {
-    using namespace testing;
-
     wlcs::Client client{the_server()};
     ConfigurationWindow window{client};
     auto& state = window.state;
@@ -112,8 +111,6 @@ TEST_F(XdgToplevelV6Configuration, default)
 
 TEST_F(XdgToplevelV6Configuration, maximized_and_unmaximized)
 {
-    using namespace testing;
-
     wlcs::Client client{the_server()};
     ConfigurationWindow window{client};
     auto& state = window.state;
@@ -139,8 +136,6 @@ TEST_F(XdgToplevelV6Configuration, maximized_and_unmaximized)
 
 TEST_F(XdgToplevelV6Configuration, fullscreened_and_restored)
 {
-    using namespace testing;
-
     wlcs::Client client{the_server()};
     ConfigurationWindow window{client};
     auto& state = window.state;
@@ -166,8 +161,6 @@ TEST_F(XdgToplevelV6Configuration, fullscreened_and_restored)
 
 TEST_F(XdgToplevelV6Configuration, switched_activated_window)
 {
-    using namespace testing;
-
     wlcs::Client client{the_server()};
 
     ConfigurationWindow window_a{client};
