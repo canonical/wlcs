@@ -544,6 +544,8 @@ WlcsDisplayServer* wlcs_create_server(int argc, char const** argv)
     runner->add_to_environment("MIR_SERVER_PLATFORM_INPUT_LIB", mtf::server_platform("input-stub.so").c_str());
     runner->add_to_environment("MIR_SERVER_ENABLE_KEY_REPEAT", "false");
     runner->add_to_environment("MIR_SERVER_NO_FILE", "");
+    runner->add_to_environment("MIR_SERVER_WAYLAND_SOCKET_NAME", "wlcs-tests");
+    runner->add_to_environment("WAYLAND_DISPLAY", "wlcs-tests");
     runner->server.override_the_display_buffer_compositor_factory([]
     {
         return std::make_shared<mtf::HeadlessDisplayBufferCompositorFactory>();
