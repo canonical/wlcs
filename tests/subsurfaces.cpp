@@ -52,12 +52,12 @@ public:
     wlcs::Subsurface subsurface{wlcs::Subsurface::create_visible(main_surface, 0, 0, subsurface_width, subsurface_height)};
 };
 
-TEST_F(SubsurfaceTest, subsurface_can_be_created)
+TEST_F(SubsurfaceTest, subsurface_has_correct_parent)
 {
     EXPECT_THAT(&subsurface.parent(), Eq(&main_surface));
 }
 
-TEST_F(SubsurfaceTest, gets_pointer_input)
+TEST_F(SubsurfaceTest, subsurface_gets_pointer_input)
 {
     int const pointer_x = surface_x + 10, pointer_y = surface_y + 5;
 
@@ -73,7 +73,7 @@ TEST_F(SubsurfaceTest, gets_pointer_input)
                     wl_fixed_from_int(pointer_y - surface_y))));
 }
 
-TEST_F(SubsurfaceTest, pointer_input_offset)
+TEST_F(SubsurfaceTest, pointer_input_correctly_offset_for_subsurface)
 {
     int const pointer_x = surface_x + 13, pointer_y = surface_y + 24;
     int const subsurface_x = 8, subsurface_y = 17;
@@ -95,8 +95,7 @@ TEST_F(SubsurfaceTest, pointer_input_offset)
                     wl_fixed_from_int(pointer_y - surface_y - subsurface_y))));
 }
 
-// appears to work in normal Mir, but breaks in WLCS
-TEST_F(SubsurfaceTest, extends_parent_region)
+TEST_F(SubsurfaceTest, subsurface_extends_parent_input_region)
 {
     int const pointer_x = surface_x - 5, pointer_y = surface_y + surface_height + 8;
     int const subsurface_x = -10, subsurface_y = surface_height - 10;
@@ -115,7 +114,7 @@ TEST_F(SubsurfaceTest, extends_parent_region)
                     wl_fixed_from_int(pointer_y - surface_y - subsurface_y))));
 }
 
-TEST_F(SubsurfaceTest, empty_input_region_fallthrough)
+TEST_F(SubsurfaceTest, input_falls_through_empty_subsurface_input_region)
 {
     int const pointer_x = surface_x + 10, pointer_y = surface_y + 5;
 
@@ -210,6 +209,6 @@ TEST_F(SubsurfaceTest, one_subsurface_to_another_fallthrough)
 
 // TODO: subsurface of subsurface
 
-// TODO: subsurface reordering
+// TODO: subsurface reordering (not in Mir yet)
 
 // TODO: sync and desync
