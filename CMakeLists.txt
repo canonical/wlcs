@@ -55,7 +55,7 @@ include_directories(${GMOCK_INCLUDE_DIR} ${GTEST_INCLUDE_DIR})
 add_subdirectory(src/protocol/)
 
 add_library(
-  wlcs STATIC
+  wlcs SHARED
 
   include/display_server.h
   include/helpers.h
