@@ -34,6 +34,71 @@
 #include <experimental/optional>
 
 using namespace testing;
+
+using XdgToplevelV6 = wlcs::InProcessServer;
+
+// interactive move is not currently implemented in the WLCS window manager
+TEST_F(XdgToplevelV6, DISABLED_interactive_move)
+{
+    int window_x = 20, window_y = 20;
+    int window_width = 420, window_height = 390;
+    int start_x = window_x + window_width - 5, start_y = window_y + window_height / 2;
+    int dx = 60, dy = -10;
+    int end_x = window_x + dx + 12, end_y = window_y + dy + 18;
+
+    wlcs::Client client{the_server()};
+    wlcs::Surface surface{client};
+    wlcs::XdgSurfaceV6 xdg_surface{client, surface};
+    wlcs::XdgToplevelV6 toplevel{xdg_surface};
+    surface.attach_buffer(window_width, window_height);
+    wl_surface_commit(surface);
+    client.roundtrip();
+
+    the_server().move_surface_to(surface, window_x, window_y);
+
+    auto pointer = the_server().create_pointer();
+
+    bool button_down{false};
+    uint32_t last_serial{0};
+
+    client.add_pointer_button_notification([&](uint32_t serial, uint32_t, bool is_down) -> bool {
+            last_serial = serial;
+            button_down = is_down;
+            return true;
+        });
+
+    pointer.move_to(start_x, start_y);
+    pointer.left_button_down();
+
+    client.dispatch_until([&](){
+            return button_down;
+        });
+
+    zxdg_toplevel_v6_move(toplevel, client.seat(), last_serial);
+    client.roundtrip();
+    pointer.move_to(start_x + dx, start_x + dy);
+    pointer.left_button_up();
+
+    client.dispatch_until([&](){
+            return !button_down;
+        });
+
+    pointer.move_to(end_x, end_y);
+    client.roundtrip();
+
+    EXPECT_THAT(client.focused_window(), Eq(static_cast<struct wl_surface*>(surface)));
+    EXPECT_THAT(client.pointer_position(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(end_x - window_x - dx),
+                    wl_fixed_from_int(end_y - window_y - dy))));
+
+    client.roundtrip();
+}
+
+// TODO: interactive resize
+// This would probably make sense as a parameterized test, with resizing in all directions
+// Like move, resize is not implemented in the current WLCS window manager, and should not be tested until it is
+
 using XdgToplevelV6Configuration = wlcs::InProcessServer;
 
 class ConfigurationWindow

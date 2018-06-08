@@ -196,7 +196,7 @@ public:
     using PointerMotionNotifier =
         std::function<bool(wl_fixed_t x, wl_fixed_t y)>;
     using PointerButtonNotifier =
-        std::function<bool(uint32_t button, bool is_down)>;
+        std::function<bool(uint32_t serial, uint32_t button, bool is_down)>;
     void add_pointer_enter_notification(PointerEnterNotifier const& on_enter);
     void add_pointer_leave_notification(PointerLeaveNotifier const& on_leave);
     void add_pointer_motion_notification(PointerMotionNotifier const& on_motion);

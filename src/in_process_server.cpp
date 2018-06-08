@@ -692,7 +692,7 @@ private:
     static void pointer_button(
         void *ctx,
         wl_pointer* /*wl_pointer*/,
-        uint32_t /*serial*/,
+        uint32_t serial,
         uint32_t /*time*/,
         uint32_t button,
         uint32_t state)
@@ -702,7 +702,7 @@ private:
         std::vector<decltype(button_notifiers)::const_iterator> to_remove;
         for (auto notifier = me->button_notifiers.begin(); notifier != me->button_notifiers.end(); ++notifier)
         {
-            if (!(*notifier)(button, state == WL_POINTER_BUTTON_STATE_PRESSED))
+            if (!(*notifier)(serial, button, state == WL_POINTER_BUTTON_STATE_PRESSED))
             {
                 to_remove.push_back(notifier);
             }
