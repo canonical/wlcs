@@ -29,6 +29,7 @@ typedef struct wl_display wl_display;
 
 typedef struct WlcsDisplayServer WlcsDisplayServer;
 typedef struct WlcsPointer WlcsPointer;
+typedef struct WlcsTouch WlcsTouch;
 
 WlcsDisplayServer* wlcs_create_server(int argc, char const** argv) __attribute__((weak));
 void wlcs_destroy_server(WlcsDisplayServer* server) __attribute__((weak));
@@ -42,6 +43,9 @@ void wlcs_server_position_window_absolute (WlcsDisplayServer* server, wl_display
 
 WlcsPointer* wlcs_server_create_pointer(WlcsDisplayServer* server) __attribute__((weak));
 void wlcs_destroy_pointer(WlcsPointer* pointer) __attribute__((weak));
+
+WlcsTouch* wlcs_server_create_touch(WlcsDisplayServer* server) __attribute__((weak));
+void wlcs_destroy_touch(WlcsTouch* pointer) __attribute__((weak));
 
 #ifdef __cplusplus
 }

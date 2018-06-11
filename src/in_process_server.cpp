@@ -20,6 +20,7 @@
 #include "display_server.h"
 #include "helpers.h"
 #include "pointer.h"
+#include "touch.h"
 #include "xdg_shell_v6.h"
 #include "generated/wayland-client.h"
 #include "generated/xdg-shell-unstable-v6-client.h"
@@ -36,6 +37,11 @@ class ShimNotImplemented : public std::logic_error
 {
 public:
     ShimNotImplemented() : std::logic_error("Function not implemented in display server shim")
+    {
+    }
+
+    ShimNotImplemented(const std::string& name)
+        : std::logic_error("Function '" + name + "()' not implemented in display server shim")
     {
     }
 };
@@ -84,6 +90,62 @@ void wlcs::Pointer::move_to(int x, int y)
 void wlcs::Pointer::move_by(int dx, int dy)
 {
     impl->move_by(dx, dy);
+}
+
+class wlcs::Touch::Impl
+{
+public:
+    Impl(WlcsTouch* raw_device)
+        : touch{raw_device, &wlcs_destroy_touch}
+    {
+    }
+
+    void down_at(int x, int y)
+    {
+        if (!wlcs_touch_down)
+            BOOST_THROW_EXCEPTION((ShimNotImplemented{"wlcs_touch_down"}));
+        wlcs_touch_down(touch.get(), x, y);
+    }
+
+    void move_to(int x, int y)
+    {
+        if (!wlcs_touch_move)
+            BOOST_THROW_EXCEPTION((ShimNotImplemented{"wlcs_touch_move"}));
+        wlcs_touch_move(touch.get(), x, y);
+    }
+
+    void up()
+    {
+        if (!wlcs_touch_up)
+            BOOST_THROW_EXCEPTION((ShimNotImplemented{"wlcs_touch_up"}));
+        wlcs_touch_up(touch.get());
+    }
+
+private:
+    std::unique_ptr<WlcsTouch, decltype(&wlcs_destroy_touch)> const touch;
+};
+
+wlcs::Touch::~Touch() = default;
+wlcs::Touch::Touch(Touch&&) = default;
+
+wlcs::Touch::Touch(WlcsTouch* raw_device)
+    : impl{std::make_unique<Impl>(raw_device)}
+{
+}
+
+void wlcs::Touch::down_at(int x, int y)
+{
+    impl->down_at(x, y);
+}
+
+void wlcs::Touch::move_to(int x, int y)
+{
+    impl->move_to(x, y);
+}
+
+void wlcs::Touch::up()
+{
+    impl->up();
 }
 
 class wlcs::Server::Impl
@@ -186,6 +248,16 @@ wlcs::Pointer wlcs::Server::create_pointer()
     return Pointer{wlcs_server_create_pointer(impl->wlcs_server())};
 }
 
+wlcs::Touch wlcs::Server::create_touch()
+{
+    if (!wlcs_server_create_touch || !wlcs_destroy_touch)
+    {
+        BOOST_THROW_EXCEPTION((ShimNotImplemented{}));
+    }
+
+    return Touch{wlcs_server_create_touch(impl->wlcs_server())};
+}
+
 wlcs::InProcessServer::InProcessServer()
     : server{helpers::get_argc(), helpers::get_argv()}
 {
@@ -267,6 +339,7 @@ public:
         wl_shell_surfaces.clear();
         if (seat) wl_seat_destroy(seat);
         if (pointer) wl_pointer_destroy(pointer);
+        if (touch) wl_touch_destroy(touch);
         if (data_device_manager) wl_data_device_manager_destroy(data_device_manager);
         if (xdg_shell_v6) zxdg_shell_v6_destroy(xdg_shell_v6);
         if (xdg_shell_stable) xdg_wm_base_destroy(xdg_shell_stable);
@@ -352,9 +425,23 @@ public:
         return nullptr;
     }
 
+    wl_surface* touched_window() const
+    {
+        if (current_touch_location)
+        {
+            return current_touch_location->surface;
+        }
+        return nullptr;
+    }
+
     std::pair<wl_fixed_t, wl_fixed_t> pointer_position() const
     {
         return current_pointer_location.value().coordinates;
+    };
+
+    std::pair<wl_fixed_t, wl_fixed_t> touch_position() const
+    {
+        return current_touch_location.value().coordinates;
     };
 
     void add_pointer_enter_notification(PointerEnterNotifier const& on_enter)
@@ -450,7 +537,7 @@ private:
     {
         auto me = static_cast<Impl*>(ctx);
 
-        me->current_pointer_location = PointerLocation {
+        me->current_pointer_location = SurfaceLocation {
             surface,
             std::make_pair(x,y)
         };
@@ -534,6 +621,64 @@ private:
         nullptr     // axis_discrete
     };
 
+    static void touch_down(
+        void* ctx,
+        wl_touch* /*wl_touch*/,
+        uint32_t /*serial*/,
+        uint32_t /*time*/,
+        wl_surface* surface,
+        int32_t /*id*/,
+        wl_fixed_t x,
+        wl_fixed_t y)
+    {
+        auto me = static_cast<Impl*>(ctx);
+
+        me->current_touch_location = SurfaceLocation {
+            surface,
+            std::make_pair(x,y)
+        };
+    }
+
+    static void touch_up(
+        void* ctx,
+        wl_touch* /*wl_touch*/,
+        uint32_t /*serial*/,
+        uint32_t /*time*/,
+        int32_t /*id*/)
+    {
+        auto me = static_cast<Impl*>(ctx);
+
+        me->current_touch_location = std::experimental::nullopt;
+    }
+
+	static void touch_motion(
+        void* ctx,
+        wl_touch* /*wl_touch*/,
+        uint32_t /*time*/,
+        int32_t /*id*/,
+        wl_fixed_t x,
+        wl_fixed_t y)
+    {
+        auto me = static_cast<Impl*>(ctx);
+
+        if (me->current_touch_location)
+            me->current_touch_location.value().coordinates = std::make_pair(x,y);
+    }
+
+    static void touch_frame(void* /*ctx*/, wl_touch* /*touch*/)
+    {
+    }
+
+    static constexpr wl_touch_listener touch_listener = {
+        &Impl::touch_down,
+        &Impl::touch_up,
+        &Impl::touch_motion,
+        &Impl::touch_frame,
+        nullptr,    // cancel
+        nullptr,    // shape
+        nullptr,    // orientation
+    };
+
     static void seat_capabilities(
         void* ctx,
         struct wl_seat* seat,
@@ -545,6 +690,12 @@ private:
         {
             me->pointer = wl_seat_get_pointer(seat);
             wl_pointer_add_listener(me->pointer, &pointer_listener, me);
+        }
+
+        if (capabilities & WL_SEAT_CAPABILITY_TOUCH)
+        {
+            me->touch = wl_seat_get_touch(seat);
+            wl_touch_add_listener(me->touch, &touch_listener, me);
         }
     }
 
@@ -636,16 +787,18 @@ private:
     struct wl_shell* shell = nullptr;
     struct wl_seat* seat = nullptr;
     struct wl_pointer* pointer = nullptr;
+    struct wl_touch* touch = nullptr;
     struct wl_data_device_manager* data_device_manager = nullptr;
     struct zxdg_shell_v6* xdg_shell_v6 = nullptr;
     struct xdg_wm_base* xdg_shell_stable = nullptr;
 
-    struct PointerLocation
+    struct SurfaceLocation
     {
         wl_surface* surface;
         std::pair<wl_fixed_t, wl_fixed_t> coordinates;
     };
-    std::experimental::optional<PointerLocation> current_pointer_location;
+    std::experimental::optional<SurfaceLocation> current_pointer_location;
+    std::experimental::optional<SurfaceLocation> current_touch_location;
 
     std::vector<std::shared_ptr<ShmBuffer>> client_buffers;
     std::vector<PointerEnterNotifier> enter_notifiers;
@@ -653,8 +806,8 @@ private:
     std::vector<PointerMotionNotifier> motion_notifiers;
 };
 
-
 constexpr wl_pointer_listener wlcs::Client::Impl::pointer_listener;
+constexpr wl_touch_listener wlcs::Client::Impl::touch_listener;
 constexpr wl_seat_listener wlcs::Client::Impl::seat_listener;
 constexpr wl_registry_listener wlcs::Client::Impl::registry_listener;
 
@@ -725,9 +878,19 @@ wl_surface* wlcs::Client::focused_window() const
     return impl->focused_window();
 }
 
+wl_surface* wlcs::Client::touched_window() const
+{
+    return impl->touched_window();
+}
+
 std::pair<wl_fixed_t, wl_fixed_t> wlcs::Client::pointer_position() const
 {
     return impl->pointer_position();
+}
+
+std::pair<wl_fixed_t, wl_fixed_t> wlcs::Client::touch_position() const
+{
+    return impl->touch_position();
 }
 
 void wlcs::Client::add_pointer_enter_notification(PointerEnterNotifier const& on_enter)
