@@ -187,6 +187,78 @@ TEST_P(SurfaceInputRegion, touch_enter_leave_surface)
     client.roundtrip();
 }
 
+TEST_P(SurfaceInputRegion, pointer_enter_leave_subsurface)
+{
+    using namespace testing;
+
+    wlcs::Client client{the_server()};
+
+    auto const params = GetParam();
+
+    auto main_surface = client.create_visible_surface(
+        params.window_width + 20,
+        params.window_height + 20);
+
+    int const subsurface_offset_x = 10, subsurface_offset_y = 10;
+
+    auto surface = wlcs::Subsurface::create_visible(
+        main_surface,
+        subsurface_offset_x,
+        subsurface_offset_y,
+        params.window_width,
+        params.window_height);
+
+    int const top_left_x = 65, top_left_y = 200;
+    the_server().move_surface_to(main_surface, top_left_x, top_left_y);
+
+    auto const wl_surface = static_cast<struct wl_surface*>(surface);
+
+    auto const wl_region = wl_compositor_create_region(client.compositor());
+    for (auto const& e: params.region.elements)
+    {
+        switch(e.action)
+        {
+        case RegionAction::add:
+            wl_region_add(wl_region, e.x, e.y, e.width, e.height);
+            break;
+        case RegionAction::subtract:
+            wl_region_subtract(wl_region, e.x, e.y, e.width, e.height);
+            break;
+        }
+    }
+    wl_surface_set_input_region(wl_surface, wl_region);
+    wl_region_destroy(wl_region);
+    wl_surface_commit(wl_surface);
+    wl_surface_commit(main_surface);
+    client.roundtrip();
+
+    auto pointer = the_server().create_pointer();
+    pointer.move_to(top_left_x + params.initial_x + subsurface_offset_x, top_left_y + params.initial_y + subsurface_offset_y);
+
+    client.roundtrip();
+
+    EXPECT_THAT(client.focused_window(), Ne(wl_surface));
+
+    /* move pointer; it should now be inside the surface */
+    pointer.move_by(params.dx, params.dy);
+
+    client.roundtrip();
+
+    EXPECT_THAT(client.focused_window(), Ne((struct wl_surface*)main_surface))
+        << "main surface focused instead of subsurface";
+    EXPECT_THAT(client.focused_window(), Eq(wl_surface));
+    EXPECT_THAT(client.pointer_position(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(params.initial_x + params.dx),
+                    wl_fixed_from_int(params.initial_y + params.dy))));
+
+    /* move pointer back; it should now be outside the surface */
+    pointer.move_by(-params.dx, -params.dy);
+
+    client.roundtrip();
+    EXPECT_THAT(client.focused_window(), Ne(wl_surface));
+}
+
 InputRegion const full_surface_region{"full surface", {
     {RegionAction::add, 0, 0, RegionAndMotion::window_width, RegionAndMotion::window_height}}};
 
