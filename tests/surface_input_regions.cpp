@@ -60,17 +60,15 @@ std::ostream& operator<<(std::ostream& out, RegionAndMotion const& param)
     return out << "region: " << param.region.name << ", pointer: " << param.name;
 }
 
-class InputRegionPointerEnterTest :
+class SurfaceInputRegion :
     public wlcs::InProcessServer,
     public testing::WithParamInterface<RegionAndMotion>
 {
 };
 
-TEST_P(InputRegionPointerEnterTest, pointer_enter_and_leave_input_region)
+TEST_P(SurfaceInputRegion, pointer_enter_leave_surface)
 {
     using namespace testing;
-
-    auto pointer = the_server().create_pointer();
 
     wlcs::Client client{the_server()};
 
@@ -103,6 +101,7 @@ TEST_P(InputRegionPointerEnterTest, pointer_enter_and_leave_input_region)
     wl_surface_commit(wl_surface);
     client.roundtrip();
 
+    auto pointer = the_server().create_pointer();
     pointer.move_to(top_left_x + params.initial_x, top_left_y + params.initial_y);
 
     client.roundtrip();
@@ -127,7 +126,7 @@ TEST_P(InputRegionPointerEnterTest, pointer_enter_and_leave_input_region)
     EXPECT_THAT(client.focused_window(), Ne(wl_surface));
 }
 
-TEST_P(InputRegionPointerEnterTest, touch_enter_leave)
+TEST_P(SurfaceInputRegion, touch_enter_leave_surface)
 {
     using namespace testing;
 
@@ -193,7 +192,7 @@ InputRegion const full_surface_region{"full surface", {
 
 INSTANTIATE_TEST_CASE_P(
     NormalRegion,
-    InputRegionPointerEnterTest,
+    SurfaceInputRegion,
     testing::Values(
         RegionAndMotion{
             "Centre-left", full_surface_region,
@@ -225,7 +224,7 @@ InputRegion const smaller_region{"smaller", {{
 
 INSTANTIATE_TEST_CASE_P(
     SmallerRegion,
-    InputRegionPointerEnterTest,
+    SurfaceInputRegion,
     testing::Values(
         RegionAndMotion{
             "Centre-left", smaller_region,
@@ -259,7 +258,7 @@ InputRegion const larger_region{"larger", {{
 
 INSTANTIATE_TEST_CASE_P(
     ClippedLargerRegion,
-    InputRegionPointerEnterTest,
+    SurfaceInputRegion,
     testing::Values(
         RegionAndMotion{
             "Centre-left", larger_region,
@@ -289,7 +288,7 @@ InputRegion const multi_rect_region{"multi rect", {
 
 INSTANTIATE_TEST_CASE_P(
     MultiRectRegionEdges,
-    InputRegionPointerEnterTest,
+    SurfaceInputRegion,
     testing::Values(
         RegionAndMotion{
             "Top-left-edge", multi_rect_region,
@@ -315,7 +314,7 @@ INSTANTIATE_TEST_CASE_P(
 
 INSTANTIATE_TEST_CASE_P(
     MultiRectRegionCorners,
-    InputRegionPointerEnterTest,
+    SurfaceInputRegion,
     testing::Values(
         RegionAndMotion{
             "Top-left", multi_rect_region,
