@@ -66,7 +66,7 @@ class SurfaceInputRegion :
 {
 };
 
-TEST_P(SurfaceInputRegion, pointer_enter_leave_surface)
+TEST_P(SurfaceInputRegion, pointer_enter_and_leave_surfaces_input_region)
 {
     using namespace testing;
 
@@ -126,7 +126,7 @@ TEST_P(SurfaceInputRegion, pointer_enter_leave_surface)
     EXPECT_THAT(client.focused_window(), Ne(wl_surface));
 }
 
-TEST_P(SurfaceInputRegion, touch_enter_leave_surface)
+TEST_P(SurfaceInputRegion, touch_inside_and_outside_surfaces_input_region)
 {
     using namespace testing;
 
@@ -187,7 +187,7 @@ TEST_P(SurfaceInputRegion, touch_enter_leave_surface)
     client.roundtrip();
 }
 
-TEST_P(SurfaceInputRegion, pointer_enter_leave_subsurface)
+TEST_P(SurfaceInputRegion, pointer_enter_and_leave_subsurfaces_input_region)
 {
     using namespace testing;
 
@@ -259,7 +259,7 @@ TEST_P(SurfaceInputRegion, pointer_enter_leave_subsurface)
     EXPECT_THAT(client.focused_window(), Ne(wl_surface));
 }
 
-TEST_P(SurfaceInputRegion, touch_inside_outside_subsurface)
+TEST_P(SurfaceInputRegion, touch_inside_and_outside_subsurfaces_input_region)
 {
     using namespace testing;
 
