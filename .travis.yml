@@ -11,12 +11,11 @@ branches:
   - master
 
 install:
-  - sudo apt-get --yes install snapd
+  - sudo apt-get --yes --no-install-recommends install snapd
   - sudo snap install lxd
   - sudo addgroup --system lxd
   - sudo adduser $USER lxd
-  - sudo snap start lxd
-  - for I in 1 2 3 4 5 6 7 8 9 10 ; do [ -S /var/snap/lxd/common/lxd/unix.socket ] || sleep 5 ; done
+  - sudo lxd waitready
   - sudo lxd init --auto
   - wget https://cooperteam.net/spread_2017.09.21_amd64.snap
   - sudo snap install --dangerous spread_2017.09.21_amd64.snap
