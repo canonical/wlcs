@@ -156,7 +156,7 @@ TEST_P(TouchTest, touch_drag_outside_of_surface_and_back_not_lost)
 }
 
 INSTANTIATE_TEST_CASE_P(
-    TouchTests,
+    WlShellSurface,
     TouchTest,
     testing::Values(
         TouchTestParams{
@@ -172,9 +172,15 @@ INSTANTIATE_TEST_CASE_P(
 
                     return std::make_unique<wlcs::Surface>(std::move(surface));
                 }
-            },
+            }
+    ));
+
+INSTANTIATE_TEST_CASE_P(
+    XdgShellV6Surface,
+    TouchTest,
+    testing::Values(
         TouchTestParams{
-            "xdg_shell_v6_surface",
+            "xdg_v6_surface",
             [](wlcs::InProcessServer& server, wlcs::Client& client, int x, int y, int width, int height)
                 -> std::unique_ptr<wlcs::Surface>
                 {
@@ -186,7 +192,13 @@ INSTANTIATE_TEST_CASE_P(
 
                     return std::make_unique<wlcs::Surface>(std::move(surface));;
                 }
-            },
+            }
+    ));
+
+INSTANTIATE_TEST_CASE_P(
+    WlShellSubsurface,
+    TouchTest,
+    testing::Values(
         TouchTestParams{
             "wl_shell_subsurface",
             [](wlcs::InProcessServer& server, wlcs::Client& client, int x, int y, int width, int height)
@@ -204,7 +216,13 @@ INSTANTIATE_TEST_CASE_P(
 
                     return std::make_unique<wlcs::Surface>(std::move(subusrface));
                 }
-            },
+            }
+    ));
+
+INSTANTIATE_TEST_CASE_P(
+    XdgShellV6Subsurface,
+    TouchTest,
+    testing::Values(
         TouchTestParams{
             "xdg_shell_subsurface",
             [](wlcs::InProcessServer& server, wlcs::Client& client, int x, int y, int width, int height)
