@@ -25,21 +25,34 @@
 
 using namespace testing;
 
-using TouchTest = wlcs::InProcessServer;
+struct TouchTestParams
+{
+    std::string name;
+    std::function<wlcs::Surface(wlcs::InProcessServer& server, wlcs::Client& client,
+                                int x, int y,
+                                int width, int height)> make_surface;
+};
 
-TEST_F(TouchTest, touch_on_surface_seen)
+std::ostream& operator<<(std::ostream& out, TouchTestParams const& param)
+{
+    return out << param.name << param.name;
+}
+
+class TouchTest:
+    public wlcs::InProcessServer,
+    public testing::WithParamInterface<TouchTestParams>
+{
+};
+
+TEST_P(TouchTest, touch_on_surface_seen)
 {
     int const window_width = 300, window_height = 300;
     int const window_top_left_x = 64, window_top_left_y = 7;
 
     wlcs::Client client{the_server()};
-
-    auto surface = client.create_visible_surface(
-        window_width,
-        window_height);
-
-    the_server().move_surface_to(surface, window_top_left_x, window_top_left_y);
-
+    auto const surface = GetParam().make_surface(*this, client,
+                                                 window_top_left_x, window_top_left_y,
+                                                 window_width, window_height);
     auto const wl_surface = static_cast<struct wl_surface*>(surface);
 
     auto touch = the_server().create_touch();
@@ -57,7 +70,7 @@ TEST_F(TouchTest, touch_on_surface_seen)
     client.roundtrip();
 }
 
-TEST_F(TouchTest, touch_and_drag_on_surface_seen)
+TEST_P(TouchTest, touch_and_drag_on_surface_seen)
 {
     int const window_width = 300, window_height = 300;
     int const window_top_left_x = 64, window_top_left_y = 12;
@@ -65,13 +78,9 @@ TEST_F(TouchTest, touch_and_drag_on_surface_seen)
     int const dx = 37, dy = -52;
 
     wlcs::Client client{the_server()};
-
-    auto surface = client.create_visible_surface(
-        window_width,
-        window_height);
-
-    the_server().move_surface_to(surface, window_top_left_x, window_top_left_y);
-
+    auto const surface = GetParam().make_surface(*this, client,
+                                                 window_top_left_x, window_top_left_y,
+                                                 window_width, window_height);
     auto const wl_surface = static_cast<struct wl_surface*>(surface);
 
     auto touch = the_server().create_touch();
@@ -100,7 +109,7 @@ TEST_F(TouchTest, touch_and_drag_on_surface_seen)
     client.roundtrip();
 }
 
-TEST_F(TouchTest, touch_drag_outside_of_surface_and_back_not_lost)
+TEST_P(TouchTest, touch_drag_outside_of_surface_and_back_not_lost)
 {
     int const window_width = 300, window_height = 300;
     int const window_top_left_x = 64, window_top_left_y = 12;
@@ -108,13 +117,9 @@ TEST_F(TouchTest, touch_drag_outside_of_surface_and_back_not_lost)
     int const touch_b_x = window_top_left_x - 6, touch_b_y = window_top_left_y + window_width + 8;
 
     wlcs::Client client{the_server()};
-
-    auto surface = client.create_visible_surface(
-        window_width,
-        window_height);
-
-    the_server().move_surface_to(surface, window_top_left_x, window_top_left_y);
-
+    auto const surface = GetParam().make_surface(*this, client,
+                                                 window_top_left_x, window_top_left_y,
+                                                 window_width, window_height);
     auto const wl_surface = static_cast<struct wl_surface*>(surface);
 
     auto touch = the_server().create_touch();
@@ -149,3 +154,23 @@ TEST_F(TouchTest, touch_drag_outside_of_surface_and_back_not_lost)
     touch.up();
     client.roundtrip();
 }
+
+INSTANTIATE_TEST_CASE_P(
+    TouchTests,
+    TouchTest,
+    testing::Values(
+        TouchTestParams{
+            "wl_shell_surface",
+            [](wlcs::InProcessServer& server, wlcs::Client& client, int x, int y, int width, int height)
+                -> wlcs::Surface
+                {
+                    auto surface = client.create_visible_surface(
+                        width,
+                        height);
+
+                    server.the_server().move_surface_to(surface, x, y);
+
+                    return surface;
+                }
+            }
+    ));
