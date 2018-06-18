@@ -296,7 +296,7 @@ TEST_P(SurfaceInputRegion, pointer_seen_entering_and_leaving_subsurface_input_re
     EXPECT_THAT(client.focused_window(), Ne(wl_surface));
 }
 
-TEST_P(SurfaceInputRegion, touch_out_subsurface_input_region_is_seen)
+TEST_P(SurfaceInputRegion, touch_output_subsurface_input_region_is_seen)
 {
     using namespace testing;
 
