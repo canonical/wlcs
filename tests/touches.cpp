@@ -99,3 +99,53 @@ TEST_F(TouchTest, touch_and_drag_on_surface_seen)
     touch.up();
     client.roundtrip();
 }
+
+TEST_F(TouchTest, touch_drag_outside_of_surface_and_back_not_lost)
+{
+    int const window_width = 300, window_height = 300;
+    int const window_top_left_x = 64, window_top_left_y = 12;
+    int const touch_a_x = window_top_left_x + 27, touch_a_y = window_top_left_y + 12;
+    int const touch_b_x = window_top_left_x - 6, touch_b_y = window_top_left_y + window_width + 8;
+
+    wlcs::Client client{the_server()};
+
+    auto surface = client.create_visible_surface(
+        window_width,
+        window_height);
+
+    the_server().move_surface_to(surface, window_top_left_x, window_top_left_y);
+
+    auto const wl_surface = static_cast<struct wl_surface*>(surface);
+
+    auto touch = the_server().create_touch();
+
+    touch.down_at(touch_a_x, touch_a_y);
+    client.roundtrip();
+    ASSERT_THAT(client.touched_window(), Eq(wl_surface)) << "touch did not register on surface";
+    ASSERT_THAT(client.touch_position(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(touch_a_x - window_top_left_x),
+                    wl_fixed_from_int(touch_a_y - window_top_left_y)))) << "touch came down in the wrong place";
+
+    touch.move_to(touch_b_x, touch_b_y);
+    client.roundtrip();
+    EXPECT_THAT(client.touched_window(), Eq(wl_surface)) << "touch was lost when it moved out of the surface";
+    if (client.touched_window() == wl_surface)
+    {
+        EXPECT_THAT(client.touch_position(),
+                    Eq(std::make_pair(
+                        wl_fixed_from_int(touch_b_x - window_top_left_x),
+                        wl_fixed_from_int(touch_b_y - window_top_left_y)))) << "touch did not end up in the right place putside of the surface";
+    }
+
+    touch.move_to(touch_a_x, touch_a_y);
+    client.roundtrip();
+    EXPECT_THAT(client.touched_window(), Eq(wl_surface)) << "touch did not come back onto surface";
+    EXPECT_THAT(client.touch_position(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(touch_a_x - window_top_left_x),
+                    wl_fixed_from_int(touch_a_y - window_top_left_y)))) << "touch came back in the wrong place";
+
+    touch.up();
+    client.roundtrip();
+}
