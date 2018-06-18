@@ -28,9 +28,9 @@ using namespace testing;
 struct TouchTestParams
 {
     std::string name;
-    std::function<wlcs::Surface(wlcs::InProcessServer& server, wlcs::Client& client,
-                                int x, int y,
-                                int width, int height)> make_surface;
+    std::function<std::unique_ptr<wlcs::Surface>(wlcs::InProcessServer& server, wlcs::Client& client,
+                                                 int x, int y,
+                                                 int width, int height)> make_surface;
 };
 
 std::ostream& operator<<(std::ostream& out, TouchTestParams const& param)
@@ -53,7 +53,7 @@ TEST_P(TouchTest, touch_on_surface_seen)
     auto const surface = GetParam().make_surface(*this, client,
                                                  window_top_left_x, window_top_left_y,
                                                  window_width, window_height);
-    auto const wl_surface = static_cast<struct wl_surface*>(surface);
+    auto const wl_surface = static_cast<struct wl_surface*>(*surface);
 
     auto touch = the_server().create_touch();
     int touch_x = window_top_left_x + 27;
@@ -81,7 +81,7 @@ TEST_P(TouchTest, touch_and_drag_on_surface_seen)
     auto const surface = GetParam().make_surface(*this, client,
                                                  window_top_left_x, window_top_left_y,
                                                  window_width, window_height);
-    auto const wl_surface = static_cast<struct wl_surface*>(surface);
+    auto const wl_surface = static_cast<struct wl_surface*>(*surface);
 
     auto touch = the_server().create_touch();
 
@@ -120,7 +120,7 @@ TEST_P(TouchTest, touch_drag_outside_of_surface_and_back_not_lost)
     auto const surface = GetParam().make_surface(*this, client,
                                                  window_top_left_x, window_top_left_y,
                                                  window_width, window_height);
-    auto const wl_surface = static_cast<struct wl_surface*>(surface);
+    auto const wl_surface = static_cast<struct wl_surface*>(*surface);
 
     auto touch = the_server().create_touch();
 
@@ -162,7 +162,7 @@ INSTANTIATE_TEST_CASE_P(
         TouchTestParams{
             "wl_shell_surface",
             [](wlcs::InProcessServer& server, wlcs::Client& client, int x, int y, int width, int height)
-                -> wlcs::Surface
+                -> std::unique_ptr<wlcs::Surface>
                 {
                     auto surface = client.create_wl_shell_surface(
                         width,
@@ -170,13 +170,13 @@ INSTANTIATE_TEST_CASE_P(
 
                     server.the_server().move_surface_to(surface, x, y);
 
-                    return surface;
+                    return std::make_unique<wlcs::Surface>(std::move(surface));
                 }
             },
         TouchTestParams{
             "xdg_shell_v6_surface",
             [](wlcs::InProcessServer& server, wlcs::Client& client, int x, int y, int width, int height)
-                -> wlcs::Surface
+                -> std::unique_ptr<wlcs::Surface>
                 {
                     auto surface = client.create_xdg_shell_v6_surface(
                         width,
@@ -184,7 +184,39 @@ INSTANTIATE_TEST_CASE_P(
 
                     server.the_server().move_surface_to(surface, x, y);
 
-                    return surface;
+                    return std::make_unique<wlcs::Surface>(std::move(surface));;
+                }
+            },
+        TouchTestParams{
+            "wl_shell_subsurface",
+            [](wlcs::InProcessServer& server, wlcs::Client& client, int x, int y, int width, int height)
+                -> std::unique_ptr<wlcs::Surface>
+                {
+                    auto main_surface = client.create_wl_shell_surface(
+                        width,
+                        height);
+
+                    server.the_server().move_surface_to(main_surface, x, y);
+
+                    auto subusrface = wlcs::Subsurface::create_visible(main_surface, 0, 0, width, height);
+
+                    return std::make_unique<wlcs::Surface>(std::move(subusrface));
+                }
+            },
+        TouchTestParams{
+            "xdg_shell_subsurface",
+            [](wlcs::InProcessServer& server, wlcs::Client& client, int x, int y, int width, int height)
+                -> std::unique_ptr<wlcs::Surface>
+                {
+                    auto main_surface = client.create_xdg_shell_v6_surface(
+                        width,
+                        height);
+
+                    server.the_server().move_surface_to(main_surface, x, y);
+
+                    auto subusrface = wlcs::Subsurface::create_visible(main_surface, 0, 0, width, height);
+
+                    return std::make_unique<wlcs::Surface>(std::move(subusrface));
                 }
             }
     ));
