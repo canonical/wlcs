@@ -164,7 +164,21 @@ INSTANTIATE_TEST_CASE_P(
             [](wlcs::InProcessServer& server, wlcs::Client& client, int x, int y, int width, int height)
                 -> wlcs::Surface
                 {
-                    auto surface = client.create_visible_surface(
+                    auto surface = client.create_wl_shell_surface(
+                        width,
+                        height);
+
+                    server.the_server().move_surface_to(surface, x, y);
+
+                    return surface;
+                }
+            },
+        TouchTestParams{
+            "xdg_shell_v6_surface",
+            [](wlcs::InProcessServer& server, wlcs::Client& client, int x, int y, int width, int height)
+                -> wlcs::Surface
+                {
+                    auto surface = client.create_xdg_shell_v6_surface(
                         width,
                         height);
 
