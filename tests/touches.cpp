@@ -56,3 +56,46 @@ TEST_F(TouchTest, touch_on_surface_seen)
     touch.up();
     client.roundtrip();
 }
+
+TEST_F(TouchTest, touch_and_drag_on_surface_seen)
+{
+    int const window_width = 300, window_height = 300;
+    int const window_top_left_x = 64, window_top_left_y = 12;
+    int const touch_x = window_top_left_x + 27, touch_y = window_top_left_y + 140;
+    int const dx = 37, dy = -52;
+
+    wlcs::Client client{the_server()};
+
+    auto surface = client.create_visible_surface(
+        window_width,
+        window_height);
+
+    the_server().move_surface_to(surface, window_top_left_x, window_top_left_y);
+
+    auto const wl_surface = static_cast<struct wl_surface*>(surface);
+
+    auto touch = the_server().create_touch();
+
+    touch.down_at(touch_x, touch_y);
+    client.roundtrip();
+    ASSERT_THAT(client.touched_window(), Eq(wl_surface)) << "touch did not register on surface";
+    ASSERT_THAT(client.touch_position(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(touch_x - window_top_left_x),
+                    wl_fixed_from_int(touch_y - window_top_left_y)))) << "touch came down in the wrong place";
+
+    touch.move_to(touch_x + dx, touch_y + dy);
+    client.roundtrip();
+    ASSERT_THAT(client.touched_window(), Eq(wl_surface)) << "surface was unfocused when it shouldn't have been";
+    ASSERT_THAT(client.touch_position(),
+                Ne(std::make_pair(
+                    wl_fixed_from_int(touch_x - window_top_left_x),
+                    wl_fixed_from_int(touch_y - window_top_left_y)))) << "touch did not move";
+    ASSERT_THAT(client.touch_position(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(touch_x - window_top_left_x + dx),
+                    wl_fixed_from_int(touch_y - window_top_left_y + dy)))) << "touch did not end up in the right place";
+
+    touch.up();
+    client.roundtrip();
+}
