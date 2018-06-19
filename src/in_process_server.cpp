@@ -337,6 +337,8 @@ public:
         if (registry) wl_registry_destroy(registry);
         for (auto shell_surface: wl_shell_surfaces) wl_shell_surface_destroy(shell_surface);
         wl_shell_surfaces.clear();
+        xdg_surfaces_v6.clear();
+        xdg_toplevels_v6.clear();
         if (seat) wl_seat_destroy(seat);
         if (pointer) wl_pointer_destroy(pointer);
         if (touch) wl_touch_destroy(touch);
@@ -383,13 +385,32 @@ public:
         return *buffer;
     }
 
-    Surface create_visible_surface(Client& client, int width, int height)
+    Surface create_wl_shell_surface(Client& client, int width, int height)
     {
         Surface surface{client};
 
         wl_shell_surface * shell_surface = wl_shell_get_shell_surface(shell, surface);
         wl_shell_surfaces.push_back(shell_surface);
         wl_shell_surface_set_toplevel(shell_surface);
+
+        wl_surface_commit(surface);
+
+        surface.attach_buffer(width, height);
+
+        bool surface_rendered{false};
+        surface.add_frame_callback([&surface_rendered](auto) { surface_rendered = true; });
+        wl_surface_commit(surface);
+        dispatch_until([&surface_rendered]() { return surface_rendered; });
+        return surface;
+    }
+
+    Surface create_xdg_shell_v6_surface(Client& client, int width, int height)
+    {
+        Surface surface{client};
+
+        xdg_surfaces_v6.push_back(std::make_unique<XdgSurfaceV6>(client, surface));
+        xdg_toplevels_v6.push_back(std::make_unique<XdgToplevelV6>(*xdg_surfaces_v6.back()));
+
         wl_surface_commit(surface);
 
         surface.attach_buffer(width, height);
@@ -790,6 +811,8 @@ private:
     struct wl_touch* touch = nullptr;
     struct wl_data_device_manager* data_device_manager = nullptr;
     struct zxdg_shell_v6* xdg_shell_v6 = nullptr;
+    std::vector<std::unique_ptr<XdgSurfaceV6>> xdg_surfaces_v6;
+    std::vector<std::unique_ptr<XdgToplevelV6>> xdg_toplevels_v6;
     struct xdg_wm_base* xdg_shell_stable = nullptr;
 
     struct SurfaceLocation
@@ -853,9 +876,19 @@ wlcs::ShmBuffer const& wlcs::Client::create_buffer(int width, int height)
     return impl->create_buffer(*this, width, height);
 }
 
+wlcs::Surface wlcs::Client::create_wl_shell_surface(int width, int height)
+{
+    return impl->create_wl_shell_surface(*this, width, height);
+}
+
+wlcs::Surface wlcs::Client::create_xdg_shell_v6_surface(int width, int height)
+{
+    return impl->create_xdg_shell_v6_surface(*this, width, height);
+}
+
 wlcs::Surface wlcs::Client::create_visible_surface(int width, int height)
 {
-    return impl->create_visible_surface(*this, width, height);
+    return impl->create_wl_shell_surface(*this, width, height);
 }
 
 wl_shell* wlcs::Client::shell() const

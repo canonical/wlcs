@@ -166,6 +166,8 @@ public:
     wl_seat* seat() const;
 
     ShmBuffer const& create_buffer(int width, int height);
+    Surface create_wl_shell_surface(int width, int height);
+    Surface create_xdg_shell_v6_surface(int width, int height);
     Surface create_visible_surface(int width, int height);
 
     wl_shell* shell() const;
