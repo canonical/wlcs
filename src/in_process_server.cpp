@@ -337,14 +337,13 @@ public:
         if (registry) wl_registry_destroy(registry);
         for (auto shell_surface: wl_shell_surfaces) wl_shell_surface_destroy(shell_surface);
         wl_shell_surfaces.clear();
-        xdg_surfaces_v6.clear();
-        xdg_toplevels_v6.clear();
         if (seat) wl_seat_destroy(seat);
         if (pointer) wl_pointer_destroy(pointer);
         if (touch) wl_touch_destroy(touch);
         if (data_device_manager) wl_data_device_manager_destroy(data_device_manager);
         if (xdg_shell_v6) zxdg_shell_v6_destroy(xdg_shell_v6);
         if (xdg_shell_stable) xdg_wm_base_destroy(xdg_shell_stable);
+        resources.clear();
         wl_display_disconnect(display);
     }
 
@@ -378,6 +377,11 @@ public:
         return seat;
     }
 
+    void attach_resource(std::shared_ptr<void> resource)
+    {
+        resources.push_back(move(resource));
+    }
+
     ShmBuffer const& create_buffer(Client& client, int width, int height)
     {
         auto buffer = std::make_shared<ShmBuffer>(client, width, height);
@@ -408,8 +412,11 @@ public:
     {
         Surface surface{client};
 
-        xdg_surfaces_v6.push_back(std::make_unique<XdgSurfaceV6>(client, surface));
-        xdg_toplevels_v6.push_back(std::make_unique<XdgToplevelV6>(*xdg_surfaces_v6.back()));
+        auto xdg_surface = std::make_unique<XdgSurfaceV6>(client, surface);
+        auto xdg_toplevel = std::make_unique<XdgToplevelV6>(*xdg_surface);
+
+        resources.push_back(move(xdg_surface));
+        resources.push_back(move(xdg_toplevel));
 
         wl_surface_commit(surface);
 
@@ -811,8 +818,7 @@ private:
     struct wl_touch* touch = nullptr;
     struct wl_data_device_manager* data_device_manager = nullptr;
     struct zxdg_shell_v6* xdg_shell_v6 = nullptr;
-    std::vector<std::unique_ptr<XdgSurfaceV6>> xdg_surfaces_v6;
-    std::vector<std::unique_ptr<XdgToplevelV6>> xdg_toplevels_v6;
+    std::vector<std::shared_ptr<void>> resources;
     struct xdg_wm_base* xdg_shell_stable = nullptr;
 
     struct SurfaceLocation
@@ -869,6 +875,11 @@ struct wl_data_device_manager* wlcs::Client::data_device_manager() const
 wl_seat* wlcs::Client::seat() const
 {
     return impl->wl_seat();
+}
+
+void wlcs::Client::attach_resource(std::shared_ptr<void> resource)
+{
+    impl->attach_resource(move(resource));
 }
 
 wlcs::ShmBuffer const& wlcs::Client::create_buffer(int width, int height)
