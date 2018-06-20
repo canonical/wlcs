@@ -343,7 +343,8 @@ public:
         if (data_device_manager) wl_data_device_manager_destroy(data_device_manager);
         if (xdg_shell_v6) zxdg_shell_v6_destroy(xdg_shell_v6);
         if (xdg_shell_stable) xdg_wm_base_destroy(xdg_shell_stable);
-        resources.clear();
+        for (auto callback: destruction_callbacks) callback();
+        destruction_callbacks.clear();
         wl_display_disconnect(display);
     }
 
@@ -377,9 +378,9 @@ public:
         return seat;
     }
 
-    void attach_resource(std::shared_ptr<void> resource)
+    void run_on_destruction(std::function<void()> callback)
     {
-        resources.push_back(move(resource));
+        destruction_callbacks.push_back(callback);
     }
 
     ShmBuffer const& create_buffer(Client& client, int width, int height)
@@ -412,11 +413,14 @@ public:
     {
         Surface surface{client};
 
-        auto xdg_surface = std::make_unique<XdgSurfaceV6>(client, surface);
-        auto xdg_toplevel = std::make_unique<XdgToplevelV6>(*xdg_surface);
+        auto xdg_surface = std::make_shared<XdgSurfaceV6>(client, surface);
+        auto xdg_toplevel = std::make_shared<XdgToplevelV6>(*xdg_surface);
 
-        resources.push_back(move(xdg_surface));
-        resources.push_back(move(xdg_toplevel));
+        run_on_destruction([xdg_surface, xdg_toplevel]() mutable
+            {
+                xdg_surface.reset();
+                xdg_toplevel.reset();
+            });
 
         wl_surface_commit(surface);
 
@@ -818,7 +822,7 @@ private:
     struct wl_touch* touch = nullptr;
     struct wl_data_device_manager* data_device_manager = nullptr;
     struct zxdg_shell_v6* xdg_shell_v6 = nullptr;
-    std::vector<std::shared_ptr<void>> resources;
+    std::vector<std::function<void()>> destruction_callbacks;
     struct xdg_wm_base* xdg_shell_stable = nullptr;
 
     struct SurfaceLocation
@@ -877,9 +881,9 @@ wl_seat* wlcs::Client::seat() const
     return impl->wl_seat();
 }
 
-void wlcs::Client::attach_resource(std::shared_ptr<void> resource)
+void wlcs::Client::run_on_destruction(std::function<void()> callback)
 {
-    impl->attach_resource(move(resource));
+    impl->run_on_destruction(callback);
 }
 
 wlcs::ShmBuffer const& wlcs::Client::create_buffer(int width, int height)
