@@ -22,6 +22,7 @@
 #include <gmock/gmock.h>
 
 #include <vector>
+#include <memory>
 
 using namespace testing;
 
@@ -167,9 +168,7 @@ INSTANTIATE_TEST_CASE_P(
                     auto surface = client.create_wl_shell_surface(
                         width,
                         height);
-
                     server.the_server().move_surface_to(surface, x, y);
-
                     return std::make_unique<wlcs::Surface>(std::move(surface));
                 }
             }
@@ -187,9 +186,7 @@ INSTANTIATE_TEST_CASE_P(
                     auto surface = client.create_xdg_shell_v6_surface(
                         width,
                         height);
-
                     server.the_server().move_surface_to(surface, x, y);
-
                     return std::make_unique<wlcs::Surface>(std::move(surface));;
                 }
             }
@@ -204,16 +201,16 @@ INSTANTIATE_TEST_CASE_P(
             [](wlcs::InProcessServer& server, wlcs::Client& client, int x, int y, int width, int height)
                 -> std::unique_ptr<wlcs::Surface>
                 {
-                    int const offset_x = 20, offset_y = -30;
-
                     auto main_surface = client.create_wl_shell_surface(
                         width,
                         height);
-
-                    server.the_server().move_surface_to(main_surface, x - offset_x, y - offset_y);
-
-                    auto subusrface = wlcs::Subsurface::create_visible(main_surface, offset_x, offset_y, width, height);
-
+                    server.the_server().move_surface_to(main_surface, x, y);
+                    auto subusrface = wlcs::Subsurface::create_visible(main_surface, 0, 0, width, height);
+                    client.run_on_destruction(
+                        [main_surface = std::make_shared<wlcs::Surface>(std::move(main_surface))]() mutable
+                        {
+                            main_surface.reset();
+                        });
                     return std::make_unique<wlcs::Surface>(std::move(subusrface));
                 }
             }
@@ -228,16 +225,16 @@ INSTANTIATE_TEST_CASE_P(
             [](wlcs::InProcessServer& server, wlcs::Client& client, int x, int y, int width, int height)
                 -> std::unique_ptr<wlcs::Surface>
                 {
-                    int const offset_x = 20, offset_y = -30;
-
                     auto main_surface = client.create_xdg_shell_v6_surface(
                         width,
                         height);
-
-                    server.the_server().move_surface_to(main_surface, x - offset_x, y - offset_y);
-
-                    auto subusrface = wlcs::Subsurface::create_visible(main_surface, offset_x, offset_y, width, height);
-
+                    server.the_server().move_surface_to(main_surface, x, y);
+                    auto subusrface = wlcs::Subsurface::create_visible(main_surface, 0, 0, width, height);
+                    client.run_on_destruction(
+                        [main_surface = std::make_shared<wlcs::Surface>(std::move(main_surface))]() mutable
+                        {
+                            main_surface.reset();
+                        });
                     return std::make_unique<wlcs::Surface>(std::move(subusrface));
                 }
             }
