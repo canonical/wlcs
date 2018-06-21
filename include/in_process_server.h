@@ -165,6 +165,8 @@ public:
     wl_data_device_manager* data_device_manager() const;
     wl_seat* seat() const;
 
+    void run_on_destruction(std::function<void()> callback);
+
     ShmBuffer const& create_buffer(int width, int height);
     Surface create_wl_shell_surface(int width, int height);
     Surface create_xdg_shell_v6_surface(int width, int height);
