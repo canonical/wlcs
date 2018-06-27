@@ -207,7 +207,54 @@ TEST_F(SubsurfaceTest, one_subsurface_to_another_fallthrough)
                     wl_fixed_from_int(pointer_y_2 - surface_y))));
 }
 
-// TODO: subsurface of subsurface
+TEST_F(SubsurfaceTest, subsurface_of_a_subsurface_handled)
+{
+    int const pointer_x_0 = surface_x + 10, pointer_y_0 = surface_y + 3;
+    int const pointer_x_1 = surface_x + 10, pointer_y_1 = surface_y + 10;
+    int const pointer_x_2 = surface_x + 20, pointer_y_2 = surface_y + 10;
+    int const subsurface_x = 0, subsurface_y = 5;
+    move_subsurface_to(subsurface_x, subsurface_y);
+
+    auto subsurface_top{wlcs::Subsurface::create_visible(subsurface, -subsurface_x, -subsurface_y, subsurface_width, subsurface_height)};
+
+    auto const wl_region = wl_compositor_create_region(client.compositor());
+    wl_region_add(wl_region, 20, 0, 30, 50);
+    wl_surface_set_input_region(subsurface_top, wl_region);
+    wl_region_destroy(wl_region);
+    wl_surface_commit(subsurface_top);
+    wl_surface_commit(subsurface);
+    wl_surface_commit(main_surface);
+    client.roundtrip();
+
+    auto pointer = the_server().create_pointer();
+
+    pointer.move_to(pointer_x_0, pointer_y_0);
+    client.roundtrip();
+
+    ASSERT_THAT(client.focused_window(), Eq((wl_surface*)main_surface)) << "main surface not focused";
+    EXPECT_THAT(client.pointer_position(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(pointer_x_0 - surface_x),
+                    wl_fixed_from_int(pointer_y_0 - surface_y))));
+
+    pointer.move_to(pointer_x_1, pointer_y_1);
+    client.roundtrip();
+
+    ASSERT_THAT(client.focused_window(), Eq((wl_surface*)subsurface)) << "subsurface not focused";
+    EXPECT_THAT(client.pointer_position(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(pointer_x_1 - surface_x - subsurface_x),
+                    wl_fixed_from_int(pointer_y_1 - surface_y - subsurface_y))));
+
+    pointer.move_to(pointer_x_2, pointer_y_2);
+    client.roundtrip();
+
+    ASSERT_THAT(client.focused_window(), Eq((wl_surface*)subsurface_top)) << "subsurface of subsurface not focused";
+    EXPECT_THAT(client.pointer_position(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(pointer_x_2 - surface_x),
+                    wl_fixed_from_int(pointer_y_2 - surface_y))));
+}
 
 // TODO: subsurface reordering (not in Mir yet)
 

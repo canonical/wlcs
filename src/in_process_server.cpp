@@ -1117,8 +1117,16 @@ wlcs::Subsurface wlcs::Subsurface::create_visible(Surface& parent, int x, int y,
 
     bool surface_rendered{false};
     subsurface.add_frame_callback([&surface_rendered](auto) { surface_rendered = true; });
-    wl_surface_commit(subsurface);
-    wl_surface_commit(parent);
+    wlcs::Surface* surface_ptr = &subsurface;
+    while (surface_ptr)
+    {
+        wl_surface_commit(*surface_ptr);
+        auto subsurface_ptr = dynamic_cast<wlcs::Subsurface*>(surface_ptr);
+        if (subsurface_ptr)
+            surface_ptr = &subsurface_ptr->parent();
+        else
+            surface_ptr = nullptr;
+    }
     parent.owner().dispatch_until([&surface_rendered]() { return surface_rendered; });
 
     return subsurface;
@@ -1139,7 +1147,7 @@ wlcs::Subsurface::operator wl_subsurface*() const
     return impl->subsurface_;
 }
 
-wlcs::Surface& wlcs::Subsurface::parent()
+wlcs::Surface& wlcs::Subsurface::parent() const
 {
     return impl->parent_;
 }
