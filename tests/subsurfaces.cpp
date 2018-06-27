@@ -198,6 +198,109 @@ TEST_F(SubsurfaceTest, sync_mode_works_correctly)
         << "subsurface not in the right place after it should have moved a second time";
 }
 
+TEST_F(SubsurfaceTest, desync_mode_works_correctly)
+{
+    int const pointer_x = 30, pointer_y = 30;
+    int const subsurface_x_0 = 10, subsurface_y_0 = 10;
+    int const subsurface_x_1 = 20, subsurface_y_1 = 20;
+
+    wl_subsurface_set_position(subsurface, subsurface_x_0, subsurface_y_0);
+    wl_subsurface_set_desync(subsurface);
+    wl_surface_commit(subsurface);
+    wl_surface_commit(main_surface);
+    client.roundtrip();
+
+    auto pointer = the_server().create_pointer();
+    pointer.move_to(0, 0);
+    pointer.move_to(pointer_x + surface_x, pointer_y + surface_y);
+    client.roundtrip();
+
+    ASSERT_THAT(client.focused_window(), Eq((wl_surface*)subsurface));
+    ASSERT_THAT(client.pointer_position(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(pointer_x - subsurface_x_0),
+                    wl_fixed_from_int(pointer_y - subsurface_y_0))));
+
+    wl_subsurface_set_position(subsurface, subsurface_x_1, subsurface_y_1);
+    client.roundtrip();
+
+    pointer.move_to(0, 0);
+    pointer.move_to(pointer_x + surface_x, pointer_y + surface_y);
+    client.roundtrip();
+
+    ASSERT_THAT(client.pointer_position(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(pointer_x - subsurface_x_0),
+                    wl_fixed_from_int(pointer_y - subsurface_y_0))))
+        << "subsurface moved when position was set, before either surface was committed";
+
+    wl_surface_commit(subsurface);
+    client.roundtrip();
+
+    pointer.move_to(0, 0);
+    pointer.move_to(pointer_x + surface_x, pointer_y + surface_y);
+    client.roundtrip();
+
+    ASSERT_THAT(client.pointer_position(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(pointer_x - subsurface_x_1),
+                    wl_fixed_from_int(pointer_y - subsurface_y_1))))
+        << "subsurface not when committed, before parent committed";
+
+    wl_surface_commit(main_surface);
+    client.roundtrip();
+
+    pointer.move_to(0, 0);
+    pointer.move_to(pointer_x + surface_x, pointer_y + surface_y);
+    client.roundtrip();
+
+    ASSERT_THAT(client.pointer_position(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(pointer_x - subsurface_x_1),
+                    wl_fixed_from_int(pointer_y - subsurface_y_1))))
+        << "subsurface not in the right place after it should have moved";
+
+    wl_subsurface_set_position(subsurface, subsurface_x_0, subsurface_y_0);
+    wl_surface_commit(main_surface);
+    client.roundtrip();
+
+    pointer.move_to(0, 0);
+    pointer.move_to(pointer_x + surface_x, pointer_y + surface_y);
+    client.roundtrip();
+
+    ASSERT_THAT(client.pointer_position(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(pointer_x - subsurface_x_1),
+                    wl_fixed_from_int(pointer_y - subsurface_y_1))))
+        << "subsurface moved when parent committed, but before it committed";
+
+    wl_surface_commit(subsurface);
+    client.roundtrip();
+
+    pointer.move_to(0, 0);
+    pointer.move_to(pointer_x + surface_x, pointer_y + surface_y);
+    client.roundtrip();
+
+    ASSERT_THAT(client.pointer_position(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(pointer_x - subsurface_x_0),
+                    wl_fixed_from_int(pointer_y - subsurface_y_0))))
+        << "subsurface not moved when parent committed, then it committed in that order, rather then reverse";
+
+    wl_surface_commit(main_surface);
+    client.roundtrip();
+
+    pointer.move_to(0, 0);
+    pointer.move_to(pointer_x + surface_x, pointer_y + surface_y);
+    client.roundtrip();
+
+    ASSERT_THAT(client.pointer_position(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(pointer_x - subsurface_x_0),
+                    wl_fixed_from_int(pointer_y - subsurface_y_0))))
+        << "subsurface not in the right place after it should have moved a second time";
+}
+
 TEST_F(SubsurfaceTest, subsurface_extends_parent_input_region)
 {
     int const pointer_x = surface_x - 5, pointer_y = surface_y + surface_height + 8;
@@ -344,4 +447,6 @@ TEST_F(SubsurfaceTest, subsurface_of_a_subsurface_handled)
 
 // TODO: subsurface reordering (not in Mir yet)
 
-// TODO: sync and desync
+// TODO: combinations of sync and desync at various levels of the tree
+
+// TODO: make tests parameterized so they run on all shells and with both pointer and touch
