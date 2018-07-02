@@ -10,9 +10,12 @@ branches:
   - trying
   - master
 
+addons:
+  apt:
+    packages:
+    - snapd
+
 install:
-  - sudo apt-get update
-  - sudo apt-get --yes install snapd
   - sudo snap install lxd
   - sudo addgroup --system lxd
   - sudo adduser $USER lxd
