@@ -96,7 +96,7 @@ class Surface
 {
 public:
     Surface(Client& client);
-    ~Surface();
+    virtual ~Surface();
 
     Surface(Surface&& other);
 
@@ -109,6 +109,7 @@ public:
     std::pair<int, int> pointer_position() const;
 
     Client& owner() const;
+
 private:
     class Impl;
     std::unique_ptr<Impl> impl;
@@ -125,7 +126,7 @@ public:
 
     operator wl_subsurface*() const;
 
-    Surface& parent();
+    Surface& parent() const;
 
 private:
     class Impl;
