@@ -118,7 +118,7 @@ public:
                 surface_configure_count++;
             });
 
-        toplevel.add_configure_notification([this] (int32_t width, int32_t height, struct wl_array *states)
+        toplevel.add_configure_notification([this](int32_t width, int32_t height, struct wl_array *states)
             {
                 state = wlcs::XdgToplevelV6::State{width, height, states};
             });
@@ -174,7 +174,7 @@ TEST_F(XdgToplevelV6Configuration, defaults)
     EXPECT_THAT(state.activated, Eq(true));
 }
 
-TEST_F(XdgToplevelV6Configuration, maximized_and_unmaximized)
+TEST_F(XdgToplevelV6Configuration, window_can_maximize_itself)
 {
     wlcs::Client client{the_server()};
     ConfigurationWindow window{client};
@@ -189,6 +189,18 @@ TEST_F(XdgToplevelV6Configuration, maximized_and_unmaximized)
     EXPECT_THAT(state.fullscreen, Eq(false));
     EXPECT_THAT(state.resizing, Eq(false));
     EXPECT_THAT(state.activated, Eq(true));
+}
+
+TEST_F(XdgToplevelV6Configuration, window_can_unmaximize_itself)
+{
+    wlcs::Client client{the_server()};
+    ConfigurationWindow window{client};
+    auto& state = window.state;
+
+    zxdg_toplevel_v6_set_maximized(window);
+    window.dispatch_until_configure();
+
+    ASSERT_THAT(state.maximized, Eq(true)) << "test could not run as precondition failed";
 
     zxdg_toplevel_v6_unset_maximized(window);
     window.dispatch_until_configure();
@@ -199,7 +211,7 @@ TEST_F(XdgToplevelV6Configuration, maximized_and_unmaximized)
     EXPECT_THAT(state.activated, Eq(true));
 }
 
-TEST_F(XdgToplevelV6Configuration, fullscreened_and_restored)
+TEST_F(XdgToplevelV6Configuration, window_can_fullscreen_itself)
 {
     wlcs::Client client{the_server()};
     ConfigurationWindow window{client};
@@ -214,6 +226,18 @@ TEST_F(XdgToplevelV6Configuration, fullscreened_and_restored)
     EXPECT_THAT(state.fullscreen, Eq(true));
     EXPECT_THAT(state.resizing, Eq(false));
     EXPECT_THAT(state.activated, Eq(true));
+}
+
+TEST_F(XdgToplevelV6Configuration, window_can_unfullscreen_itself)
+{
+    wlcs::Client client{the_server()};
+    ConfigurationWindow window{client};
+    auto& state = window.state;
+
+    zxdg_toplevel_v6_set_fullscreen(window, nullptr);
+    window.dispatch_until_configure();
+
+    EXPECT_THAT(state.fullscreen, Eq(true)) << "test could not run as precondition failed";
 
     zxdg_toplevel_v6_unset_fullscreen(window);
     window.dispatch_until_configure();
@@ -224,7 +248,7 @@ TEST_F(XdgToplevelV6Configuration, fullscreened_and_restored)
     EXPECT_THAT(state.activated, Eq(true));
 }
 
-TEST_F(XdgToplevelV6Configuration, switched_activated_window)
+TEST_F(XdgToplevelV6Configuration, activated_state_follows_pointer)
 {
     wlcs::Client client{the_server()};
 
@@ -244,8 +268,8 @@ TEST_F(XdgToplevelV6Configuration, switched_activated_window)
     pointer.left_click();
     client.roundtrip();
 
-    EXPECT_THAT(state_a.activated, Eq(true));
-    EXPECT_THAT(state_b.activated, Eq(false));
+    ASSERT_THAT(state_a.activated, Eq(true));
+    ASSERT_THAT(state_b.activated, Eq(false));
 
     pointer.move_to(b_x + 10, b_y + 10);
     pointer.left_click();
