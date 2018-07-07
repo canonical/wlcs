@@ -117,7 +117,6 @@ TEST_F(XdgToplevelV6Configuration, maximized_and_unmaximized)
     XdgToplevelConfigurationWindow window{client};
 
     zxdg_toplevel_v6_set_maximized(window);
-    wl_surface_commit(window);
     window.dispatch_until_configure();
 
     ASSERT_THAT(window.state, Ne(std::experimental::nullopt));
@@ -130,7 +129,6 @@ TEST_F(XdgToplevelV6Configuration, maximized_and_unmaximized)
     EXPECT_THAT(state.activated, Eq(true));
 
     zxdg_toplevel_v6_unset_maximized(window);
-    wl_surface_commit(window);
     window.dispatch_until_configure();
 
     ASSERT_THAT(window.state, Ne(std::experimental::nullopt));
@@ -149,7 +147,6 @@ TEST_F(XdgToplevelV6Configuration, fullscreened_and_restored)
     XdgToplevelConfigurationWindow window{client};
 
     zxdg_toplevel_v6_set_fullscreen(window, nullptr);
-    wl_surface_commit(window);
     window.dispatch_until_configure();
 
     ASSERT_THAT(window.state, Ne(std::experimental::nullopt));
@@ -162,7 +159,6 @@ TEST_F(XdgToplevelV6Configuration, fullscreened_and_restored)
     EXPECT_THAT(state.activated, Eq(true));
 
     zxdg_toplevel_v6_unset_fullscreen(window);
-    wl_surface_commit(window);
     window.dispatch_until_configure();
 
     ASSERT_THAT(window.state, Ne(std::experimental::nullopt));
