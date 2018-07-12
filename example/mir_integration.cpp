@@ -698,7 +698,7 @@ WlcsPointer* wlcs_server_create_pointer(WlcsDisplayServer* server)
     auto fake_mouse = mtf::add_fake_input_device(
         mi::InputDeviceInfo{"mouse", uid, mi::DeviceCapability::pointer});
 
-    mouse_added->wait_for(std::chrono::seconds{5});
+    mouse_added->wait_for(a_long_time);
     runner->executor->spawn([observer=std::move(observer), the_input_device_hub=runner->server.the_input_device_hub()]
         { the_input_device_hub->remove_observer(observer); });
 
@@ -728,7 +728,7 @@ void wlcs_pointer_move_relative(WlcsPointer* pointer, wl_fixed_t x, wl_fixed_t y
             .with_movement(wl_fixed_to_int(x), wl_fixed_to_int(y))
             .with_event_time(event_time));
 
-    event_sent->wait_for(std::chrono::seconds{5});
+    event_sent->wait_for(a_long_time);
 }
 
 void wlcs_pointer_move_absolute(WlcsPointer* pointer, wl_fixed_t x, wl_fixed_t y)
@@ -755,7 +755,7 @@ void wlcs_pointer_button_down(WlcsPointer* pointer, int button)
             .of_button(button)
             .with_event_time(event_time));
 
-    event_sent->wait_for(std::chrono::seconds{5});
+    event_sent->wait_for(a_long_time);
 }
 
 void wlcs_pointer_button_up(WlcsPointer* pointer, int button)
@@ -772,7 +772,7 @@ void wlcs_pointer_button_up(WlcsPointer* pointer, int button)
             .of_button(button)
             .with_event_time(event_time));
 
-    event_sent->wait_for(std::chrono::seconds{5});
+    event_sent->wait_for(a_long_time);
 }
 
 struct FakeTouch
@@ -828,7 +828,7 @@ WlcsTouch* wlcs_server_create_touch(WlcsDisplayServer* server)
     auto fake_touch_dev = mtf::add_fake_input_device(
         mi::InputDeviceInfo{"touch", uid, mi::DeviceCapability::multitouch});
 
-    touch_added->wait_for(std::chrono::seconds{5});
+    touch_added->wait_for(a_long_time);
     runner->executor->spawn([observer=std::move(observer), the_input_device_hub=runner->server.the_input_device_hub()]
         { the_input_device_hub->remove_observer(observer); });
 
@@ -862,7 +862,7 @@ void wlcs_touch_down(WlcsTouch* touch, int x, int y)
            .at_position({x, y})
            .with_event_time(event_time));
 
-    event_sent->wait_for(std::chrono::seconds{5});
+    event_sent->wait_for(a_long_time);
 }
 
 void wlcs_touch_move(WlcsTouch* touch, int x, int y)
@@ -883,7 +883,7 @@ void wlcs_touch_move(WlcsTouch* touch, int x, int y)
             .at_position({x, y})
             .with_event_time(event_time));
 
-    event_sent->wait_for(std::chrono::seconds{5});
+    event_sent->wait_for(a_long_time);
 }
 
 void wlcs_touch_up(WlcsTouch* touch)
@@ -901,7 +901,7 @@ void wlcs_touch_up(WlcsTouch* touch)
             .at_position({device->last_x, device->last_y})
             .with_event_time(event_time));
 
-    event_sent->wait_for(std::chrono::seconds{5});
+    event_sent->wait_for(a_long_time);
 }
 
 void wlcs_server_position_window_absolute(WlcsDisplayServer* server, wl_display* client, wl_surface* surface, int x, int y)
