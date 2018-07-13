@@ -519,6 +519,21 @@ private:
     wlcs::Mutex<std::unordered_map<std::chrono::nanoseconds, std::shared_ptr<mir::test::Signal>>> expected_events;
     MirWlcsDisplayServer& runner;
 };
+
+template<typename T>
+void emit_mir_event(MirWlcsDisplayServer* runner,
+                    mir::UniqueModulePtr<mir_test_framework::FakeInputDevice>& emitter,
+                    T event)
+{
+    auto event_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::steady_clock::now().time_since_epoch());
+
+    auto event_sent = runner->event_listener->expect_event_with_time(event_time);
+
+    emitter->emit_event(event.with_event_time(event_time));
+
+    EXPECT_THAT(event_sent->wait_for(a_long_time), testing::Eq(true)) << "fake event failed to go through";
+}
 }
 
 void wlcs_server_start(WlcsDisplayServer* server)
@@ -718,17 +733,10 @@ void wlcs_pointer_move_relative(WlcsPointer* pointer, wl_fixed_t x, wl_fixed_t y
 {
     auto device = reinterpret_cast<FakePointer*>(pointer);
 
-    auto event_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
-        std::chrono::steady_clock::now().time_since_epoch());
+    auto event = mir::input::synthesis::a_pointer_event()
+                    .with_movement(wl_fixed_to_int(x), wl_fixed_to_int(y));
 
-    auto event_sent = device->runner->event_listener->expect_event_with_time(event_time);
-
-    device->pointer->emit_event(
-        mir::input::synthesis::a_pointer_event()
-            .with_movement(wl_fixed_to_int(x), wl_fixed_to_int(y))
-            .with_event_time(event_time));
-
-    event_sent->wait_for(a_long_time);
+    emit_mir_event(device->runner, device->pointer, event);
 }
 
 void wlcs_pointer_move_absolute(WlcsPointer* pointer, wl_fixed_t x, wl_fixed_t y)
@@ -745,34 +753,20 @@ void wlcs_pointer_button_down(WlcsPointer* pointer, int button)
 {
     auto device = reinterpret_cast<FakePointer*>(pointer);
 
-    auto event_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
-        std::chrono::steady_clock::now().time_since_epoch());
+    auto event = mir::input::synthesis::a_button_down_event()
+                    .of_button(button);
 
-    auto event_sent = device->runner->event_listener->expect_event_with_time(event_time);
-
-    device->pointer->emit_event(
-        mir::input::synthesis::a_button_down_event()
-            .of_button(button)
-            .with_event_time(event_time));
-
-    event_sent->wait_for(a_long_time);
+    emit_mir_event(device->runner, device->pointer, event);
 }
 
 void wlcs_pointer_button_up(WlcsPointer* pointer, int button)
 {
     auto device = reinterpret_cast<FakePointer*>(pointer);
 
-    auto event_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
-        std::chrono::steady_clock::now().time_since_epoch());
+    auto event = mir::input::synthesis::a_button_up_event()
+                    .of_button(button);
 
-    auto event_sent = device->runner->event_listener->expect_event_with_time(event_time);
-
-    device->pointer->emit_event(
-        mir::input::synthesis::a_button_up_event()
-            .of_button(button)
-            .with_event_time(event_time));
-
-    event_sent->wait_for(a_long_time);
+    emit_mir_event(device->runner, device->pointer, event);
 }
 
 struct FakeTouch
@@ -848,60 +842,39 @@ void wlcs_touch_down(WlcsTouch* touch, int x, int y)
 {
     auto device = reinterpret_cast<FakeTouch*>(touch);
 
-    auto event_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
-       std::chrono::steady_clock::now().time_since_epoch());
-
-    auto event_sent = device->runner->event_listener->expect_event_with_time(event_time);
-
     device->last_x = x;
     device->last_y = y;
 
-    device->touch->emit_event(
-       mir::input::synthesis::a_touch_event()
-           .with_action(mir::input::synthesis::TouchParameters::Action::Tap)
-           .at_position({x, y})
-           .with_event_time(event_time));
+    auto event = mir::input::synthesis::a_touch_event()
+                    .with_action(mir::input::synthesis::TouchParameters::Action::Tap)
+                    .at_position({x, y});
 
-    event_sent->wait_for(a_long_time);
+    emit_mir_event(device->runner, device->touch, event);
 }
 
 void wlcs_touch_move(WlcsTouch* touch, int x, int y)
 {
     auto device = reinterpret_cast<FakeTouch*>(touch);
 
-    auto event_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
-       std::chrono::steady_clock::now().time_since_epoch());
-
-    auto event_sent = device->runner->event_listener->expect_event_with_time(event_time);
-
     device->last_x = x;
     device->last_y = y;
 
-    device->touch->emit_event(
-        mir::input::synthesis::a_touch_event()
-            .with_action(mir::input::synthesis::TouchParameters::Action::Move)
-            .at_position({x, y})
-            .with_event_time(event_time));
+    auto event = mir::input::synthesis::a_touch_event()
+                    .with_action(mir::input::synthesis::TouchParameters::Action::Move)
+                    .at_position({x, y});
 
-    event_sent->wait_for(a_long_time);
+    emit_mir_event(device->runner, device->touch, event);
 }
 
 void wlcs_touch_up(WlcsTouch* touch)
 {
     auto device = reinterpret_cast<FakeTouch*>(touch);
 
-    auto event_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
-       std::chrono::steady_clock::now().time_since_epoch());
+    auto event = mir::input::synthesis::a_touch_event()
+                    .with_action(mir::input::synthesis::TouchParameters::Action::Release)
+                    .at_position({device->last_x, device->last_y});
 
-    auto event_sent = device->runner->event_listener->expect_event_with_time(event_time);
-
-    device->touch->emit_event(
-        mir::input::synthesis::a_touch_event()
-            .with_action(mir::input::synthesis::TouchParameters::Action::Release)
-            .at_position({device->last_x, device->last_y})
-            .with_event_time(event_time));
-
-    event_sent->wait_for(a_long_time);
+    emit_mir_event(device->runner, device->touch, event);
 }
 
 void wlcs_server_position_window_absolute(WlcsDisplayServer* server, wl_display* client, wl_surface* surface, int x, int y)
