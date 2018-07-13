@@ -44,6 +44,8 @@ wlcs::XdgToplevelV6::State::State(int32_t width, int32_t height, struct wl_array
       resizing{false},
       activated{false}
 {
+    if (!states)
+        return;
     zxdg_toplevel_v6_state* item;
     for (item = static_cast<zxdg_toplevel_v6_state*>(states->data);
          (char*)item < static_cast<char*>(states->data) + states->size;

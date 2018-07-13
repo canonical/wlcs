@@ -26,6 +26,7 @@
 #include "generated/xdg-shell-unstable-v6-client.h"
 #include "generated/xdg-shell-client.h"
 
+#include "linux/input.h"
 #include <boost/throw_exception.hpp>
 #include <stdexcept>
 #include <memory>
@@ -70,6 +71,20 @@ public:
             wl_fixed_from_int(dy));
     }
 
+    void button_down(int button)
+    {
+        wlcs_pointer_button_down(
+            pointer.get(),
+            button);
+    }
+
+    void button_up(int button)
+    {
+        wlcs_pointer_button_up(
+            pointer.get(),
+            button);
+    }
+
 private:
     std::unique_ptr<WlcsPointer, decltype(&wlcs_destroy_pointer)> const pointer;
 };
@@ -90,6 +105,37 @@ void wlcs::Pointer::move_to(int x, int y)
 void wlcs::Pointer::move_by(int dx, int dy)
 {
     impl->move_by(dx, dy);
+}
+
+void wlcs::Pointer::button_down(int button)
+{
+    impl->button_down(button);
+}
+
+void wlcs::Pointer::button_up(int button)
+{
+    impl->button_up(button);
+}
+
+void wlcs::Pointer::click(int button)
+{
+    button_down(button);
+    button_up(button);
+}
+
+void wlcs::Pointer::left_button_down()
+{
+    button_down(BTN_LEFT);
+}
+
+void wlcs::Pointer::left_button_up()
+{
+    button_up(BTN_LEFT);
+}
+
+void wlcs::Pointer::left_click()
+{
+    click(BTN_LEFT);
 }
 
 class wlcs::Touch::Impl
@@ -490,6 +536,10 @@ public:
     {
         motion_notifiers.push_back(on_motion);
     }
+    void add_pointer_button_notification(PointerButtonNotifier const& on_button)
+    {
+        button_notifiers.push_back(on_button);
+    }
 
     void* acquire_interface(std::string const& interface, wl_interface const* to_bind, uint32_t version)
     {
@@ -639,6 +689,30 @@ private:
         }
     }
 
+    static void pointer_button(
+        void *ctx,
+        wl_pointer* /*wl_pointer*/,
+        uint32_t serial,
+        uint32_t /*time*/,
+        uint32_t button,
+        uint32_t state)
+    {
+        auto me = static_cast<Impl*>(ctx);
+
+        std::vector<decltype(button_notifiers)::const_iterator> to_remove;
+        for (auto notifier = me->button_notifiers.begin(); notifier != me->button_notifiers.end(); ++notifier)
+        {
+            if (!(*notifier)(serial, button, state == WL_POINTER_BUTTON_STATE_PRESSED))
+            {
+                to_remove.push_back(notifier);
+            }
+        }
+        for (auto removed : to_remove)
+        {
+            me->button_notifiers.erase(removed);
+        }
+    }
+
     static void pointer_frame(void* /*ctx*/, wl_pointer* /*pointer*/)
     {
     }
@@ -647,7 +721,7 @@ private:
         &Impl::pointer_enter,
         &Impl::pointer_leave,
         &Impl::pointer_motion,
-        nullptr,    // button
+        &Impl::pointer_button,
         nullptr,    // axis
         &Impl::pointer_frame,    // frame
         nullptr,    // axis_source
@@ -837,6 +911,7 @@ private:
     std::vector<PointerEnterNotifier> enter_notifiers;
     std::vector<PointerLeaveNotifier> leave_notifiers;
     std::vector<PointerMotionNotifier> motion_notifiers;
+    std::vector<PointerButtonNotifier> button_notifiers;
 };
 
 constexpr wl_pointer_listener wlcs::Client::Impl::pointer_listener;
@@ -954,6 +1029,11 @@ void wlcs::Client::add_pointer_leave_notification(PointerLeaveNotifier const& on
 void wlcs::Client::add_pointer_motion_notification(PointerMotionNotifier const& on_motion)
 {
     impl->add_pointer_motion_notification(on_motion);
+}
+
+void wlcs::Client::add_pointer_button_notification(PointerButtonNotifier const& on_button)
+{
+    impl->add_pointer_button_notification(on_button);
 }
 
 void wlcs::Client::dispatch_until(std::function<bool()> const& predicate)

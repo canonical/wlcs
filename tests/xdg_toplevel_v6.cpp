@@ -33,14 +33,80 @@
 
 #include <experimental/optional>
 
+using namespace testing;
+
+using XdgToplevelV6 = wlcs::InProcessServer;
+
+// interactive move is not currently implemented in the WLCS window manager
+TEST_F(XdgToplevelV6, DISABLED_interactive_move)
+{
+    int window_x = 20, window_y = 20;
+    int window_width = 420, window_height = 390;
+    int start_x = window_x + window_width - 5, start_y = window_y + window_height / 2;
+    int dx = 60, dy = -10;
+    int end_x = window_x + dx + 12, end_y = window_y + dy + 18;
+
+    wlcs::Client client{the_server()};
+    wlcs::Surface surface{client};
+    wlcs::XdgSurfaceV6 xdg_surface{client, surface};
+    wlcs::XdgToplevelV6 toplevel{xdg_surface};
+    surface.attach_buffer(window_width, window_height);
+    wl_surface_commit(surface);
+    client.roundtrip();
+
+    the_server().move_surface_to(surface, window_x, window_y);
+
+    auto pointer = the_server().create_pointer();
+
+    bool button_down{false};
+    uint32_t last_serial{0};
+
+    client.add_pointer_button_notification([&](uint32_t serial, uint32_t, bool is_down) -> bool {
+            last_serial = serial;
+            button_down = is_down;
+            return true;
+        });
+
+    pointer.move_to(start_x, start_y);
+    pointer.left_button_down();
+
+    client.dispatch_until([&](){
+            return button_down;
+        });
+
+    zxdg_toplevel_v6_move(toplevel, client.seat(), last_serial);
+    client.roundtrip();
+    pointer.move_to(start_x + dx, start_x + dy);
+    pointer.left_button_up();
+
+    client.dispatch_until([&](){
+            return !button_down;
+        });
+
+    pointer.move_to(end_x, end_y);
+    client.roundtrip();
+
+    EXPECT_THAT(client.focused_window(), Eq(static_cast<struct wl_surface*>(surface)));
+    EXPECT_THAT(client.pointer_position(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(end_x - window_x - dx),
+                    wl_fixed_from_int(end_y - window_y - dy))));
+
+    client.roundtrip();
+}
+
+// TODO: interactive resize
+// This would probably make sense as a parameterized test, with resizing in all directions
+// Like move, resize is not implemented in the current WLCS window manager, and should not be tested until it is
+
 using XdgToplevelV6Configuration = wlcs::InProcessServer;
 
-class XdgToplevelConfigurationWindow
+class ConfigurationWindow
 {
 public:
     int const window_width = 200, window_height = 320;
 
-    XdgToplevelConfigurationWindow(wlcs::Client& client)
+    ConfigurationWindow(wlcs::Client& client)
         : client{client},
           surface{client},
           xdg_surface{client, surface},
@@ -52,7 +118,7 @@ public:
                 surface_configure_count++;
             });
 
-        toplevel.add_configure_notification([this] (int32_t width, int32_t height, struct wl_array *states)
+        toplevel.add_configure_notification([this](int32_t width, int32_t height, struct wl_array *states)
             {
                 state = wlcs::XdgToplevelV6::State{width, height, states};
             });
@@ -64,7 +130,7 @@ public:
         dispatch_until_configure();
     }
 
-    ~XdgToplevelConfigurationWindow()
+    ~ConfigurationWindow()
     {
         client.roundtrip();
     }
@@ -78,6 +144,8 @@ public:
             });
     }
 
+    operator wlcs::Surface&() {return surface;}
+
     operator wl_surface*() const {return surface;}
     operator zxdg_surface_v6*() const {return xdg_surface;}
     operator zxdg_toplevel_v6*() const {return toplevel;}
@@ -88,19 +156,16 @@ public:
     wlcs::XdgToplevelV6 toplevel;
 
     int surface_configure_count{0};
-    std::experimental::optional<wlcs::XdgToplevelV6::State> state;
+    wlcs::XdgToplevelV6::State state{0, 0, nullptr};
 };
 
-TEST_F(XdgToplevelV6Configuration, default)
+TEST_F(XdgToplevelV6Configuration, defaults)
 {
-    using namespace testing;
-
     wlcs::Client client{the_server()};
-    XdgToplevelConfigurationWindow window{client};
+    ConfigurationWindow window{client};
+    auto& state = window.state;
 
     // default values
-    ASSERT_THAT(window.state, Ne(std::experimental::nullopt));
-    auto state = window.state.value();
     EXPECT_THAT(state.width, Eq(0));
     EXPECT_THAT(state.height, Eq(0));
     EXPECT_THAT(state.maximized, Eq(false));
@@ -109,62 +174,107 @@ TEST_F(XdgToplevelV6Configuration, default)
     EXPECT_THAT(state.activated, Eq(true));
 }
 
-TEST_F(XdgToplevelV6Configuration, maximized_and_unmaximized)
+TEST_F(XdgToplevelV6Configuration, window_can_maximize_itself)
 {
-    using namespace testing;
-
     wlcs::Client client{the_server()};
-    XdgToplevelConfigurationWindow window{client};
+    ConfigurationWindow window{client};
+    auto& state = window.state;
 
     zxdg_toplevel_v6_set_maximized(window);
     window.dispatch_until_configure();
 
-    ASSERT_THAT(window.state, Ne(std::experimental::nullopt));
-    auto state = window.state.value();
     EXPECT_THAT(state.width, Gt(0));
     EXPECT_THAT(state.height, Gt(0));
     EXPECT_THAT(state.maximized, Eq(true));
     EXPECT_THAT(state.fullscreen, Eq(false));
     EXPECT_THAT(state.resizing, Eq(false));
     EXPECT_THAT(state.activated, Eq(true));
+}
+
+TEST_F(XdgToplevelV6Configuration, window_can_unmaximize_itself)
+{
+    wlcs::Client client{the_server()};
+    ConfigurationWindow window{client};
+    auto& state = window.state;
+
+    zxdg_toplevel_v6_set_maximized(window);
+    window.dispatch_until_configure();
+
+    ASSERT_THAT(state.maximized, Eq(true)) << "test could not run as precondition failed";
 
     zxdg_toplevel_v6_unset_maximized(window);
     window.dispatch_until_configure();
 
-    ASSERT_THAT(window.state, Ne(std::experimental::nullopt));
-    state = window.state.value();
     EXPECT_THAT(state.maximized, Eq(false));
     EXPECT_THAT(state.fullscreen, Eq(false));
     EXPECT_THAT(state.resizing, Eq(false));
     EXPECT_THAT(state.activated, Eq(true));
 }
 
-TEST_F(XdgToplevelV6Configuration, fullscreened_and_restored)
+TEST_F(XdgToplevelV6Configuration, window_can_fullscreen_itself)
 {
-    using namespace testing;
-
     wlcs::Client client{the_server()};
-    XdgToplevelConfigurationWindow window{client};
+    ConfigurationWindow window{client};
+    auto& state = window.state;
 
     zxdg_toplevel_v6_set_fullscreen(window, nullptr);
     window.dispatch_until_configure();
 
-    ASSERT_THAT(window.state, Ne(std::experimental::nullopt));
-    auto state = window.state.value();
     EXPECT_THAT(state.width, Gt(0));
     EXPECT_THAT(state.height, Gt(0));
     EXPECT_THAT(state.maximized, Eq(false)); // is this right? should it not be maximized, even when fullscreen?
     EXPECT_THAT(state.fullscreen, Eq(true));
     EXPECT_THAT(state.resizing, Eq(false));
     EXPECT_THAT(state.activated, Eq(true));
+}
+
+TEST_F(XdgToplevelV6Configuration, window_can_unfullscreen_itself)
+{
+    wlcs::Client client{the_server()};
+    ConfigurationWindow window{client};
+    auto& state = window.state;
+
+    zxdg_toplevel_v6_set_fullscreen(window, nullptr);
+    window.dispatch_until_configure();
+
+    EXPECT_THAT(state.fullscreen, Eq(true)) << "test could not run as precondition failed";
 
     zxdg_toplevel_v6_unset_fullscreen(window);
     window.dispatch_until_configure();
 
-    ASSERT_THAT(window.state, Ne(std::experimental::nullopt));
-    state = window.state.value();
     EXPECT_THAT(state.maximized, Eq(false));
     EXPECT_THAT(state.fullscreen, Eq(false));
     EXPECT_THAT(state.resizing, Eq(false));
     EXPECT_THAT(state.activated, Eq(true));
+}
+
+TEST_F(XdgToplevelV6Configuration, activated_state_follows_pointer)
+{
+    wlcs::Client client{the_server()};
+
+    ConfigurationWindow window_a{client};
+    auto& state_a = window_a.state;
+    int const a_x = 12, a_y = 15;
+    the_server().move_surface_to(window_a, a_x, a_y);
+
+    ConfigurationWindow window_b{client};
+    auto& state_b = window_b.state;
+    int const b_x = a_x + window_a.window_width + 27, b_y = 15;
+    the_server().move_surface_to(window_b, b_x, b_y);
+
+    auto pointer = the_server().create_pointer();
+
+    pointer.move_to(a_x + 10, a_y + 10);
+    pointer.left_click();
+    client.roundtrip();
+
+    ASSERT_THAT(state_a.activated, Eq(true));
+    ASSERT_THAT(state_b.activated, Eq(false));
+
+    pointer.move_to(b_x + 10, b_y + 10);
+    pointer.left_click();
+    client.roundtrip();
+
+    EXPECT_THAT(state_a.activated, Eq(false));
+    EXPECT_THAT(state_b.activated, Eq(true));
 }

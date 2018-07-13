@@ -42,6 +42,14 @@ public:
     void move_to(int x, int y);
     void move_by(int dx, int dy);
 
+    void button_down(int button);
+    void button_up(int button);
+    void click(int button);
+
+    void left_button_down();
+    void left_button_up();
+    void left_click();
+
 private:
     friend class Server;
     Pointer(WlcsPointer* raw_device);
@@ -187,9 +195,12 @@ public:
         std::function<bool(wl_surface*)>;
     using PointerMotionNotifier =
         std::function<bool(wl_fixed_t x, wl_fixed_t y)>;
+    using PointerButtonNotifier =
+        std::function<bool(uint32_t serial, uint32_t button, bool is_down)>;
     void add_pointer_enter_notification(PointerEnterNotifier const& on_enter);
     void add_pointer_leave_notification(PointerLeaveNotifier const& on_leave);
     void add_pointer_motion_notification(PointerMotionNotifier const& on_motion);
+    void add_pointer_button_notification(PointerButtonNotifier const& on_button);
 
     void* acquire_interface(std::string const& name, wl_interface const* interface, uint32_t version);
 
