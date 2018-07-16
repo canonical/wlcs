@@ -33,6 +33,13 @@
 #include <vector>
 #include <algorithm>
 #include <experimental/optional>
+#include <chrono>
+
+namespace
+{
+using namespace std::chrono_literals;
+auto constexpr a_long_time = 5s;
+}
 
 class ShimNotImplemented : public std::logic_error
 {
@@ -592,6 +599,34 @@ public:
 
     void dispatch_until(std::function<bool()> const& predicate)
     {
+        auto const abort_time = std::chrono::steady_clock::now() + a_long_time;
+
+        while (!predicate())
+        {
+            if (std::chrono::steady_clock::now() > abort_time)
+                FAIL() << "timout waiting for condition";
+
+            if (wl_display_flush(display) < 0)
+            {
+                printf("throwing wayland error A\n");
+                throw_wayland_error(display);
+            }
+            while (wl_display_prepare_read(display) != 0)
+            {
+                if (wl_display_dispatch_pending(display) < 0)
+                {
+                    printf("throwing wayland error B\n");
+                    throw_wayland_error(display);
+                }
+            }
+            if (wl_display_read_events(display) < 0)
+            {
+                printf("throwing wayland error C\n");
+                throw_wayland_error(display);
+            }
+        }
+
+        /*
         // TODO: Drive this with epoll on the fd and have a timerfd for timeout
         while (!predicate())
         {
@@ -600,6 +635,7 @@ public:
                 throw_wayland_error(display);
             }
         }
+        */
     }
 
     void server_roundtrip()
