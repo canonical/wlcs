@@ -36,7 +36,7 @@ struct TouchTestParams
 
 std::ostream& operator<<(std::ostream& out, TouchTestParams const& param)
 {
-    return out << param.name << param.name;
+    return out << param.name;
 }
 
 class TouchTest:

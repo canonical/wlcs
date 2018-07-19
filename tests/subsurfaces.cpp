@@ -26,16 +26,36 @@
 
 using namespace testing;
 
-class SubsurfaceTest : public wlcs::StartedInProcessServer
+struct SubsurfaceTestParams
+{
+    std::string name;
+    std::function<std::unique_ptr<wlcs::Surface>(wlcs::InProcessServer& server,
+                                                 wlcs::Client& client,
+                                                 int x, int y,
+                                                 int width, int height)> make_surface;
+};
+
+std::ostream& operator<<(std::ostream& out, SubsurfaceTestParams const& param)
+{
+    return out << param.name;
+}
+
+class SubsurfaceTest :
+    public wlcs::StartedInProcessServer,
+    public testing::WithParamInterface<SubsurfaceTestParams>
 {
 public:
     static int const surface_width = 200, surface_height = 300;
     static int const subsurface_width = 50, subsurface_height = 50;
     static int const surface_x = 20, surface_y = 30;
 
-    SubsurfaceTest()
+    SubsurfaceTest():
+        client{the_server()},
+        main_surface{std::move(*GetParam().make_surface(
+            *this, client, surface_x, surface_y, surface_width, surface_height))},
+        subsurface{wlcs::Subsurface::create_visible(main_surface, 0, 0, subsurface_width, subsurface_height)}
+
     {
-        the_server().move_surface_to(main_surface, surface_x, surface_y);
         client.roundtrip();
     }
 
@@ -48,16 +68,16 @@ public:
     }
 
     wlcs::Client client{the_server()};
-    wlcs::Surface main_surface{client.create_visible_surface(surface_width, surface_height)};
-    wlcs::Subsurface subsurface{wlcs::Subsurface::create_visible(main_surface, 0, 0, subsurface_width, subsurface_height)};
+    wlcs::Surface main_surface;
+    wlcs::Subsurface subsurface;
 };
 
-TEST_F(SubsurfaceTest, subsurface_has_correct_parent)
+TEST_P(SubsurfaceTest, subsurface_has_correct_parent)
 {
     EXPECT_THAT(&subsurface.parent(), Eq(&main_surface));
 }
 
-TEST_F(SubsurfaceTest, subsurface_gets_pointer_input)
+TEST_P(SubsurfaceTest, subsurface_gets_pointer_input)
 {
     int const pointer_x = surface_x + 10, pointer_y = surface_y + 5;
 
@@ -73,7 +93,7 @@ TEST_F(SubsurfaceTest, subsurface_gets_pointer_input)
                     wl_fixed_from_int(pointer_y - surface_y))));
 }
 
-TEST_F(SubsurfaceTest, pointer_input_correctly_offset_for_subsurface)
+TEST_P(SubsurfaceTest, pointer_input_correctly_offset_for_subsurface)
 {
     int const pointer_x = surface_x + 13, pointer_y = surface_y + 24;
     int const subsurface_x = 8, subsurface_y = 17;
@@ -95,7 +115,7 @@ TEST_F(SubsurfaceTest, pointer_input_correctly_offset_for_subsurface)
                     wl_fixed_from_int(pointer_y - surface_y - subsurface_y))));
 }
 
-TEST_F(SubsurfaceTest, sync_mode_works_correctly)
+TEST_P(SubsurfaceTest, sync_mode_works_correctly)
 {
     int const pointer_x = 30, pointer_y = 30;
     int const subsurface_x_0 = 10, subsurface_y_0 = 10;
@@ -198,7 +218,7 @@ TEST_F(SubsurfaceTest, sync_mode_works_correctly)
         << "subsurface not in the right place after it should have moved a second time";
 }
 
-TEST_F(SubsurfaceTest, desync_mode_works_correctly)
+TEST_P(SubsurfaceTest, desync_mode_works_correctly)
 {
     int const pointer_x = 30, pointer_y = 30;
     int const subsurface_x_0 = 10, subsurface_y_0 = 10;
@@ -301,7 +321,7 @@ TEST_F(SubsurfaceTest, desync_mode_works_correctly)
         << "subsurface not in the right place after it should have moved a second time";
 }
 
-TEST_F(SubsurfaceTest, subsurface_extends_parent_input_region)
+TEST_P(SubsurfaceTest, subsurface_extends_parent_input_region)
 {
     int const pointer_x = surface_x - 5, pointer_y = surface_y + surface_height + 8;
     int const subsurface_x = -10, subsurface_y = surface_height - 10;
@@ -320,7 +340,7 @@ TEST_F(SubsurfaceTest, subsurface_extends_parent_input_region)
                     wl_fixed_from_int(pointer_y - surface_y - subsurface_y))));
 }
 
-TEST_F(SubsurfaceTest, input_falls_through_empty_subsurface_input_region)
+TEST_P(SubsurfaceTest, input_falls_through_empty_subsurface_input_region)
 {
     int const pointer_x = surface_x + 10, pointer_y = surface_y + 5;
 
@@ -343,7 +363,7 @@ TEST_F(SubsurfaceTest, input_falls_through_empty_subsurface_input_region)
                     wl_fixed_from_int(pointer_y - surface_y))));
 }
 
-TEST_F(SubsurfaceTest, gets_input_over_surface_with_empty_region)
+TEST_P(SubsurfaceTest, gets_input_over_surface_with_empty_region)
 {
     int const pointer_x = surface_x + 32, pointer_y = surface_y + 21;
 
@@ -365,7 +385,7 @@ TEST_F(SubsurfaceTest, gets_input_over_surface_with_empty_region)
                     wl_fixed_from_int(pointer_y - surface_y))));
 }
 
-TEST_F(SubsurfaceTest, one_subsurface_to_another_fallthrough)
+TEST_P(SubsurfaceTest, one_subsurface_to_another_fallthrough)
 {
     int const pointer_x_0 = 3, pointer_y_0 = 3;
     int const pointer_x_1 = 3, pointer_y_1 = 10;
@@ -405,7 +425,7 @@ TEST_F(SubsurfaceTest, one_subsurface_to_another_fallthrough)
                     wl_fixed_from_int(pointer_y_2 - subsurface_top_y))));
 }
 
-TEST_F(SubsurfaceTest, subsurface_of_a_subsurface_handled)
+TEST_P(SubsurfaceTest, subsurface_of_a_subsurface_handled)
 {
     int const pointer_x_0 = 3, pointer_y_0 = 3;
     int const pointer_x_1 = 3, pointer_y_1 = 10;
@@ -445,8 +465,42 @@ TEST_F(SubsurfaceTest, subsurface_of_a_subsurface_handled)
                     wl_fixed_from_int(pointer_y_2 - subsurface_top_y - subsurface_y))));
 }
 
+INSTANTIATE_TEST_CASE_P(
+    WlShellSubsurfaces,
+    SubsurfaceTest,
+    testing::Values(
+        SubsurfaceTestParams{
+            "wl_shell_surface",
+            [](wlcs::InProcessServer& server, wlcs::Client& client, int x, int y, int width, int height)
+                -> std::unique_ptr<wlcs::Surface>
+                {
+                    auto surface = client.create_wl_shell_surface(
+                        width,
+                        height);
+                    server.the_server().move_surface_to(surface, x, y);
+                    return std::make_unique<wlcs::Surface>(std::move(surface));
+                }
+        }
+    ));
+
+INSTANTIATE_TEST_CASE_P(
+    XdgShellSubsurfaces,
+    SubsurfaceTest,
+    testing::Values(
+        SubsurfaceTestParams{
+            "xdg_v6_surface",
+            [](wlcs::InProcessServer& server, wlcs::Client& client, int x, int y, int width, int height)
+                -> std::unique_ptr<wlcs::Surface>
+                {
+                    auto surface = client.create_xdg_shell_v6_surface(
+                        width,
+                        height);
+                    server.the_server().move_surface_to(surface, x, y);
+                    return std::make_unique<wlcs::Surface>(std::move(surface));
+                }
+        }
+    ));
+
 // TODO: subsurface reordering (not in Mir yet)
 
 // TODO: combinations of sync and desync at various levels of the tree
-
-// TODO: make tests parameterized so they run on all shells and with both pointer and touch
