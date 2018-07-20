@@ -35,10 +35,69 @@
 
 using namespace testing;
 
-using XdgToplevelV6 = wlcs::InProcessServer;
+
+class ConfigurationWindow
+{
+public:
+    int const window_width = 200, window_height = 320;
+
+    ConfigurationWindow(wlcs::Client& client)
+        : client{client},
+          surface{client},
+          xdg_surface{client, surface},
+          toplevel{xdg_surface}
+    {
+        xdg_surface.add_configure_notification([&](uint32_t serial)
+            {
+                zxdg_surface_v6_ack_configure(xdg_surface, serial);
+                surface_configure_count++;
+            });
+
+        toplevel.add_configure_notification([this](int32_t width, int32_t height, struct wl_array *states)
+            {
+                state = wlcs::XdgToplevelV6::State{width, height, states};
+            });
+
+        wl_surface_commit(surface);
+        client.roundtrip();
+        surface.attach_buffer(window_width, window_height);
+        wl_surface_commit(surface);
+        dispatch_until_configure();
+    }
+
+    ~ConfigurationWindow()
+    {
+        client.roundtrip();
+    }
+
+    void dispatch_until_configure()
+    {
+        client.dispatch_until(
+            [prev_count = surface_configure_count, &current_count = surface_configure_count]()
+            {
+                return current_count > prev_count;
+            });
+    }
+
+    operator wlcs::Surface&() {return surface;}
+
+    operator wl_surface*() const {return surface;}
+    operator zxdg_surface_v6*() const {return xdg_surface;}
+    operator zxdg_toplevel_v6*() const {return toplevel;}
+
+    wlcs::Client& client;
+    wlcs::Surface surface;
+    wlcs::XdgSurfaceV6 xdg_surface;
+    wlcs::XdgToplevelV6 toplevel;
+
+    int surface_configure_count{0};
+    wlcs::XdgToplevelV6::State state{0, 0, nullptr};
+};
+
+using XdgToplevelV6Test = wlcs::InProcessServer;
 
 // interactive move is not currently implemented in the WLCS window manager
-TEST_F(XdgToplevelV6, DISABLED_interactive_move)
+TEST_F(XdgToplevelV6Test, DISABLED_interactive_move)
 {
     int window_x = 20, window_y = 20;
     int window_width = 420, window_height = 390;
@@ -99,67 +158,9 @@ TEST_F(XdgToplevelV6, DISABLED_interactive_move)
 // This would probably make sense as a parameterized test, with resizing in all directions
 // Like move, resize is not implemented in the current WLCS window manager, and should not be tested until it is
 
-using XdgToplevelV6Configuration = wlcs::InProcessServer;
+using XdgToplevelV6ConfigurationTest = wlcs::InProcessServer;
 
-class ConfigurationWindow
-{
-public:
-    int const window_width = 200, window_height = 320;
-
-    ConfigurationWindow(wlcs::Client& client)
-        : client{client},
-          surface{client},
-          xdg_surface{client, surface},
-          toplevel{xdg_surface}
-    {
-        xdg_surface.add_configure_notification([&](uint32_t serial)
-            {
-                zxdg_surface_v6_ack_configure(xdg_surface, serial);
-                surface_configure_count++;
-            });
-
-        toplevel.add_configure_notification([this](int32_t width, int32_t height, struct wl_array *states)
-            {
-                state = wlcs::XdgToplevelV6::State{width, height, states};
-            });
-
-        wl_surface_commit(surface);
-        client.roundtrip();
-        surface.attach_buffer(window_width, window_height);
-        wl_surface_commit(surface);
-        dispatch_until_configure();
-    }
-
-    ~ConfigurationWindow()
-    {
-        client.roundtrip();
-    }
-
-    void dispatch_until_configure()
-    {
-        client.dispatch_until(
-            [prev_count = surface_configure_count, &current_count = surface_configure_count]()
-            {
-                return current_count > prev_count;
-            });
-    }
-
-    operator wlcs::Surface&() {return surface;}
-
-    operator wl_surface*() const {return surface;}
-    operator zxdg_surface_v6*() const {return xdg_surface;}
-    operator zxdg_toplevel_v6*() const {return toplevel;}
-
-    wlcs::Client& client;
-    wlcs::Surface surface;
-    wlcs::XdgSurfaceV6 xdg_surface;
-    wlcs::XdgToplevelV6 toplevel;
-
-    int surface_configure_count{0};
-    wlcs::XdgToplevelV6::State state{0, 0, nullptr};
-};
-
-TEST_F(XdgToplevelV6Configuration, defaults)
+TEST_F(XdgToplevelV6ConfigurationTest, defaults)
 {
     wlcs::Client client{the_server()};
     ConfigurationWindow window{client};
@@ -174,7 +175,7 @@ TEST_F(XdgToplevelV6Configuration, defaults)
     EXPECT_THAT(state.activated, Eq(true));
 }
 
-TEST_F(XdgToplevelV6Configuration, window_can_maximize_itself)
+TEST_F(XdgToplevelV6ConfigurationTest, window_can_maximize_itself)
 {
     wlcs::Client client{the_server()};
     ConfigurationWindow window{client};
@@ -191,7 +192,7 @@ TEST_F(XdgToplevelV6Configuration, window_can_maximize_itself)
     EXPECT_THAT(state.activated, Eq(true));
 }
 
-TEST_F(XdgToplevelV6Configuration, window_can_unmaximize_itself)
+TEST_F(XdgToplevelV6ConfigurationTest, window_can_unmaximize_itself)
 {
     wlcs::Client client{the_server()};
     ConfigurationWindow window{client};
@@ -211,7 +212,7 @@ TEST_F(XdgToplevelV6Configuration, window_can_unmaximize_itself)
     EXPECT_THAT(state.activated, Eq(true));
 }
 
-TEST_F(XdgToplevelV6Configuration, window_can_fullscreen_itself)
+TEST_F(XdgToplevelV6ConfigurationTest, window_can_fullscreen_itself)
 {
     wlcs::Client client{the_server()};
     ConfigurationWindow window{client};
@@ -228,7 +229,7 @@ TEST_F(XdgToplevelV6Configuration, window_can_fullscreen_itself)
     EXPECT_THAT(state.activated, Eq(true));
 }
 
-TEST_F(XdgToplevelV6Configuration, window_can_unfullscreen_itself)
+TEST_F(XdgToplevelV6ConfigurationTest, window_can_unfullscreen_itself)
 {
     wlcs::Client client{the_server()};
     ConfigurationWindow window{client};
@@ -248,7 +249,7 @@ TEST_F(XdgToplevelV6Configuration, window_can_unfullscreen_itself)
     EXPECT_THAT(state.activated, Eq(true));
 }
 
-TEST_F(XdgToplevelV6Configuration, activated_state_follows_pointer)
+TEST_F(XdgToplevelV6ConfigurationTest, activated_state_follows_pointer)
 {
     wlcs::Client client{the_server()};
 
