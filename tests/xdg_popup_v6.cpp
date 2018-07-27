@@ -38,8 +38,9 @@ using namespace testing;
 class XdgPopupV6Test : public wlcs::StartedInProcessServer
 {
 public:
-    int const window_width = 400, window_height = 320;
-    int const popup_width = 400, popup_height = 320;
+    int const window_width = 200, window_height = 300;
+    int const window_x = 500, window_y = 500;
+    int const popup_width = window_width - 50, popup_height = window_height - 60;
 
     XdgPopupV6Test()
         : client{the_server()},
@@ -53,9 +54,7 @@ public:
         surface.add_frame_callback([&surface_rendered](auto) { surface_rendered = true; });
         wl_surface_commit(surface);
         client.dispatch_until([&surface_rendered]() { return surface_rendered; });
-
-        zxdg_positioner_v6_set_size(positioner, popup_width, popup_height);
-        zxdg_positioner_v6_set_anchor_rect(positioner, 0, 0, window_width, window_height);
+        the_server().move_surface_to(surface, window_x, window_y);
     }
 
     void map_popup()
@@ -75,6 +74,8 @@ public:
                 state = wlcs::XdgPopupV6::State{x, y, width, height};
             });
 
+        wl_surface_commit(popup_surface.value());
+        dispatch_until_popup_configure();
         popup_surface.value().attach_buffer(popup_width, popup_height);
         bool surface_rendered{false};
         popup_surface.value().add_frame_callback([&surface_rendered](auto) { surface_rendered = true; });
@@ -89,6 +90,32 @@ public:
             {
                 return current_count > prev_count;
             });
+    }
+
+    std::experimental::optional<std::pair<int, int>> get_popup_position()
+    {
+        // state is not set, as WLCS window manager does not send the proper configure events.
+        // EXPECT_THAT(state.x, Eq(0));
+        // EXPECT_THAT(state.y, Eq(0));
+        // EXPECT_THAT(state.width, Eq(popup_width));
+        // EXPECT_THAT(state.height, Eq(popup_height));
+
+        auto pointer = the_server().create_pointer();
+        for (int x = window_x - popup_width; x < window_x + window_width + popup_width; x += popup_width / 2)
+        {
+            for (int y = window_y - popup_height; y < window_y + window_height + popup_height; y += popup_height / 2)
+            {
+                pointer.move_to(x, y);
+                client.roundtrip();
+                if (client.focused_window() == (wl_surface*)popup_surface.value())
+                {
+                    int const popup_x = x - wl_fixed_to_int(client.pointer_position().first) - window_x;
+                    int const popup_y = y - wl_fixed_to_int(client.pointer_position().second) - window_y;
+                    return std::make_pair(popup_x, popup_y);
+                }
+            }
+        }
+        return std::experimental::nullopt;
     }
 
     wlcs::Client client;
@@ -106,29 +133,19 @@ public:
 };
 
 
-TEST_F(XdgPopupV6Test, popup_is_created_at_default_location)
+TEST_F(XdgPopupV6Test, popup_is_created_at_upper_left)
 {
-    int const pointer_x = 20, pointer_y = 100;
-
-    the_server().move_surface_to(surface, 0, 0);
+    zxdg_positioner_v6_set_size(positioner, popup_width, popup_height);
+    zxdg_positioner_v6_set_anchor_rect(positioner, 0, 0, window_width, window_height);
+    zxdg_positioner_v6_set_anchor(positioner,  ZXDG_POSITIONER_V6_ANCHOR_TOP | ZXDG_POSITIONER_V6_ANCHOR_LEFT);
+    zxdg_positioner_v6_set_gravity(positioner, ZXDG_POSITIONER_V6_GRAVITY_BOTTOM | ZXDG_POSITIONER_V6_GRAVITY_RIGHT);
 
     map_popup();
 
-    auto pointer = the_server().create_pointer();
-    pointer.move_to(pointer_x, pointer_y);
-    client.roundtrip();
-
-    ASSERT_THAT(client.focused_window(), Eq((wl_surface*)popup_surface.value()));
-    ASSERT_THAT(client.pointer_position(),
-                Eq(std::make_pair(
-                    wl_fixed_from_int(pointer_x),
-                    wl_fixed_from_int(pointer_y))));
-
-    //dispatch_until_popup_configure();
-    //EXPECT_THAT(state.x, Eq(0));
-    //EXPECT_THAT(state.y, Eq(0));
-    //EXPECT_THAT(state.width, Eq(popup_width));
-    //EXPECT_THAT(state.height, Eq(popup_height));
+    auto const pos = get_popup_position();
+    ASSERT_TRUE(pos) << "popup not found";
+    ASSERT_THAT(pos.value(), Eq(std::make_pair((window_width - popup_width) / 2,
+                                               (window_height - popup_height) / 3)));
 }
 
 // TODO: test that positioner is always overlapping or adjacent to parent
