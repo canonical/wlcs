@@ -70,10 +70,6 @@ TEST_F(SelfTest, given_second_client_when_roundtripping_both_clients_nothing_bad
 TEST_F(SelfTest, when_a_client_creates_a_surface_nothing_bad_happens)
 {
     Surface const surface1{client1.create_visible_surface(any_width, any_height)};
-    std::shared_ptr<ShmBuffer> const buffer1{std::make_shared<ShmBuffer>(client1, any_width, any_height)};
-    wl_surface_attach(surface1, *buffer1, 0, 0);
-    wl_surface_commit(surface1);
-
     client1.roundtrip();
 }
 
@@ -82,9 +78,6 @@ TEST_F(SelfTest, given_second_client_when_first_creates_a_surface_nothing_bad_ha
     Client client2{the_server()};
 
     Surface const surface1{client1.create_visible_surface(any_width, any_height)};
-    std::shared_ptr<ShmBuffer> const buffer1{std::make_shared<ShmBuffer>(client1, any_width, any_height)};
-    wl_surface_attach(surface1, *buffer1, 0, 0);
-    wl_surface_commit(surface1);
 
     for (auto i = 0; i != 10; ++i)
     {
@@ -93,20 +86,13 @@ TEST_F(SelfTest, given_second_client_when_first_creates_a_surface_nothing_bad_ha
     }
 }
 
-// TODO figure out why this test makes the test suite flaky
-TEST_F(SelfTest, DISABLED_given_second_client_when_both_create_a_surface_nothing_bad_happens)
+TEST_F(SelfTest, given_second_client_when_both_create_a_surface_nothing_bad_happens)
 {
     Client client2{the_server()};
 
     Surface const surface1{client1.create_visible_surface(any_width, any_height)};
-    std::shared_ptr<ShmBuffer> const buffer1{std::make_shared<ShmBuffer>(client1, any_width, any_height)};
-    wl_surface_attach(surface1, *buffer1, 0, 0);
-    wl_surface_commit(surface1);
 
     Surface const surface2{client2.create_visible_surface(any_width, any_height)};
-    std::shared_ptr<ShmBuffer> const buffer2{std::make_shared<ShmBuffer>(client2, any_width, any_height)};
-    wl_surface_attach(surface2, *buffer2, 0, 0);
-    wl_surface_commit(surface2);
 
     for (auto i = 0; i != 10; ++i)
     {
