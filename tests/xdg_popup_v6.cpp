@@ -35,14 +35,15 @@
 
 using namespace testing;
 
-class XdgPopupV6Test : public wlcs::StartedInProcessServer
+int const window_width = 200, window_height = 300;
+int const popup_width = window_width - 100, popup_height = window_height - 120;
+
+class XdgPopupV6TestBase : public wlcs::StartedInProcessServer
 {
 public:
-    int const window_width = 200, window_height = 300;
-    int const window_x = 500, window_y = 500;
-    int const popup_width = window_width - 50, popup_height = window_height - 60;
+    static int const window_x = 500, window_y = 500;
 
-    XdgPopupV6Test()
+    XdgPopupV6TestBase()
         : client{the_server()},
           surface{client},
           xdg_surface{client, surface},
@@ -132,21 +133,84 @@ public:
     wlcs::XdgPopupV6::State state{0, 0, 0, 0};
 };
 
-
-TEST_F(XdgPopupV6Test, popup_is_created_at_upper_left)
+struct PopupTestParams
 {
-    zxdg_positioner_v6_set_size(positioner, popup_width, popup_height);
-    zxdg_positioner_v6_set_anchor_rect(positioner, 0, 0, window_width, window_height);
-    zxdg_positioner_v6_set_anchor(positioner,  ZXDG_POSITIONER_V6_ANCHOR_TOP | ZXDG_POSITIONER_V6_ANCHOR_LEFT);
-    zxdg_positioner_v6_set_gravity(positioner, ZXDG_POSITIONER_V6_GRAVITY_BOTTOM | ZXDG_POSITIONER_V6_GRAVITY_RIGHT);
+    std::string name;
+    std::experimental::optional<std::pair<int, int>> popup_size; // will default to XdgPopupV6TestBase::popup_(width|height) if nullopt
+    std::experimental::optional<std::pair<std::pair<int, int>, std::pair<int, int>>> anchor_rect; // will default to the full window rect
+    std::experimental::optional<zxdg_positioner_v6_anchor> anchor;
+    std::experimental::optional<zxdg_positioner_v6_gravity> gravity;
+    std::experimental::optional<zxdg_positioner_v6_constraint_adjustment> constraint_adjustment;
+    std::experimental::optional<std::pair<int, int>> offset;
+    std::pair<int, int> expected_positon;
+};
+
+std::ostream& operator<<(std::ostream& out, PopupTestParams const& param)
+{
+    return out << param.name;
+}
+
+class XdgPopupV6Test:
+    public XdgPopupV6TestBase,
+    public testing::WithParamInterface<PopupTestParams>
+{
+};
+
+TEST_P(XdgPopupV6Test, positioner_places_popup_correctly)
+{
+    auto const& param = GetParam();
+
+    // size must always be set
+    if (param.popup_size)
+        zxdg_positioner_v6_set_size(positioner, param.popup_size.value().first, param.popup_size.value().second);
+    else
+        zxdg_positioner_v6_set_size(positioner, popup_width, popup_height);
+
+    // anchor rect must always be set
+    if (param.anchor_rect)
+        zxdg_positioner_v6_set_anchor_rect(positioner,
+                                           param.anchor_rect.value().first.first,
+                                           param.anchor_rect.value().first.second,
+                                           param.anchor_rect.value().second.first,
+                                           param.anchor_rect.value().second.second);
+    else
+        zxdg_positioner_v6_set_anchor_rect(positioner, 0, 0, window_width, window_height);
+
+    if (param.anchor)
+        zxdg_positioner_v6_set_anchor(positioner,  param.anchor.value());
+
+    if (param.gravity)
+        zxdg_positioner_v6_set_gravity(positioner, param.gravity.value());
+
+    if (param.constraint_adjustment)
+        zxdg_positioner_v6_set_constraint_adjustment(positioner, param.constraint_adjustment.value());
+
+    if (param.offset)
+        zxdg_positioner_v6_set_offset(positioner, param.offset.value().first, param.offset.value().second);
 
     map_popup();
 
     auto const pos = get_popup_position();
     ASSERT_TRUE(pos) << "popup not found";
-    ASSERT_THAT(pos.value(), Eq(std::make_pair((window_width - popup_width) / 2,
-                                               (window_height - popup_height) / 3)));
+    ASSERT_THAT(pos.value(), Eq(param.expected_positon)) << "popup placed in incorrect position";
 }
+
+INSTANTIATE_TEST_CASE_P(
+    Default,
+    XdgPopupV6Test,
+    testing::Values(
+        PopupTestParams{
+            "default values",
+            std::experimental::nullopt, // popup_size
+            std::experimental::nullopt, // anchor_rect
+            std::experimental::nullopt, // anchor
+            std::experimental::nullopt, // gravity
+            std::experimental::nullopt, // constraint_adjustment
+            std::experimental::nullopt, // offset
+            {(window_width - popup_width) / 2, (window_height - popup_height) / 2}
+        }
+    ));
+
 
 // TODO: test that positioner is always overlapping or adjacent to parent
 // TODO: test that positioner is copied immediately after use
