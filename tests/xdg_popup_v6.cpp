@@ -211,6 +211,91 @@ INSTANTIATE_TEST_CASE_P(
         }
     ));
 
+INSTANTIATE_TEST_CASE_P(
+    Anchor,
+    XdgPopupV6Test,
+    testing::Values(
+        PopupTestParams{
+            "anchor left",
+            std::experimental::nullopt, // popup_size
+            std::experimental::nullopt, // anchor_rect
+            ZXDG_POSITIONER_V6_ANCHOR_LEFT, // anchor
+            std::experimental::nullopt, // gravity
+            std::experimental::nullopt, // constraint_adjustment
+            std::experimental::nullopt, // offset
+            { - popup_width / 2, (window_height - popup_height) / 2}
+        },
+        PopupTestParams{
+            "anchor right",
+            std::experimental::nullopt, // popup_size
+            std::experimental::nullopt, // anchor_rect
+            ZXDG_POSITIONER_V6_ANCHOR_RIGHT, // anchor
+            std::experimental::nullopt, // gravity
+            std::experimental::nullopt, // constraint_adjustment
+            std::experimental::nullopt, // offset
+            {window_width - popup_width / 2, (window_height - popup_height) / 2}
+        },
+        PopupTestParams{
+            "anchor top",
+            std::experimental::nullopt, // popup_size
+            std::experimental::nullopt, // anchor_rect
+            ZXDG_POSITIONER_V6_ANCHOR_TOP, // anchor
+            std::experimental::nullopt, // gravity
+            std::experimental::nullopt, // constraint_adjustment
+            std::experimental::nullopt, // offset
+            {(window_width - popup_width) / 2,  - popup_height / 2}
+        },
+        PopupTestParams{
+            "anchor bottom",
+            std::experimental::nullopt, // popup_size
+            std::experimental::nullopt, // anchor_rect
+            ZXDG_POSITIONER_V6_ANCHOR_BOTTOM, // anchor
+            std::experimental::nullopt, // gravity
+            std::experimental::nullopt, // constraint_adjustment
+            std::experimental::nullopt, // offset
+            {(window_width - popup_width) / 2, window_height - popup_height / 2}
+        },
+        PopupTestParams{
+            "anchor top left",
+            std::experimental::nullopt, // popup_size
+            std::experimental::nullopt, // anchor_rect
+            static_cast<zxdg_positioner_v6_anchor>(ZXDG_POSITIONER_V6_ANCHOR_TOP | ZXDG_POSITIONER_V6_ANCHOR_LEFT), // anchor
+            std::experimental::nullopt, // gravity
+            std::experimental::nullopt, // constraint_adjustment
+            std::experimental::nullopt, // offset
+            { - popup_width / 2, - popup_height / 2}
+        },
+        PopupTestParams{
+            "anchor top right",
+            std::experimental::nullopt, // popup_size
+            std::experimental::nullopt, // anchor_rect
+            static_cast<zxdg_positioner_v6_anchor>(ZXDG_POSITIONER_V6_ANCHOR_TOP | ZXDG_POSITIONER_V6_ANCHOR_RIGHT), // anchor
+            std::experimental::nullopt, // gravity
+            std::experimental::nullopt, // constraint_adjustment
+            std::experimental::nullopt, // offset
+            {window_width - popup_width / 2, - popup_height / 2}
+        },
+        PopupTestParams{
+            "anchor bottom left",
+            std::experimental::nullopt, // popup_size
+            std::experimental::nullopt, // anchor_rect
+            static_cast<zxdg_positioner_v6_anchor>(ZXDG_POSITIONER_V6_ANCHOR_BOTTOM | ZXDG_POSITIONER_V6_ANCHOR_LEFT), // anchor
+            std::experimental::nullopt, // gravity
+            std::experimental::nullopt, // constraint_adjustment
+            std::experimental::nullopt, // offset
+            { - popup_width / 2, window_height - popup_height / 2}
+        },
+        PopupTestParams{
+            "anchor bottom right",
+            std::experimental::nullopt, // popup_size
+            std::experimental::nullopt, // anchor_rect
+            static_cast<zxdg_positioner_v6_anchor>(ZXDG_POSITIONER_V6_ANCHOR_BOTTOM | ZXDG_POSITIONER_V6_ANCHOR_RIGHT), // anchor
+            std::experimental::nullopt, // gravity
+            std::experimental::nullopt, // constraint_adjustment
+            std::experimental::nullopt, // offset
+            {window_width - popup_width / 2, window_height - popup_height / 2}
+        }
+    ));
 
 // TODO: test that positioner is always overlapping or adjacent to parent
 // TODO: test that positioner is copied immediately after use
@@ -218,7 +303,6 @@ INSTANTIATE_TEST_CASE_P(
 // TODO: test set_size
 // TODO: test set_anchor_rect
 // TODO: test that set_window_geometry affects anchor rect
-// TODO: test set_anchor
 // TODO: test set_gravity
 // TODO: test set_constraint_adjustment
 // TODO: test set_offset
