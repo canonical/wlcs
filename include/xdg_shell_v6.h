@@ -80,9 +80,9 @@ public:
         configure_notifiers.push_back(notification);
     }
 
-    void add_close_notification(std::function<void(int32_t, int32_t, struct wl_array *)> notification)
+    void add_close_notification(std::function<void()> notification)
     {
-        configure_notifiers.push_back(notification);
+        close_notifiers.push_back(notification);
     }
 
     operator zxdg_toplevel_v6*() const {return toplevel;}
@@ -106,6 +106,70 @@ private:
     static void close_thunk(void *data, struct zxdg_toplevel_v6 *)
     {
         for (auto& notifier : static_cast<XdgToplevelV6*>(data)->close_notifiers)
+        {
+            notifier();
+        }
+    }
+};
+
+class XdgPositionerV6
+{
+public:
+    XdgPositionerV6(wlcs::Client& client);
+    ~XdgPositionerV6();
+    operator zxdg_positioner_v6*() const {return positioner;}
+
+private:
+    zxdg_positioner_v6* const positioner;
+};
+
+class XdgPopupV6
+{
+public:
+    struct State
+    {
+        int x;
+        int y;
+        int width;
+        int height;
+    };
+
+    XdgPopupV6(XdgSurfaceV6& shell_surface_, XdgSurfaceV6& parent, XdgPositionerV6& positioner);
+    XdgPopupV6(XdgToplevelV6 const&) = delete;
+    XdgPopupV6& operator=(XdgToplevelV6 const&) = delete;
+    ~XdgPopupV6();
+
+    void add_configure_notification(std::function<void(int32_t, int32_t, int32_t, int32_t)> notification)
+    {
+        configure_notifiers.push_back(notification);
+    }
+
+    void add_close_notification(std::function<void()> notification)
+    {
+        popup_done_notifiers.push_back(notification);
+    }
+
+    operator zxdg_popup_v6*() const {return popup;}
+
+    XdgSurfaceV6* const shell_surface;
+    zxdg_popup_v6* const popup;
+
+    std::vector<std::function<void(int32_t, int32_t, int32_t, int32_t)>> configure_notifiers;
+    std::vector<std::function<void()>> popup_done_notifiers;
+
+private:
+    static void configure_thunk(void *data, struct zxdg_popup_v6 *, int32_t x, int32_t y,
+                                int32_t width, int32_t height)
+    {
+        for (auto& notifier : static_cast<XdgPopupV6*>(data)->configure_notifiers)
+        {
+            notifier(x, y, width, height);
+        }
+    }
+
+    static void popup_done_thunk(void *data, struct zxdg_popup_v6 *)
+    {
+        for (auto& notifier : static_cast<XdgPopupV6*>(data)->popup_done_notifiers)
         {
             notifier();
         }
