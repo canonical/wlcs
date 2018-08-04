@@ -135,14 +135,31 @@ public:
 
 struct PopupTestParams
 {
+    PopupTestParams(std::string name, int expected_x, int expected_y)
+        : name{name},
+          expected_positon{expected_x, expected_y}
+    {
+    }
+
+    PopupTestParams& with_size(int x, int y) { popup_size = {x, y}; return *this; }
+    PopupTestParams& with_anchor_rect(int x, int y, int w, int h) { anchor_rect = {{x, y}, {w, h}}; return *this; }
+    PopupTestParams& with_anchor(int value) { anchor = static_cast<zxdg_positioner_v6_anchor>(value); return *this; }
+    PopupTestParams& with_gravity(int value) { gravity = static_cast<zxdg_positioner_v6_gravity>(value); return *this; }
+    PopupTestParams& with_constraint_adjustment(int value)
+    {
+        constraint_adjustment = static_cast<zxdg_positioner_v6_constraint_adjustment>(value);
+        return *this;
+    }
+    PopupTestParams& with_offset(int x, int y) { offset = {x, y}; return *this; }
+
     std::string name;
+    std::pair<int, int> expected_positon;
     std::experimental::optional<std::pair<int, int>> popup_size; // will default to XdgPopupV6TestBase::popup_(width|height) if nullopt
     std::experimental::optional<std::pair<std::pair<int, int>, std::pair<int, int>>> anchor_rect; // will default to the full window rect
     std::experimental::optional<zxdg_positioner_v6_anchor> anchor;
     std::experimental::optional<zxdg_positioner_v6_gravity> gravity;
     std::experimental::optional<zxdg_positioner_v6_constraint_adjustment> constraint_adjustment;
     std::experimental::optional<std::pair<int, int>> offset;
-    std::pair<int, int> expected_positon;
 };
 
 std::ostream& operator<<(std::ostream& out, PopupTestParams const& param)
@@ -199,102 +216,47 @@ INSTANTIATE_TEST_CASE_P(
     Default,
     XdgPopupV6Test,
     testing::Values(
-        PopupTestParams{
-            "default values",
-            std::experimental::nullopt, // popup_size
-            std::experimental::nullopt, // anchor_rect
-            std::experimental::nullopt, // anchor
-            std::experimental::nullopt, // gravity
-            std::experimental::nullopt, // constraint_adjustment
-            std::experimental::nullopt, // offset
-            {(window_width - popup_width) / 2, (window_height - popup_height) / 2}
-        }
+        PopupTestParams{"default values",
+                        (window_width - popup_width) / 2,
+                        (window_height - popup_height) / 2}
     ));
 
 INSTANTIATE_TEST_CASE_P(
     Anchor,
     XdgPopupV6Test,
     testing::Values(
-        PopupTestParams{
-            "anchor left",
-            std::experimental::nullopt, // popup_size
-            std::experimental::nullopt, // anchor_rect
-            ZXDG_POSITIONER_V6_ANCHOR_LEFT, // anchor
-            std::experimental::nullopt, // gravity
-            std::experimental::nullopt, // constraint_adjustment
-            std::experimental::nullopt, // offset
-            { - popup_width / 2, (window_height - popup_height) / 2}
-        },
-        PopupTestParams{
-            "anchor right",
-            std::experimental::nullopt, // popup_size
-            std::experimental::nullopt, // anchor_rect
-            ZXDG_POSITIONER_V6_ANCHOR_RIGHT, // anchor
-            std::experimental::nullopt, // gravity
-            std::experimental::nullopt, // constraint_adjustment
-            std::experimental::nullopt, // offset
-            {window_width - popup_width / 2, (window_height - popup_height) / 2}
-        },
-        PopupTestParams{
-            "anchor top",
-            std::experimental::nullopt, // popup_size
-            std::experimental::nullopt, // anchor_rect
-            ZXDG_POSITIONER_V6_ANCHOR_TOP, // anchor
-            std::experimental::nullopt, // gravity
-            std::experimental::nullopt, // constraint_adjustment
-            std::experimental::nullopt, // offset
-            {(window_width - popup_width) / 2,  - popup_height / 2}
-        },
-        PopupTestParams{
-            "anchor bottom",
-            std::experimental::nullopt, // popup_size
-            std::experimental::nullopt, // anchor_rect
-            ZXDG_POSITIONER_V6_ANCHOR_BOTTOM, // anchor
-            std::experimental::nullopt, // gravity
-            std::experimental::nullopt, // constraint_adjustment
-            std::experimental::nullopt, // offset
-            {(window_width - popup_width) / 2, window_height - popup_height / 2}
-        },
-        PopupTestParams{
-            "anchor top left",
-            std::experimental::nullopt, // popup_size
-            std::experimental::nullopt, // anchor_rect
-            static_cast<zxdg_positioner_v6_anchor>(ZXDG_POSITIONER_V6_ANCHOR_TOP | ZXDG_POSITIONER_V6_ANCHOR_LEFT), // anchor
-            std::experimental::nullopt, // gravity
-            std::experimental::nullopt, // constraint_adjustment
-            std::experimental::nullopt, // offset
-            { - popup_width / 2, - popup_height / 2}
-        },
-        PopupTestParams{
-            "anchor top right",
-            std::experimental::nullopt, // popup_size
-            std::experimental::nullopt, // anchor_rect
-            static_cast<zxdg_positioner_v6_anchor>(ZXDG_POSITIONER_V6_ANCHOR_TOP | ZXDG_POSITIONER_V6_ANCHOR_RIGHT), // anchor
-            std::experimental::nullopt, // gravity
-            std::experimental::nullopt, // constraint_adjustment
-            std::experimental::nullopt, // offset
-            {window_width - popup_width / 2, - popup_height / 2}
-        },
-        PopupTestParams{
-            "anchor bottom left",
-            std::experimental::nullopt, // popup_size
-            std::experimental::nullopt, // anchor_rect
-            static_cast<zxdg_positioner_v6_anchor>(ZXDG_POSITIONER_V6_ANCHOR_BOTTOM | ZXDG_POSITIONER_V6_ANCHOR_LEFT), // anchor
-            std::experimental::nullopt, // gravity
-            std::experimental::nullopt, // constraint_adjustment
-            std::experimental::nullopt, // offset
-            { - popup_width / 2, window_height - popup_height / 2}
-        },
-        PopupTestParams{
-            "anchor bottom right",
-            std::experimental::nullopt, // popup_size
-            std::experimental::nullopt, // anchor_rect
-            static_cast<zxdg_positioner_v6_anchor>(ZXDG_POSITIONER_V6_ANCHOR_BOTTOM | ZXDG_POSITIONER_V6_ANCHOR_RIGHT), // anchor
-            std::experimental::nullopt, // gravity
-            std::experimental::nullopt, // constraint_adjustment
-            std::experimental::nullopt, // offset
-            {window_width - popup_width / 2, window_height - popup_height / 2}
-        }
+        PopupTestParams{"anchor left",
+                        - popup_width / 2,
+                        (window_height - popup_height) / 2}
+            .with_anchor(ZXDG_POSITIONER_V6_ANCHOR_LEFT),
+        PopupTestParams{"anchor right",
+                        window_width - popup_width / 2,
+                        (window_height - popup_height) / 2}
+            .with_anchor(ZXDG_POSITIONER_V6_ANCHOR_RIGHT),
+        PopupTestParams{"anchor top",
+                        (window_width - popup_width) / 2,
+                         - popup_height / 2}
+            .with_anchor(ZXDG_POSITIONER_V6_ANCHOR_TOP),
+        PopupTestParams{"anchor bottom",
+                        (window_width - popup_width) / 2,
+                        window_height - popup_height / 2}
+            .with_anchor(ZXDG_POSITIONER_V6_ANCHOR_BOTTOM),
+        PopupTestParams{"anchor top left",
+                         - popup_width / 2,
+                        - popup_height / 2}
+            .with_anchor(ZXDG_POSITIONER_V6_ANCHOR_TOP | ZXDG_POSITIONER_V6_ANCHOR_LEFT),
+        PopupTestParams{"anchor top right",
+                        window_width - popup_width / 2,
+                        - popup_height / 2}
+            .with_anchor(ZXDG_POSITIONER_V6_ANCHOR_TOP | ZXDG_POSITIONER_V6_ANCHOR_RIGHT),
+        PopupTestParams{"anchor bottom left",
+                         - popup_width / 2,
+                        window_height - popup_height / 2}
+            .with_anchor(ZXDG_POSITIONER_V6_ANCHOR_BOTTOM | ZXDG_POSITIONER_V6_ANCHOR_LEFT),
+        PopupTestParams{"anchor bottom right",
+                        window_width - popup_width / 2,
+                        window_height - popup_height / 2}
+            .with_anchor(ZXDG_POSITIONER_V6_ANCHOR_BOTTOM | ZXDG_POSITIONER_V6_ANCHOR_RIGHT)
     ));
 
 // TODO: test that positioner is always overlapping or adjacent to parent
