@@ -98,7 +98,7 @@ using XdgToplevelV6Test = wlcs::InProcessServer;
 
 // there *could* be a bug in these tests, but also the window manager may not be behaving properly
 // lets take another look when we've updated the window manager
-TEST_F(XdgToplevelV6Test, DISABLED_pointer_respects_window_geom_offset)
+TEST_F(XdgToplevelV6Test, pointer_respects_window_geom_offset)
 {
     const int offset_x = 35, offset_y = 12;
     const int window_pos_x = 200, window_pos_y = 280;
@@ -111,6 +111,7 @@ TEST_F(XdgToplevelV6Test, DISABLED_pointer_respects_window_geom_offset)
                                         offset_y,
                                         window.window_width - offset_x,
                                         window.window_height - offset_y);
+    wl_surface_commit(window.surface);
     the_server().move_surface_to(window.surface, window_pos_x, window_pos_y);
 
     auto pointer = the_server().create_pointer();
@@ -128,7 +129,7 @@ TEST_F(XdgToplevelV6Test, DISABLED_pointer_respects_window_geom_offset)
                     wl_fixed_from_int(pointer_y - window_pos_y + offset_y))));
 }
 
-TEST_F(XdgToplevelV6Test, DISABLED_touch_respects_window_geom_offset)
+TEST_F(XdgToplevelV6Test, touch_respects_window_geom_offset)
 {
     const int offset_x = 35, offset_y = 12;
     const int window_pos_x = 200, window_pos_y = 280;
@@ -141,6 +142,7 @@ TEST_F(XdgToplevelV6Test, DISABLED_touch_respects_window_geom_offset)
                                         offset_y,
                                         window.window_width - offset_x,
                                         window.window_height - offset_y);
+    wl_surface_commit(window.surface);
     the_server().move_surface_to(window.surface, window_pos_x, window_pos_y);
 
     auto touch = the_server().create_touch();
