@@ -60,11 +60,5 @@ TEST_F(XdgSurfaceV6Test, gets_configure_event)
 
     client.roundtrip();
 
-    EXPECT_THAT(surface_configure_count, Eq(0));
-
-    wl_surface_commit(surface);
-
-    client.roundtrip();
-
     EXPECT_THAT(surface_configure_count, Eq(1));
 }
