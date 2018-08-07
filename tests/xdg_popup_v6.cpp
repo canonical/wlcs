@@ -93,14 +93,6 @@ public:
             });
     }
 
-    std::experimental::optional<std::pair<int, int>> get_popup_position()
-    {
-        if (state)
-            return std::make_pair(state.value().x, state.value().y);
-        else
-            return std::experimental::nullopt;
-    }
-
     wlcs::Client client;
     wlcs::Surface surface;
     wlcs::XdgSurfaceV6 xdg_surface;
@@ -189,9 +181,8 @@ TEST_P(XdgPopupV6Test, positioner_places_popup_correctly)
 
     map_popup();
 
-    auto const pos = get_popup_position();
-    ASSERT_TRUE(pos) << "popup not found";
-    ASSERT_THAT(pos.value(), Eq(param.expected_positon)) << "popup placed in incorrect position";
+    ASSERT_TRUE(state) << "popup configure event not sent";
+    ASSERT_THAT(std::make_pair(state.value().x, state.value().y), Eq(param.expected_positon)) << "popup placed in incorrect position";
 }
 
 INSTANTIATE_TEST_CASE_P(
