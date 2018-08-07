@@ -95,28 +95,10 @@ public:
 
     std::experimental::optional<std::pair<int, int>> get_popup_position()
     {
-        // state is not set, as WLCS window manager does not send the proper configure events.
-        // EXPECT_THAT(state.x, Eq(0));
-        // EXPECT_THAT(state.y, Eq(0));
-        // EXPECT_THAT(state.width, Eq(popup_width));
-        // EXPECT_THAT(state.height, Eq(popup_height));
-
-        auto pointer = the_server().create_pointer();
-        for (int x = window_x - popup_width; x < window_x + window_width + popup_width; x += popup_width / 2)
-        {
-            for (int y = window_y - popup_height; y < window_y + window_height + popup_height; y += popup_height / 2)
-            {
-                pointer.move_to(x, y);
-                client.roundtrip();
-                if (client.focused_window() == (wl_surface*)popup_surface.value())
-                {
-                    int const popup_x = x - wl_fixed_to_int(client.pointer_position().first) - window_x;
-                    int const popup_y = y - wl_fixed_to_int(client.pointer_position().second) - window_y;
-                    return std::make_pair(popup_x, popup_y);
-                }
-            }
-        }
-        return std::experimental::nullopt;
+        if (state)
+            return std::make_pair(state.value().x, state.value().y);
+        else
+            return std::experimental::nullopt;
     }
 
     wlcs::Client client;
@@ -130,7 +112,7 @@ public:
     std::experimental::optional<wlcs::XdgPopupV6> popup;
 
     int popup_surface_configure_count{0};
-    wlcs::XdgPopupV6::State state{0, 0, 0, 0};
+    std::experimental::optional<wlcs::XdgPopupV6::State> state;
 };
 
 struct PopupTestParams
