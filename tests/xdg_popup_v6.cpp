@@ -35,8 +35,8 @@
 
 using namespace testing;
 
-int const window_width = 200, window_height = 300;
-int const popup_width = window_width - 100, popup_height = window_height - 120;
+int const window_width = 400, window_height = 500;
+int const popup_width = 60, popup_height = 40;
 
 class XdgPopupV6TestBase : public wlcs::StartedInProcessServer
 {
@@ -221,12 +221,43 @@ INSTANTIATE_TEST_CASE_P(
             .with_anchor(ZXDG_POSITIONER_V6_ANCHOR_BOTTOM | ZXDG_POSITIONER_V6_ANCHOR_RIGHT)
     ));
 
+INSTANTIATE_TEST_CASE_P(
+    Gravity,
+    XdgPopupV6Test,
+    testing::Values(
+        PopupTestParams{"gravity none", (window_width - popup_width) / 2, (window_height - popup_height) / 2}
+            .with_gravity(ZXDG_POSITIONER_V6_GRAVITY_NONE),
+
+        PopupTestParams{"gravity left", window_width / 2 - popup_width, (window_height - popup_height) / 2}
+            .with_gravity(ZXDG_POSITIONER_V6_GRAVITY_LEFT),
+
+        PopupTestParams{"gravity right", window_width / 2, (window_height - popup_height) / 2}
+            .with_gravity(ZXDG_POSITIONER_V6_GRAVITY_RIGHT),
+
+        PopupTestParams{"gravity top", (window_width - popup_width) / 2, window_height / 2 - popup_height}
+            .with_gravity(ZXDG_POSITIONER_V6_GRAVITY_TOP),
+
+        PopupTestParams{"gravity bottom", (window_width - popup_width) / 2, window_height / 2}
+            .with_gravity(ZXDG_POSITIONER_V6_GRAVITY_BOTTOM),
+
+        PopupTestParams{"gravity top left", window_width / 2 - popup_width, window_height / 2 - popup_height}
+            .with_gravity(ZXDG_POSITIONER_V6_GRAVITY_TOP | ZXDG_POSITIONER_V6_GRAVITY_LEFT),
+
+        PopupTestParams{"gravity top right", window_width / 2, window_height / 2 - popup_height}
+            .with_gravity(ZXDG_POSITIONER_V6_GRAVITY_TOP | ZXDG_POSITIONER_V6_GRAVITY_RIGHT),
+
+        PopupTestParams{"gravity bottom left", window_width / 2 - popup_width, window_height / 2}
+            .with_gravity(ZXDG_POSITIONER_V6_GRAVITY_BOTTOM | ZXDG_POSITIONER_V6_GRAVITY_LEFT),
+
+        PopupTestParams{"gravity bottom right", window_width / 2, window_height / 2}
+            .with_gravity(ZXDG_POSITIONER_V6_GRAVITY_BOTTOM | ZXDG_POSITIONER_V6_GRAVITY_RIGHT)
+    ));
+
 // TODO: test that positioner is always overlapping or adjacent to parent
 // TODO: test that positioner is copied immediately after use
 // TODO: test that error is raised when incomplete positioner is used (positioner without size and anchor rect set)
 // TODO: test set_size
 // TODO: test set_anchor_rect
 // TODO: test that set_window_geometry affects anchor rect
-// TODO: test set_gravity
 // TODO: test set_constraint_adjustment
 // TODO: test set_offset
