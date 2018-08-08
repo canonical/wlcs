@@ -115,16 +115,16 @@ struct PopupTestParams
     {
     }
 
-    PopupTestParams& with_size(int x, int y) { popup_size = {x, y}; return *this; }
-    PopupTestParams& with_anchor_rect(int x, int y, int w, int h) { anchor_rect = {{x, y}, {w, h}}; return *this; }
-    PopupTestParams& with_anchor(int value) { anchor = static_cast<zxdg_positioner_v6_anchor>(value); return *this; }
-    PopupTestParams& with_gravity(int value) { gravity = static_cast<zxdg_positioner_v6_gravity>(value); return *this; }
+    PopupTestParams& with_size(int x, int y) { popup_size = {{x, y}}; return *this; }
+    PopupTestParams& with_anchor_rect(int x, int y, int w, int h) { anchor_rect = {{{x, y}, {w, h}}}; return *this; }
+    PopupTestParams& with_anchor(int value) { anchor = {static_cast<zxdg_positioner_v6_anchor>(value)}; return *this; }
+    PopupTestParams& with_gravity(int value) { gravity = {static_cast<zxdg_positioner_v6_gravity>(value)}; return *this; }
     PopupTestParams& with_constraint_adjustment(int value)
     {
-        constraint_adjustment = static_cast<zxdg_positioner_v6_constraint_adjustment>(value);
+        constraint_adjustment = {static_cast<zxdg_positioner_v6_constraint_adjustment>(value)};
         return *this;
     }
-    PopupTestParams& with_offset(int x, int y) { offset = {x, y}; return *this; }
+    PopupTestParams& with_offset(int x, int y) { offset = {{x, y}}; return *this; }
 
     std::string name;
     std::pair<int, int> expected_positon;
