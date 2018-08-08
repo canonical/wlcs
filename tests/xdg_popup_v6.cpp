@@ -181,7 +181,7 @@ TEST_P(XdgPopupV6Test, positioner_places_popup_correctly)
 
     map_popup();
 
-    ASSERT_TRUE(static_cast<bool>(state)) << "popup configure event not sent";
+    ASSERT_THAT(state, Ne(std::experimental::nullopt)) << "popup configure event not sent";
     ASSERT_THAT(std::make_pair(state.value().x, state.value().y), Eq(param.expected_positon)) << "popup placed in incorrect position";
 }
 
