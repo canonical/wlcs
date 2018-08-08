@@ -189,46 +189,35 @@ INSTANTIATE_TEST_CASE_P(
     Default,
     XdgPopupV6Test,
     testing::Values(
-        PopupTestParams{"default values",
-                        (window_width - popup_width) / 2,
-                        (window_height - popup_height) / 2}
+        PopupTestParams{"default values", (window_width - popup_width) / 2, (window_height - popup_height) / 2}
     ));
 
 INSTANTIATE_TEST_CASE_P(
     Anchor,
     XdgPopupV6Test,
     testing::Values(
-        PopupTestParams{"anchor left",
-                        - popup_width / 2,
-                        (window_height - popup_height) / 2}
+        PopupTestParams{"anchor left", -popup_width / 2, (window_height - popup_height) / 2}
             .with_anchor(ZXDG_POSITIONER_V6_ANCHOR_LEFT),
-        PopupTestParams{"anchor right",
-                        window_width - popup_width / 2,
-                        (window_height - popup_height) / 2}
+
+        PopupTestParams{"anchor right", window_width - popup_width / 2, (window_height - popup_height) / 2}
             .with_anchor(ZXDG_POSITIONER_V6_ANCHOR_RIGHT),
-        PopupTestParams{"anchor top",
-                        (window_width - popup_width) / 2,
-                         - popup_height / 2}
+
+        PopupTestParams{"anchor top", (window_width - popup_width) / 2, -popup_height / 2}
             .with_anchor(ZXDG_POSITIONER_V6_ANCHOR_TOP),
-        PopupTestParams{"anchor bottom",
-                        (window_width - popup_width) / 2,
-                        window_height - popup_height / 2}
+
+        PopupTestParams{"anchor bottom", (window_width - popup_width) / 2, window_height - popup_height / 2}
             .with_anchor(ZXDG_POSITIONER_V6_ANCHOR_BOTTOM),
-        PopupTestParams{"anchor top left",
-                         - popup_width / 2,
-                        - popup_height / 2}
+
+        PopupTestParams{"anchor top left", -popup_width / 2, -popup_height / 2}
             .with_anchor(ZXDG_POSITIONER_V6_ANCHOR_TOP | ZXDG_POSITIONER_V6_ANCHOR_LEFT),
-        PopupTestParams{"anchor top right",
-                        window_width - popup_width / 2,
-                        - popup_height / 2}
+
+        PopupTestParams{"anchor top right", window_width - popup_width / 2, -popup_height / 2}
             .with_anchor(ZXDG_POSITIONER_V6_ANCHOR_TOP | ZXDG_POSITIONER_V6_ANCHOR_RIGHT),
-        PopupTestParams{"anchor bottom left",
-                         - popup_width / 2,
-                        window_height - popup_height / 2}
+
+        PopupTestParams{"anchor bottom left", -popup_width / 2, window_height - popup_height / 2}
             .with_anchor(ZXDG_POSITIONER_V6_ANCHOR_BOTTOM | ZXDG_POSITIONER_V6_ANCHOR_LEFT),
-        PopupTestParams{"anchor bottom right",
-                        window_width - popup_width / 2,
-                        window_height - popup_height / 2}
+
+        PopupTestParams{"anchor bottom right", window_width - popup_width / 2, window_height - popup_height / 2}
             .with_anchor(ZXDG_POSITIONER_V6_ANCHOR_BOTTOM | ZXDG_POSITIONER_V6_ANCHOR_RIGHT)
     ));
 
