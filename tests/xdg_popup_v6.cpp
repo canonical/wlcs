@@ -253,11 +253,33 @@ INSTANTIATE_TEST_CASE_P(
             .with_gravity(ZXDG_POSITIONER_V6_GRAVITY_BOTTOM | ZXDG_POSITIONER_V6_GRAVITY_RIGHT)
     ));
 
+INSTANTIATE_TEST_CASE_P(
+    AnchorRect,
+    XdgPopupV6Test,
+    testing::Values(
+        PopupTestParams{"explicit default anchor rect", (window_width - popup_width) / 2, (window_height - popup_height) / 2}
+            .with_anchor_rect(0, 0, window_width, window_height),
+
+        PopupTestParams{"upper left anchor rect", (window_width - 40 - popup_width) / 2, (window_height - 30 - popup_height) / 2}
+            .with_anchor_rect(0, 0, window_width - 40, window_height - 30),
+
+        PopupTestParams{"upper right anchor rect", (window_width + 40 - popup_width) / 2, (window_height - 30 - popup_height) / 2}
+            .with_anchor_rect(40, 0, window_width - 40, window_height - 30),
+
+        PopupTestParams{"lower left anchor rect", (window_width - 40 - popup_width) / 2, (window_height + 30 - popup_height) / 2}
+            .with_anchor_rect(0, 30, window_width - 40, window_height - 30),
+
+        PopupTestParams{"lower right anchor rect", (window_width + 40 - popup_width) / 2, (window_height + 30 - popup_height) / 2}
+            .with_anchor_rect(40, 30, window_width - 40, window_height - 30),
+
+        PopupTestParams{"offset anchor rect", (window_width - 40 - popup_width) / 2, (window_height - 80 - popup_height) / 2}
+            .with_anchor_rect(20, 20, window_width - 80, window_height - 120)
+    ));
+
 // TODO: test that positioner is always overlapping or adjacent to parent
 // TODO: test that positioner is copied immediately after use
 // TODO: test that error is raised when incomplete positioner is used (positioner without size and anchor rect set)
 // TODO: test set_size
-// TODO: test set_anchor_rect
 // TODO: test that set_window_geometry affects anchor rect
 // TODO: test set_constraint_adjustment
 // TODO: test set_offset
