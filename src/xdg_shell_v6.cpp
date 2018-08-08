@@ -81,3 +81,26 @@ wlcs::XdgToplevelV6::~XdgToplevelV6()
 {
     zxdg_toplevel_v6_destroy(toplevel);
 }
+
+wlcs::XdgPositionerV6::XdgPositionerV6(wlcs::Client& client)
+    : positioner{zxdg_shell_v6_create_positioner(client.xdg_shell_v6())}
+{
+}
+
+wlcs::XdgPositionerV6::~XdgPositionerV6()
+{
+    zxdg_positioner_v6_destroy(positioner);
+}
+
+wlcs::XdgPopupV6::XdgPopupV6(XdgSurfaceV6& shell_surface_, XdgSurfaceV6& parent, XdgPositionerV6& positioner)
+    : shell_surface{&shell_surface_},
+      popup{zxdg_surface_v6_get_popup(*shell_surface, parent, positioner)}
+{
+    static struct zxdg_popup_v6_listener const listener = {configure_thunk, popup_done_thunk};
+    zxdg_popup_v6_add_listener(popup, &listener, this);
+}
+
+wlcs::XdgPopupV6::~XdgPopupV6()
+{
+    zxdg_popup_v6_destroy(popup);
+}

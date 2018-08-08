@@ -82,6 +82,7 @@ add_library(
   tests/subsurfaces.cpp
   tests/xdg_surface_v6.cpp
   tests/xdg_toplevel_v6.cpp
+  tests/xdg_popup_v6.cpp
   tests/self_test.cpp
 )
 
