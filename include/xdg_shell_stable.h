@@ -16,45 +16,45 @@
  * Authored by: William Wold <william.wold@canonical.com>
  */
 
-#ifndef WLCS_XDG_SHELL_V6_
-#define WLCS_XDG_SHELL_V6_
+#ifndef WLCS_XDG_SHELL_STABLE_H
+#define WLCS_XDG_SHELL_STABLE_H
 
 #include "in_process_server.h"
-#include "generated/xdg-shell-unstable-v6-client.h"
+#include "generated/xdg-shell-client.h"
 
 namespace wlcs
 {
 
-class XdgSurfaceV6
+class XdgSurfaceStable
 {
 public:
-    XdgSurfaceV6(wlcs::Client& client, wlcs::Surface& surface);
-    XdgSurfaceV6(XdgSurfaceV6 const&) = delete;
-    XdgSurfaceV6& operator=(XdgSurfaceV6 const&) = delete;
-    ~XdgSurfaceV6();
+    XdgSurfaceStable(wlcs::Client& client, wlcs::Surface& surface);
+    XdgSurfaceStable(XdgSurfaceStable const&) = delete;
+    XdgSurfaceStable& operator=(XdgSurfaceStable const&) = delete;
+    ~XdgSurfaceStable();
 
     void add_configure_notification(std::function<void(uint32_t)> notification)
     {
         configure_notifiers.push_back(notification);
     }
 
-    operator zxdg_surface_v6*() const {return shell_surface;}
+    operator xdg_surface*() const {return shell_surface;}
 
     std::vector<std::function<void(uint32_t)>> configure_notifiers;
 
 private:
-    static void configure_thunk(void *data, struct zxdg_surface_v6 *, uint32_t serial)
+    static void configure_thunk(void *data, struct xdg_surface *, uint32_t serial)
     {
-        for (auto& notifier : static_cast<XdgSurfaceV6*>(data)->configure_notifiers)
+        for (auto& notifier : static_cast<XdgSurfaceStable*>(data)->configure_notifiers)
         {
             notifier(serial);
         }
     }
 
-    zxdg_surface_v6* shell_surface;
+    xdg_surface* shell_surface;
 };
 
-class XdgToplevelV6
+class XdgToplevelStable
 {
 public:
     struct State
@@ -70,10 +70,10 @@ public:
         bool activated;
     };
 
-    XdgToplevelV6(XdgSurfaceV6& shell_surface_);
-    XdgToplevelV6(XdgToplevelV6 const&) = delete;
-    XdgToplevelV6& operator=(XdgToplevelV6 const&) = delete;
-    ~XdgToplevelV6();
+    XdgToplevelStable(XdgSurfaceStable& shell_surface_);
+    XdgToplevelStable(XdgToplevelStable const&) = delete;
+    XdgToplevelStable& operator=(XdgToplevelStable const&) = delete;
+    ~XdgToplevelStable();
 
     void add_configure_notification(std::function<void(int32_t, int32_t, struct wl_array *)> notification)
     {
@@ -85,45 +85,45 @@ public:
         close_notifiers.push_back(notification);
     }
 
-    operator zxdg_toplevel_v6*() const {return toplevel;}
+    operator xdg_toplevel*() const {return toplevel;}
 
-    XdgSurfaceV6* const shell_surface;
-    zxdg_toplevel_v6* toplevel;
+    XdgSurfaceStable* const shell_surface;
+    xdg_toplevel* toplevel;
 
     std::vector<std::function<void(int32_t, int32_t, struct wl_array *)>> configure_notifiers;
     std::vector<std::function<void()>> close_notifiers;
 
 private:
-    static void configure_thunk(void *data, struct zxdg_toplevel_v6 *, int32_t width, int32_t height,
+    static void configure_thunk(void *data, struct xdg_toplevel *, int32_t width, int32_t height,
                                 struct wl_array *states)
     {
-        for (auto& notifier : static_cast<XdgToplevelV6*>(data)->configure_notifiers)
+        for (auto& notifier : static_cast<XdgToplevelStable*>(data)->configure_notifiers)
         {
             notifier(width, height, states);
         }
     }
 
-    static void close_thunk(void *data, struct zxdg_toplevel_v6 *)
+    static void close_thunk(void *data, struct xdg_toplevel *)
     {
-        for (auto& notifier : static_cast<XdgToplevelV6*>(data)->close_notifiers)
+        for (auto& notifier : static_cast<XdgToplevelStable*>(data)->close_notifiers)
         {
             notifier();
         }
     }
 };
 
-class XdgPositionerV6
+class XdgPositionerStable
 {
 public:
-    XdgPositionerV6(wlcs::Client& client);
-    ~XdgPositionerV6();
-    operator zxdg_positioner_v6*() const {return positioner;}
+    XdgPositionerStable(wlcs::Client& client);
+    ~XdgPositionerStable();
+    operator xdg_positioner*() const {return positioner;}
 
 private:
-    zxdg_positioner_v6* const positioner;
+    xdg_positioner* const positioner;
 };
 
-class XdgPopupV6
+class XdgPopupStable
 {
 public:
     struct State
@@ -134,10 +134,10 @@ public:
         int height;
     };
 
-    XdgPopupV6(XdgSurfaceV6& shell_surface_, XdgSurfaceV6& parent, XdgPositionerV6& positioner);
-    XdgPopupV6(XdgToplevelV6 const&) = delete;
-    XdgPopupV6& operator=(XdgToplevelV6 const&) = delete;
-    ~XdgPopupV6();
+    XdgPopupStable(XdgSurfaceStable& shell_surface_, XdgSurfaceStable& parent, XdgPositionerStable& positioner);
+    XdgPopupStable(XdgToplevelStable const&) = delete;
+    XdgPopupStable& operator=(XdgToplevelStable const&) = delete;
+    ~XdgPopupStable();
 
     void add_configure_notification(std::function<void(int32_t, int32_t, int32_t, int32_t)> notification)
     {
@@ -149,27 +149,27 @@ public:
         popup_done_notifiers.push_back(notification);
     }
 
-    operator zxdg_popup_v6*() const {return popup;}
+    operator xdg_popup*() const {return popup;}
 
-    XdgSurfaceV6* const shell_surface;
-    zxdg_popup_v6* const popup;
+    XdgSurfaceStable* const shell_surface;
+    xdg_popup* const popup;
 
     std::vector<std::function<void(int32_t, int32_t, int32_t, int32_t)>> configure_notifiers;
     std::vector<std::function<void()>> popup_done_notifiers;
 
 private:
-    static void configure_thunk(void *data, struct zxdg_popup_v6 *, int32_t x, int32_t y,
+    static void configure_thunk(void* data, struct xdg_popup*, int32_t x, int32_t y,
                                 int32_t width, int32_t height)
     {
-        for (auto& notifier : static_cast<XdgPopupV6*>(data)->configure_notifiers)
+        for (auto& notifier : static_cast<XdgPopupStable*>(data)->configure_notifiers)
         {
             notifier(x, y, width, height);
         }
     }
 
-    static void popup_done_thunk(void *data, struct zxdg_popup_v6 *)
+    static void popup_done_thunk(void *data, struct xdg_popup*)
     {
-        for (auto& notifier : static_cast<XdgPopupV6*>(data)->popup_done_notifiers)
+        for (auto& notifier : static_cast<XdgPopupStable*>(data)->popup_done_notifiers)
         {
             notifier();
         }
@@ -178,4 +178,4 @@ private:
 
 }
 
-#endif // WLCS_XDG_SHELL_V6_
+#endif // WLCS_XDG_SHELL_STABLE_H

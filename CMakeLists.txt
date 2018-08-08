@@ -62,11 +62,14 @@ add_library(
   include/display_server.h
   include/helpers.h
   include/in_process_server.h
+  include/xdg_shell_v6.h
+  include/xdg_shell_stable.h
 
   src/data_device.cpp
   src/helpers.cpp
   src/in_process_server.cpp
   src/xdg_shell_v6.cpp
+  src/xdg_shell_stable.cpp
   src/main.cpp
 
   src/generated/wayland.c
