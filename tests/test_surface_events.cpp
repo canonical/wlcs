@@ -587,3 +587,5 @@ TEST_F(ClientSurfaceEventsTest, buffer_release)
     EXPECT_TRUE(buffer_released[1]);
     EXPECT_TRUE(buffer_released[2]);
 }
+
+// TODO: make parameterized for different types of shell surfaces

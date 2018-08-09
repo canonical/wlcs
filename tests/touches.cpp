@@ -183,9 +183,7 @@ INSTANTIATE_TEST_CASE_P(
             [](wlcs::InProcessServer& server, wlcs::Client& client, int x, int y, int width, int height)
                 -> std::unique_ptr<wlcs::Surface>
                 {
-                    auto surface = client.create_xdg_shell_v6_surface(
-                        width,
-                        height);
+                    auto surface = client.create_xdg_shell_v6_surface(width, height);
                     server.the_server().move_surface_to(surface, x, y);
                     return std::make_unique<wlcs::Surface>(std::move(surface));;
                 }
@@ -193,41 +191,31 @@ INSTANTIATE_TEST_CASE_P(
     ));
 
 INSTANTIATE_TEST_CASE_P(
-    WlShellSubsurface,
+    XdgShellStableSurface,
     TouchTest,
     testing::Values(
         TouchTestParams{
-            "wl_shell_subsurface",
+            "xdg_stable_surface",
             [](wlcs::InProcessServer& server, wlcs::Client& client, int x, int y, int width, int height)
                 -> std::unique_ptr<wlcs::Surface>
                 {
-                    auto main_surface = client.create_wl_shell_surface(
-                        width,
-                        height);
-                    server.the_server().move_surface_to(main_surface, x, y);
-                    auto subusrface = wlcs::Subsurface::create_visible(main_surface, 0, 0, width, height);
-                    client.run_on_destruction(
-                        [main_surface = std::make_shared<wlcs::Surface>(std::move(main_surface))]() mutable
-                        {
-                            main_surface.reset();
-                        });
-                    return std::make_unique<wlcs::Surface>(std::move(subusrface));
+                    auto surface = client.create_xdg_shell_stable_surface(width, height);
+                    server.the_server().move_surface_to(surface, x, y);
+                    return std::make_unique<wlcs::Surface>(std::move(surface));;
                 }
             }
     ));
 
 INSTANTIATE_TEST_CASE_P(
-    XdgShellV6Subsurface,
+    Subsurface,
     TouchTest,
     testing::Values(
         TouchTestParams{
-            "xdg_shell_subsurface",
+            "subsurface",
             [](wlcs::InProcessServer& server, wlcs::Client& client, int x, int y, int width, int height)
                 -> std::unique_ptr<wlcs::Surface>
                 {
-                    auto main_surface = client.create_xdg_shell_v6_surface(
-                        width,
-                        height);
+                    auto main_surface = client.create_visible_surface(width, height);
                     server.the_server().move_surface_to(main_surface, x, y);
                     auto subusrface = wlcs::Subsurface::create_visible(main_surface, 0, 0, width, height);
                     client.run_on_destruction(

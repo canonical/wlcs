@@ -531,7 +531,7 @@ INSTANTIATE_TEST_CASE_P(
     ));
 
 INSTANTIATE_TEST_CASE_P(
-    XdgShellSubsurfaces,
+    XdgShellV6Subsurfaces,
     SubsurfaceTest,
     testing::Values(
         SubsurfaceTestParams{
@@ -540,6 +540,28 @@ INSTANTIATE_TEST_CASE_P(
                 -> std::unique_ptr<wlcs::Surface>
                 {
                     auto surface = client.create_xdg_shell_v6_surface(
+                        width,
+                        height);
+                    server.the_server().move_surface_to(surface, x, y);
+                    return std::make_unique<wlcs::Surface>(std::move(surface));
+                },
+            [](wlcs::Server& server, wlcs::Client& client) -> std::unique_ptr<AbstractInputDevice>
+                {
+                    return std::make_unique<PointerInputDevice>(server, client);
+                }
+        }
+    ));
+
+INSTANTIATE_TEST_CASE_P(
+    XdgShellStableSubsurfaces,
+    SubsurfaceTest,
+    testing::Values(
+        SubsurfaceTestParams{
+            "xdg_stable_surface",
+            [](wlcs::InProcessServer& server, wlcs::Client& client, int x, int y, int width, int height)
+                -> std::unique_ptr<wlcs::Surface>
+                {
+                    auto surface = client.create_xdg_shell_stable_surface(
                         width,
                         height);
                     server.the_server().move_surface_to(surface, x, y);

@@ -475,16 +475,32 @@ INSTANTIATE_TEST_CASE_P(
             }}));
 
 INSTANTIATE_TEST_CASE_P(
-    XdgShellSurface,
+    XdgShellV6Surface,
     SurfaceTypesWithInputRegion,
     region_param_values_for_surface_creator(
         SurfaceCreator{
-            "xdg-shell-surface",
+            "xdg-shell-v6-surface",
             [](wlcs::InProcessServer& server, wlcs::Client& client,
                int x, int y, int width, int height,
                InputRegion const& input_region) -> std::unique_ptr<wlcs::Surface>
             {
                 auto surface = std::make_unique<wlcs::Surface>(client.create_xdg_shell_v6_surface(width, height));
+                server.the_server().move_surface_to(*surface, x, y);
+                input_region.apply_to_surface(client, *surface);
+                return surface;
+            }}));
+
+INSTANTIATE_TEST_CASE_P(
+    XdgShellStableSurface,
+    SurfaceTypesWithInputRegion,
+    region_param_values_for_surface_creator(
+        SurfaceCreator{
+            "xdg-shell-stable-surface",
+            [](wlcs::InProcessServer& server, wlcs::Client& client,
+               int x, int y, int width, int height,
+               InputRegion const& input_region) -> std::unique_ptr<wlcs::Surface>
+            {
+                auto surface = std::make_unique<wlcs::Surface>(client.create_xdg_shell_stable_surface(width, height));
                 server.the_server().move_surface_to(*surface, x, y);
                 input_region.apply_to_surface(client, *surface);
                 return surface;
