@@ -111,12 +111,14 @@ struct PopupV6TestParams
 {
     PopupV6TestParams(std::string name, int expected_x, int expected_y)
         : name{name},
-          expected_positon{expected_x, expected_y}
+          expected_positon{expected_x, expected_y},
+          popup_size{popup_width, popup_height},
+          anchor_rect{{0, 0}, {window_width, window_height}}
     {
     }
 
-    PopupV6TestParams& with_size(int x, int y) { popup_size = {{x, y}}; return *this; }
-    PopupV6TestParams& with_anchor_rect(int x, int y, int w, int h) { anchor_rect = {{{x, y}, {w, h}}}; return *this; }
+    PopupV6TestParams& with_size(int x, int y) { popup_size = {x, y}; return *this; }
+    PopupV6TestParams& with_anchor_rect(int x, int y, int w, int h) { anchor_rect = {{x, y}, {w, h}}; return *this; }
     PopupV6TestParams& with_anchor(int value) { anchor = {static_cast<zxdg_positioner_v6_anchor>(value)}; return *this; }
     PopupV6TestParams& with_gravity(int value) { gravity = {static_cast<zxdg_positioner_v6_gravity>(value)}; return *this; }
     PopupV6TestParams& with_constraint_adjustment(int value)
@@ -128,8 +130,8 @@ struct PopupV6TestParams
 
     std::string name;
     std::pair<int, int> expected_positon;
-    std::experimental::optional<std::pair<int, int>> popup_size; // will default to XdgPopupV6TestBase::popup_(width|height) if nullopt
-    std::experimental::optional<std::pair<std::pair<int, int>, std::pair<int, int>>> anchor_rect; // will default to the full window rect
+    std::pair<int, int> popup_size; // will default to XdgPopupStableTestBase::popup_(width|height) if nullopt
+    std::pair<std::pair<int, int>, std::pair<int, int>> anchor_rect; // will default to the full window rect
     std::experimental::optional<zxdg_positioner_v6_anchor> anchor;
     std::experimental::optional<zxdg_positioner_v6_gravity> gravity;
     std::experimental::optional<zxdg_positioner_v6_constraint_adjustment> constraint_adjustment;
@@ -152,20 +154,14 @@ TEST_P(XdgPopupV6Test, positioner_places_popup_correctly)
     auto const& param = GetParam();
 
     // size must always be set
-    if (param.popup_size)
-        zxdg_positioner_v6_set_size(positioner, param.popup_size.value().first, param.popup_size.value().second);
-    else
-        zxdg_positioner_v6_set_size(positioner, popup_width, popup_height);
+    zxdg_positioner_v6_set_size(positioner, param.popup_size.first, param.popup_size.second);
 
     // anchor rect must always be set
-    if (param.anchor_rect)
-        zxdg_positioner_v6_set_anchor_rect(positioner,
-                                           param.anchor_rect.value().first.first,
-                                           param.anchor_rect.value().first.second,
-                                           param.anchor_rect.value().second.first,
-                                           param.anchor_rect.value().second.second);
-    else
-        zxdg_positioner_v6_set_anchor_rect(positioner, 0, 0, window_width, window_height);
+    zxdg_positioner_v6_set_anchor_rect(positioner,
+                                   param.anchor_rect.first.first,
+                                   param.anchor_rect.first.second,
+                                   param.anchor_rect.second.first,
+                                   param.anchor_rect.second.second);
 
     if (param.anchor)
         zxdg_positioner_v6_set_anchor(positioner,  param.anchor.value());
