@@ -247,6 +247,8 @@ TEST_F(XdgToplevelStableConfigurationTest, window_can_maximize_itself)
     ConfigurationWindow window{client};
     auto& state = window.state;
 
+    ASSERT_THAT(state.maximized, Eq(false)) << "test could not run as precondition failed";
+
     xdg_toplevel_set_maximized(window);
     window.dispatch_until_configure();
 
@@ -289,7 +291,7 @@ TEST_F(XdgToplevelStableConfigurationTest, window_can_fullscreen_itself)
 
     EXPECT_THAT(state.width, Gt(0));
     EXPECT_THAT(state.height, Gt(0));
-    EXPECT_THAT(state.maximized, Eq(false)); // is this right? should it not be maximized, even when fullscreen?
+    EXPECT_THAT(state.maximized, Eq(false));
     EXPECT_THAT(state.fullscreen, Eq(true));
     EXPECT_THAT(state.resizing, Eq(false));
     EXPECT_THAT(state.activated, Eq(true));
@@ -304,12 +306,68 @@ TEST_F(XdgToplevelStableConfigurationTest, window_can_unfullscreen_itself)
     xdg_toplevel_set_fullscreen(window, nullptr);
     window.dispatch_until_configure();
 
-    EXPECT_THAT(state.fullscreen, Eq(true)) << "test could not run as precondition failed";
+    ASSERT_THAT(state.fullscreen, Eq(true)) << "test could not run as precondition failed";
 
     xdg_toplevel_unset_fullscreen(window);
     window.dispatch_until_configure();
 
     EXPECT_THAT(state.maximized, Eq(false));
+    EXPECT_THAT(state.fullscreen, Eq(false));
+    EXPECT_THAT(state.resizing, Eq(false));
+    EXPECT_THAT(state.activated, Eq(true));
+}
+
+TEST_F(XdgToplevelStableConfigurationTest, DISABLED_window_stays_maximized_after_fullscreen)
+{
+    wlcs::Client client{the_server()};
+    ConfigurationWindow window{client};
+    auto& state = window.state;
+
+    xdg_toplevel_set_maximized(window);
+    window.dispatch_until_configure();
+
+    ASSERT_THAT(state.maximized, Eq(true)) << "test could not run as precondition failed";
+
+    xdg_toplevel_set_fullscreen(window, nullptr);
+    window.dispatch_until_configure();
+
+    ASSERT_THAT(state.fullscreen, Eq(true)) << "test could not run as precondition failed";
+
+    xdg_toplevel_unset_fullscreen(window);
+    window.dispatch_until_configure();
+
+    EXPECT_THAT(state.width, Gt(0));
+    EXPECT_THAT(state.height, Gt(0));
+    EXPECT_THAT(state.maximized, Eq(true));
+    EXPECT_THAT(state.fullscreen, Eq(false));
+    EXPECT_THAT(state.resizing, Eq(false));
+    EXPECT_THAT(state.activated, Eq(true));
+}
+
+TEST_F(XdgToplevelStableConfigurationTest, DISABLED_window_can_maximize_itself_while_fullscreen)
+{
+    wlcs::Client client{the_server()};
+    ConfigurationWindow window{client};
+    auto& state = window.state;
+
+    ASSERT_THAT(state.maximized, Eq(false)) << "test could not run as precondition failed";
+
+    xdg_toplevel_set_fullscreen(window, nullptr);
+    window.dispatch_until_configure();
+
+    ASSERT_THAT(state.fullscreen, Eq(true)) << "test could not run as precondition failed";
+
+    xdg_toplevel_set_maximized(window);
+    window.dispatch_until_configure();
+
+    EXPECT_THAT(state.maximized, Eq(true));
+
+    xdg_toplevel_unset_fullscreen(window);
+    window.dispatch_until_configure();
+
+    EXPECT_THAT(state.width, Gt(0));
+    EXPECT_THAT(state.height, Gt(0));
+    EXPECT_THAT(state.maximized, Eq(true));
     EXPECT_THAT(state.fullscreen, Eq(false));
     EXPECT_THAT(state.resizing, Eq(false));
     EXPECT_THAT(state.activated, Eq(true));
