@@ -189,7 +189,7 @@ INSTANTIATE_TEST_CASE_P(
     ));
 
 INSTANTIATE_TEST_CASE_P(
-    DISABLED_Anchor,
+    Anchor,
     XdgPopupStableTest,
     testing::Values(
         PopupStableTestParams{"anchor left", -popup_width / 2, (window_height - popup_height) / 2}
@@ -205,20 +205,20 @@ INSTANTIATE_TEST_CASE_P(
             .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM),
 
         PopupStableTestParams{"anchor top left", -popup_width / 2, -popup_height / 2}
-            .with_anchor(XDG_POSITIONER_ANCHOR_TOP | XDG_POSITIONER_ANCHOR_LEFT),
+            .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT),
 
         PopupStableTestParams{"anchor top right", window_width - popup_width / 2, -popup_height / 2}
-            .with_anchor(XDG_POSITIONER_ANCHOR_TOP | XDG_POSITIONER_ANCHOR_RIGHT),
+            .with_anchor(XDG_POSITIONER_ANCHOR_TOP_RIGHT),
 
         PopupStableTestParams{"anchor bottom left", -popup_width / 2, window_height - popup_height / 2}
-            .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM | XDG_POSITIONER_ANCHOR_LEFT),
+            .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM_LEFT),
 
         PopupStableTestParams{"anchor bottom right", window_width - popup_width / 2, window_height - popup_height / 2}
-            .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM | XDG_POSITIONER_ANCHOR_RIGHT)
+            .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM_RIGHT)
     ));
 
 INSTANTIATE_TEST_CASE_P(
-    DISABLED_Gravity,
+    Gravity,
     XdgPopupStableTest,
     testing::Values(
         PopupStableTestParams{"gravity none", (window_width - popup_width) / 2, (window_height - popup_height) / 2}
@@ -237,20 +237,20 @@ INSTANTIATE_TEST_CASE_P(
             .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM),
 
         PopupStableTestParams{"gravity top left", window_width / 2 - popup_width, window_height / 2 - popup_height}
-            .with_gravity(XDG_POSITIONER_GRAVITY_TOP | XDG_POSITIONER_GRAVITY_LEFT),
+            .with_gravity(XDG_POSITIONER_GRAVITY_TOP_LEFT),
 
         PopupStableTestParams{"gravity top right", window_width / 2, window_height / 2 - popup_height}
-            .with_gravity(XDG_POSITIONER_GRAVITY_TOP | XDG_POSITIONER_GRAVITY_RIGHT),
+            .with_gravity(XDG_POSITIONER_GRAVITY_TOP_RIGHT),
 
         PopupStableTestParams{"gravity bottom left", window_width / 2 - popup_width, window_height / 2}
-            .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM | XDG_POSITIONER_GRAVITY_LEFT),
+            .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_LEFT),
 
         PopupStableTestParams{"gravity bottom right", window_width / 2, window_height / 2}
-            .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM | XDG_POSITIONER_GRAVITY_RIGHT)
+            .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT)
     ));
 
 INSTANTIATE_TEST_CASE_P(
-    DISABLED_AnchorRect,
+    AnchorRect,
     XdgPopupStableTest,
     testing::Values(
         PopupStableTestParams{"explicit default anchor rect", (window_width - popup_width) / 2, (window_height - popup_height) / 2}
