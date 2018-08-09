@@ -147,7 +147,7 @@ class XdgPopupStableTest:
 {
 };
 
-TEST_P(XdgPopupStableTest, DISABLED_positioner_places_popup_correctly)
+TEST_P(XdgPopupStableTest, positioner_places_popup_correctly)
 {
     auto const& param = GetParam();
 
@@ -193,7 +193,7 @@ INSTANTIATE_TEST_CASE_P(
     ));
 
 INSTANTIATE_TEST_CASE_P(
-    Anchor,
+    DISABLED_Anchor,
     XdgPopupStableTest,
     testing::Values(
         PopupStableTestParams{"anchor left", -popup_width / 2, (window_height - popup_height) / 2}
@@ -222,7 +222,7 @@ INSTANTIATE_TEST_CASE_P(
     ));
 
 INSTANTIATE_TEST_CASE_P(
-    Gravity,
+    DISABLED_Gravity,
     XdgPopupStableTest,
     testing::Values(
         PopupStableTestParams{"gravity none", (window_width - popup_width) / 2, (window_height - popup_height) / 2}
@@ -254,7 +254,7 @@ INSTANTIATE_TEST_CASE_P(
     ));
 
 INSTANTIATE_TEST_CASE_P(
-    AnchorRect,
+    DISABLED_AnchorRect,
     XdgPopupStableTest,
     testing::Values(
         PopupStableTestParams{"explicit default anchor rect", (window_width - popup_width) / 2, (window_height - popup_height) / 2}
@@ -274,6 +274,14 @@ INSTANTIATE_TEST_CASE_P(
 
         PopupStableTestParams{"offset anchor rect", (window_width - 40 - popup_width) / 2, (window_height - 80 - popup_height) / 2}
             .with_anchor_rect(20, 20, window_width - 80, window_height - 120)
+    ));
+
+INSTANTIATE_TEST_CASE_P(
+    ZeroSizeAnchorRect, // only allowed in XDG shell stable, not unstable v6
+    XdgPopupStableTest,
+    testing::Values(
+        PopupStableTestParams{"centered zero size anchor rect", (window_width - popup_width) / 2, (window_height - popup_height) / 2}
+            .with_anchor_rect(window_width / 2, window_height / 2, 0, 0)
     ));
 
 // TODO: test that positioner is always overlapping or adjacent to parent
