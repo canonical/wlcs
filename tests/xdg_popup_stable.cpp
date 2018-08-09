@@ -117,24 +117,24 @@ struct PopupStableTestParams
     {
     }
 
-    PopupStableTestParams& with_anchor(int value) { anchor = {static_cast<zxdg_positioner_v6_anchor>(value)}; return *this; }
-    PopupStableTestParams& with_gravity(int value) { gravity = {static_cast<zxdg_positioner_v6_gravity>(value)}; return *this; }
     PopupStableTestParams& with_size(int x, int y) { popup_size = {x, y}; return *this; }
     PopupStableTestParams& with_anchor_rect(int x, int y, int w, int h) { anchor_rect = {{x, y}, {w, h}}; return *this; }
+    PopupStableTestParams& with_anchor(int value) { anchor = {static_cast<xdg_positioner_anchor>(value)}; return *this; }
+    PopupStableTestParams& with_gravity(int value) { gravity = {static_cast<xdg_positioner_gravity>(value)}; return *this; }
     PopupStableTestParams& with_constraint_adjustment(int value)
     {
-        constraint_adjustment = {static_cast<zxdg_positioner_v6_constraint_adjustment>(value)};
+        constraint_adjustment = {static_cast<xdg_positioner_constraint_adjustment>(value)};
         return *this;
     }
     PopupStableTestParams& with_offset(int x, int y) { offset = {{x, y}}; return *this; }
 
     std::string name;
     std::pair<int, int> expected_positon;
-    std::experimental::optional<zxdg_positioner_v6_anchor> anchor;
-    std::experimental::optional<zxdg_positioner_v6_gravity> gravity;
-    std::experimental::optional<zxdg_positioner_v6_constraint_adjustment> constraint_adjustment;
     std::pair<int, int> popup_size; // will default to XdgPopupStableTestBase::popup_(width|height) if nullopt
     std::pair<std::pair<int, int>, std::pair<int, int>> anchor_rect; // will default to the full window rect
+    std::experimental::optional<xdg_positioner_anchor> anchor;
+    std::experimental::optional<xdg_positioner_gravity> gravity;
+    std::experimental::optional<xdg_positioner_constraint_adjustment> constraint_adjustment;
     std::experimental::optional<std::pair<int, int>> offset;
 };
 
@@ -193,28 +193,28 @@ INSTANTIATE_TEST_CASE_P(
     XdgPopupStableTest,
     testing::Values(
         PopupStableTestParams{"anchor left", -popup_width / 2, (window_height - popup_height) / 2}
-            .with_anchor(ZXDG_POSITIONER_V6_ANCHOR_LEFT),
+            .with_anchor(XDG_POSITIONER_ANCHOR_LEFT),
 
         PopupStableTestParams{"anchor right", window_width - popup_width / 2, (window_height - popup_height) / 2}
-            .with_anchor(ZXDG_POSITIONER_V6_ANCHOR_RIGHT),
+            .with_anchor(XDG_POSITIONER_ANCHOR_RIGHT),
 
         PopupStableTestParams{"anchor top", (window_width - popup_width) / 2, -popup_height / 2}
-            .with_anchor(ZXDG_POSITIONER_V6_ANCHOR_TOP),
+            .with_anchor(XDG_POSITIONER_ANCHOR_TOP),
 
         PopupStableTestParams{"anchor bottom", (window_width - popup_width) / 2, window_height - popup_height / 2}
-            .with_anchor(ZXDG_POSITIONER_V6_ANCHOR_BOTTOM),
+            .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM),
 
         PopupStableTestParams{"anchor top left", -popup_width / 2, -popup_height / 2}
-            .with_anchor(ZXDG_POSITIONER_V6_ANCHOR_TOP | ZXDG_POSITIONER_V6_ANCHOR_LEFT),
+            .with_anchor(XDG_POSITIONER_ANCHOR_TOP | XDG_POSITIONER_ANCHOR_LEFT),
 
         PopupStableTestParams{"anchor top right", window_width - popup_width / 2, -popup_height / 2}
-            .with_anchor(ZXDG_POSITIONER_V6_ANCHOR_TOP | ZXDG_POSITIONER_V6_ANCHOR_RIGHT),
+            .with_anchor(XDG_POSITIONER_ANCHOR_TOP | XDG_POSITIONER_ANCHOR_RIGHT),
 
         PopupStableTestParams{"anchor bottom left", -popup_width / 2, window_height - popup_height / 2}
-            .with_anchor(ZXDG_POSITIONER_V6_ANCHOR_BOTTOM | ZXDG_POSITIONER_V6_ANCHOR_LEFT),
+            .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM | XDG_POSITIONER_ANCHOR_LEFT),
 
         PopupStableTestParams{"anchor bottom right", window_width - popup_width / 2, window_height - popup_height / 2}
-            .with_anchor(ZXDG_POSITIONER_V6_ANCHOR_BOTTOM | ZXDG_POSITIONER_V6_ANCHOR_RIGHT)
+            .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM | XDG_POSITIONER_ANCHOR_RIGHT)
     ));
 
 INSTANTIATE_TEST_CASE_P(
@@ -222,31 +222,31 @@ INSTANTIATE_TEST_CASE_P(
     XdgPopupStableTest,
     testing::Values(
         PopupStableTestParams{"gravity none", (window_width - popup_width) / 2, (window_height - popup_height) / 2}
-            .with_gravity(ZXDG_POSITIONER_V6_GRAVITY_NONE),
+            .with_gravity(XDG_POSITIONER_GRAVITY_NONE),
 
         PopupStableTestParams{"gravity left", window_width / 2 - popup_width, (window_height - popup_height) / 2}
-            .with_gravity(ZXDG_POSITIONER_V6_GRAVITY_LEFT),
+            .with_gravity(XDG_POSITIONER_GRAVITY_LEFT),
 
         PopupStableTestParams{"gravity right", window_width / 2, (window_height - popup_height) / 2}
-            .with_gravity(ZXDG_POSITIONER_V6_GRAVITY_RIGHT),
+            .with_gravity(XDG_POSITIONER_GRAVITY_RIGHT),
 
         PopupStableTestParams{"gravity top", (window_width - popup_width) / 2, window_height / 2 - popup_height}
-            .with_gravity(ZXDG_POSITIONER_V6_GRAVITY_TOP),
+            .with_gravity(XDG_POSITIONER_GRAVITY_TOP),
 
         PopupStableTestParams{"gravity bottom", (window_width - popup_width) / 2, window_height / 2}
-            .with_gravity(ZXDG_POSITIONER_V6_GRAVITY_BOTTOM),
+            .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM),
 
         PopupStableTestParams{"gravity top left", window_width / 2 - popup_width, window_height / 2 - popup_height}
-            .with_gravity(ZXDG_POSITIONER_V6_GRAVITY_TOP | ZXDG_POSITIONER_V6_GRAVITY_LEFT),
+            .with_gravity(XDG_POSITIONER_GRAVITY_TOP | XDG_POSITIONER_GRAVITY_LEFT),
 
         PopupStableTestParams{"gravity top right", window_width / 2, window_height / 2 - popup_height}
-            .with_gravity(ZXDG_POSITIONER_V6_GRAVITY_TOP | ZXDG_POSITIONER_V6_GRAVITY_RIGHT),
+            .with_gravity(XDG_POSITIONER_GRAVITY_TOP | XDG_POSITIONER_GRAVITY_RIGHT),
 
         PopupStableTestParams{"gravity bottom left", window_width / 2 - popup_width, window_height / 2}
-            .with_gravity(ZXDG_POSITIONER_V6_GRAVITY_BOTTOM | ZXDG_POSITIONER_V6_GRAVITY_LEFT),
+            .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM | XDG_POSITIONER_GRAVITY_LEFT),
 
         PopupStableTestParams{"gravity bottom right", window_width / 2, window_height / 2}
-            .with_gravity(ZXDG_POSITIONER_V6_GRAVITY_BOTTOM | ZXDG_POSITIONER_V6_GRAVITY_RIGHT)
+            .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM | XDG_POSITIONER_GRAVITY_RIGHT)
     ));
 
 INSTANTIATE_TEST_CASE_P(
