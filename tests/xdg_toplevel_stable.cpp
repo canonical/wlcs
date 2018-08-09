@@ -27,7 +27,7 @@
 
 #include "helpers.h"
 #include "in_process_server.h"
-#include "xdg_shell_v6.h"
+#include "xdg_shell_stable.h"
 
 #include <gmock/gmock.h>
 
@@ -44,18 +44,18 @@ public:
     ConfigurationWindow(wlcs::Client& client)
         : client{client},
           surface{client},
-          xdg_surface{client, surface},
-          toplevel{xdg_surface}
+          xdg_shell_surface{client, surface},
+          toplevel{xdg_shell_surface}
     {
-        xdg_surface.add_configure_notification([&](uint32_t serial)
+        xdg_shell_surface.add_configure_notification([&](uint32_t serial)
             {
-                zxdg_surface_v6_ack_configure(xdg_surface, serial);
+                xdg_surface_ack_configure(xdg_shell_surface, serial);
                 surface_configure_count++;
             });
 
         toplevel.add_configure_notification([this](int32_t width, int32_t height, struct wl_array *states)
             {
-                state = wlcs::XdgToplevelV6::State{width, height, states};
+                state = wlcs::XdgToplevelStable::State{width, height, states};
             });
 
         wl_surface_commit(surface);
@@ -82,23 +82,23 @@ public:
     operator wlcs::Surface&() {return surface;}
 
     operator wl_surface*() const {return surface;}
-    operator zxdg_surface_v6*() const {return xdg_surface;}
-    operator zxdg_toplevel_v6*() const {return toplevel;}
+    operator xdg_surface*() const {return xdg_shell_surface;}
+    operator xdg_toplevel*() const {return toplevel;}
 
     wlcs::Client& client;
     wlcs::Surface surface;
-    wlcs::XdgSurfaceV6 xdg_surface;
-    wlcs::XdgToplevelV6 toplevel;
+    wlcs::XdgSurfaceStable xdg_shell_surface;
+    wlcs::XdgToplevelStable toplevel;
 
     int surface_configure_count{0};
-    wlcs::XdgToplevelV6::State state{0, 0, nullptr};
+    wlcs::XdgToplevelStable::State state{0, 0, nullptr};
 };
 
-using XdgToplevelV6Test = wlcs::InProcessServer;
+using XdgToplevelStableTest = wlcs::InProcessServer;
 
 // there *could* be a bug in these tests, but also the window manager may not be behaving properly
 // lets take another look when we've updated the window manager
-TEST_F(XdgToplevelV6Test, pointer_respects_window_geom_offset)
+TEST_F(XdgToplevelStableTest, pointer_respects_window_geom_offset)
 {
     const int offset_x = 35, offset_y = 12;
     const int window_pos_x = 200, window_pos_y = 280;
@@ -106,11 +106,11 @@ TEST_F(XdgToplevelV6Test, pointer_respects_window_geom_offset)
 
     wlcs::Client client{the_server()};
     ConfigurationWindow window{client};
-    zxdg_surface_v6_set_window_geometry(window.xdg_surface,
-                                        offset_x,
-                                        offset_y,
-                                        window.window_width - offset_x,
-                                        window.window_height - offset_y);
+    xdg_surface_set_window_geometry(window.xdg_shell_surface,
+                                    offset_x,
+                                    offset_y,
+                                    window.window_width - offset_x,
+                                    window.window_height - offset_y);
     wl_surface_commit(window.surface);
     the_server().move_surface_to(window.surface, window_pos_x, window_pos_y);
 
@@ -129,7 +129,7 @@ TEST_F(XdgToplevelV6Test, pointer_respects_window_geom_offset)
                     wl_fixed_from_int(pointer_y - window_pos_y + offset_y))));
 }
 
-TEST_F(XdgToplevelV6Test, touch_respects_window_geom_offset)
+TEST_F(XdgToplevelStableTest, touch_respects_window_geom_offset)
 {
     const int offset_x = 35, offset_y = 12;
     const int window_pos_x = 200, window_pos_y = 280;
@@ -137,7 +137,7 @@ TEST_F(XdgToplevelV6Test, touch_respects_window_geom_offset)
 
     wlcs::Client client{the_server()};
     ConfigurationWindow window{client};
-    zxdg_surface_v6_set_window_geometry(window.xdg_surface,
+    xdg_surface_set_window_geometry(window.xdg_shell_surface,
                                         offset_x,
                                         offset_y,
                                         window.window_width - offset_x,
@@ -163,7 +163,7 @@ TEST_F(XdgToplevelV6Test, touch_respects_window_geom_offset)
 // TODO: set_window_geometry window size (something will need to be added to wlcs)
 
 // interactive move is not currently implemented in the WLCS window manager
-TEST_F(XdgToplevelV6Test, DISABLED_interactive_move)
+TEST_F(XdgToplevelStableTest, DISABLED_interactive_move)
 {
     int window_x = 20, window_y = 20;
     int window_width = 420, window_height = 390;
@@ -173,8 +173,8 @@ TEST_F(XdgToplevelV6Test, DISABLED_interactive_move)
 
     wlcs::Client client{the_server()};
     wlcs::Surface surface{client};
-    wlcs::XdgSurfaceV6 xdg_surface{client, surface};
-    wlcs::XdgToplevelV6 toplevel{xdg_surface};
+    wlcs::XdgSurfaceStable xdg_shell_surface{client, surface};
+    wlcs::XdgToplevelStable toplevel{xdg_shell_surface};
     surface.attach_buffer(window_width, window_height);
     wl_surface_commit(surface);
     client.roundtrip();
@@ -199,7 +199,7 @@ TEST_F(XdgToplevelV6Test, DISABLED_interactive_move)
             return button_down;
         });
 
-    zxdg_toplevel_v6_move(toplevel, client.seat(), last_serial);
+    xdg_toplevel_move(toplevel, client.seat(), last_serial);
     client.roundtrip();
     pointer.move_to(start_x + dx, start_x + dy);
     pointer.left_button_up();
@@ -224,9 +224,9 @@ TEST_F(XdgToplevelV6Test, DISABLED_interactive_move)
 // This would probably make sense as a parameterized test, with resizing in all directions
 // Like move, resize is not implemented in the current WLCS window manager, and should not be tested until it is
 
-using XdgToplevelV6ConfigurationTest = wlcs::InProcessServer;
+using XdgToplevelStableConfigurationTest = wlcs::InProcessServer;
 
-TEST_F(XdgToplevelV6ConfigurationTest, defaults)
+TEST_F(XdgToplevelStableConfigurationTest, defaults)
 {
     wlcs::Client client{the_server()};
     ConfigurationWindow window{client};
@@ -241,13 +241,13 @@ TEST_F(XdgToplevelV6ConfigurationTest, defaults)
     EXPECT_THAT(state.activated, Eq(true));
 }
 
-TEST_F(XdgToplevelV6ConfigurationTest, window_can_maximize_itself)
+TEST_F(XdgToplevelStableConfigurationTest, window_can_maximize_itself)
 {
     wlcs::Client client{the_server()};
     ConfigurationWindow window{client};
     auto& state = window.state;
 
-    zxdg_toplevel_v6_set_maximized(window);
+    xdg_toplevel_set_maximized(window);
     window.dispatch_until_configure();
 
     EXPECT_THAT(state.width, Gt(0));
@@ -258,18 +258,18 @@ TEST_F(XdgToplevelV6ConfigurationTest, window_can_maximize_itself)
     EXPECT_THAT(state.activated, Eq(true));
 }
 
-TEST_F(XdgToplevelV6ConfigurationTest, window_can_unmaximize_itself)
+TEST_F(XdgToplevelStableConfigurationTest, window_can_unmaximize_itself)
 {
     wlcs::Client client{the_server()};
     ConfigurationWindow window{client};
     auto& state = window.state;
 
-    zxdg_toplevel_v6_set_maximized(window);
+    xdg_toplevel_set_maximized(window);
     window.dispatch_until_configure();
 
     ASSERT_THAT(state.maximized, Eq(true)) << "test could not run as precondition failed";
 
-    zxdg_toplevel_v6_unset_maximized(window);
+    xdg_toplevel_unset_maximized(window);
     window.dispatch_until_configure();
 
     EXPECT_THAT(state.maximized, Eq(false));
@@ -278,13 +278,13 @@ TEST_F(XdgToplevelV6ConfigurationTest, window_can_unmaximize_itself)
     EXPECT_THAT(state.activated, Eq(true));
 }
 
-TEST_F(XdgToplevelV6ConfigurationTest, window_can_fullscreen_itself)
+TEST_F(XdgToplevelStableConfigurationTest, window_can_fullscreen_itself)
 {
     wlcs::Client client{the_server()};
     ConfigurationWindow window{client};
     auto& state = window.state;
 
-    zxdg_toplevel_v6_set_fullscreen(window, nullptr);
+    xdg_toplevel_set_fullscreen(window, nullptr);
     window.dispatch_until_configure();
 
     EXPECT_THAT(state.width, Gt(0));
@@ -295,18 +295,18 @@ TEST_F(XdgToplevelV6ConfigurationTest, window_can_fullscreen_itself)
     EXPECT_THAT(state.activated, Eq(true));
 }
 
-TEST_F(XdgToplevelV6ConfigurationTest, window_can_unfullscreen_itself)
+TEST_F(XdgToplevelStableConfigurationTest, window_can_unfullscreen_itself)
 {
     wlcs::Client client{the_server()};
     ConfigurationWindow window{client};
     auto& state = window.state;
 
-    zxdg_toplevel_v6_set_fullscreen(window, nullptr);
+    xdg_toplevel_set_fullscreen(window, nullptr);
     window.dispatch_until_configure();
 
     EXPECT_THAT(state.fullscreen, Eq(true)) << "test could not run as precondition failed";
 
-    zxdg_toplevel_v6_unset_fullscreen(window);
+    xdg_toplevel_unset_fullscreen(window);
     window.dispatch_until_configure();
 
     EXPECT_THAT(state.maximized, Eq(false));
@@ -315,7 +315,7 @@ TEST_F(XdgToplevelV6ConfigurationTest, window_can_unfullscreen_itself)
     EXPECT_THAT(state.activated, Eq(true));
 }
 
-TEST_F(XdgToplevelV6ConfigurationTest, activated_state_follows_pointer)
+TEST_F(XdgToplevelStableConfigurationTest, activated_state_follows_pointer)
 {
     wlcs::Client client{the_server()};
 

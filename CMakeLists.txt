@@ -87,6 +87,8 @@ add_library(
   tests/xdg_toplevel_v6.cpp
   tests/xdg_popup_v6.cpp
   tests/xdg_surface_stable.cpp
+  tests/xdg_toplevel_stable.cpp
+  tests/xdg_popup_stable.cpp
   tests/self_test.cpp
 )
 
