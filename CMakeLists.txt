@@ -62,11 +62,14 @@ add_library(
   include/display_server.h
   include/helpers.h
   include/in_process_server.h
+  include/xdg_shell_v6.h
+  include/xdg_shell_stable.h
 
   src/data_device.cpp
   src/helpers.cpp
   src/in_process_server.cpp
   src/xdg_shell_v6.cpp
+  src/xdg_shell_stable.cpp
   src/main.cpp
 
   src/generated/wayland.c
@@ -83,6 +86,9 @@ add_library(
   tests/xdg_surface_v6.cpp
   tests/xdg_toplevel_v6.cpp
   tests/xdg_popup_v6.cpp
+  tests/xdg_surface_stable.cpp
+  tests/xdg_toplevel_stable.cpp
+  tests/xdg_popup_stable.cpp
   tests/self_test.cpp
 )
 

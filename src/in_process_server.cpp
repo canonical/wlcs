@@ -22,6 +22,7 @@
 #include "pointer.h"
 #include "touch.h"
 #include "xdg_shell_v6.h"
+#include "xdg_shell_stable.h"
 #include "generated/wayland-client.h"
 #include "generated/xdg-shell-unstable-v6-client.h"
 #include "generated/xdg-shell-client.h"
@@ -463,6 +464,30 @@ public:
 
         auto xdg_surface = std::make_shared<XdgSurfaceV6>(client, surface);
         auto xdg_toplevel = std::make_shared<XdgToplevelV6>(*xdg_surface);
+
+        run_on_destruction([xdg_surface, xdg_toplevel]() mutable
+            {
+                xdg_surface.reset();
+                xdg_toplevel.reset();
+            });
+
+        wl_surface_commit(surface);
+
+        surface.attach_buffer(width, height);
+
+        bool surface_rendered{false};
+        surface.add_frame_callback([&surface_rendered](auto) { surface_rendered = true; });
+        wl_surface_commit(surface);
+        dispatch_until([&surface_rendered]() { return surface_rendered; });
+        return surface;
+    }
+
+    Surface create_xdg_shell_stable_surface(Client& client, int width, int height)
+    {
+        Surface surface{client};
+
+        auto xdg_surface = std::make_shared<XdgSurfaceStable>(client, surface);
+        auto xdg_toplevel = std::make_shared<XdgToplevelStable>(*xdg_surface);
 
         run_on_destruction([xdg_surface, xdg_toplevel]() mutable
             {
@@ -974,6 +999,11 @@ wlcs::Surface wlcs::Client::create_wl_shell_surface(int width, int height)
 wlcs::Surface wlcs::Client::create_xdg_shell_v6_surface(int width, int height)
 {
     return impl->create_xdg_shell_v6_surface(*this, width, height);
+}
+
+wlcs::Surface wlcs::Client::create_xdg_shell_stable_surface(int width, int height)
+{
+    return impl->create_xdg_shell_stable_surface(*this, width, height);
 }
 
 wlcs::Surface wlcs::Client::create_visible_surface(int width, int height)
