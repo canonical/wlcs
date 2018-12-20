@@ -24,12 +24,20 @@
 extern "C" {
 #endif
 
-typedef struct WlcsPointer WlcsPointer;
+#define WLCS_POINTER_VERSION 1
 
-void wlcs_pointer_move_absolute(WlcsPointer* pointer, wl_fixed_t x, wl_fixed_t y) __attribute__((weak));
-void wlcs_pointer_move_relative(WlcsPointer* pointer, wl_fixed_t dx, wl_fixed_t dy) __attribute__((weak));
-void wlcs_pointer_button_up(WlcsPointer* pointer, int button) __attribute__((weak));
-void wlcs_pointer_button_down(WlcsPointer* pointer, int button) __attribute__((weak));
+struct WlcsPointer
+{
+    uint32_t version;
+
+    void (*move_absolute)(WlcsPointer* pointer, wl_fixed_t x, wl_fixed_t y);
+    void (*move_relative)(WlcsPointer* pointer, wl_fixed_t dx, wl_fixed_t dy);
+
+    void (*button_up)(WlcsPointer* pointer, int button);
+    void (*button_down)(WlcsPointer* pointer, int button);
+
+    void (*destroy)(WlcsPointer* pointer);
+};
 
 #ifdef __cplusplus
 }

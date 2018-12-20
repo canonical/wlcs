@@ -18,6 +18,7 @@
  */
 
 #include "helpers.h"
+#include "shared_library.h"
 
 #include <boost/throw_exception.hpp>
 #include <system_error>
@@ -89,6 +90,8 @@ namespace
 {
 static int argc;
 static char const** argv;
+
+std::string dso_name;
 }
 
 void wlcs::helpers::set_command_line(int argc, char const** argv)
@@ -105,4 +108,18 @@ int wlcs::helpers::get_argc()
 char const** wlcs::helpers::get_argv()
 {
     return ::argv;
+}
+
+void wlcs::helpers::set_module_under_test(char const* dso_name)
+{
+    ::dso_name = dso_name;
+}
+
+std::shared_ptr<WlcsServerIntegration const> wlcs::helpers::get_test_hooks()
+{
+    auto dso = std::make_shared<wlcs::SharedLibrary>(::dso_name);
+
+    auto entry_point = dso->load_function<WlcsServerIntegration const*>("entry_point");
+
+    return std::shared_ptr<WlcsServerIntegration const>{dso, entry_point};
 }

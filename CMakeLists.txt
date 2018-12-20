@@ -109,8 +109,8 @@ GENERATE_PROTOCOL(wayland)
 GENERATE_PROTOCOL(xdg-shell-unstable-v6)
 GENERATE_PROTOCOL(xdg-shell)
 
-add_library(
-  wlcs SHARED
+add_executable(
+  wlcs
 
   include/display_server.h
   include/helpers.h
@@ -124,6 +124,8 @@ add_library(
   src/xdg_shell_v6.cpp
   src/xdg_shell_stable.cpp
   src/main.cpp
+  src/shared_library.cpp
+  src/module_deleter.cpp
 
   ${PROTOCOL_SOURCES}
 
@@ -147,6 +149,7 @@ target_link_libraries(
   wlcs
 
   ${WAYLAND_CLIENT_LDFLAGS} ${WAYLAND_CLIENT_LIBRARIES}
+  dl
 
   ${GMOCK_LIBRARIES}
   ${GTEST_BOTH_LIBRARIES}

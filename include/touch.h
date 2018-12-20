@@ -24,11 +24,18 @@
 extern "C" {
 #endif
 
-typedef struct WlcsTouch WlcsTouch;
+#define WLCS_TOUCH_VERSION 1
 
-void wlcs_touch_down(WlcsTouch* touch, wl_fixed_t x, wl_fixed_t y) __attribute__((weak));
-void wlcs_touch_move(WlcsTouch* touch, wl_fixed_t x, wl_fixed_t y) __attribute__((weak));
-void wlcs_touch_up(WlcsTouch* touch) __attribute__((weak));
+struct WlcsTouch
+{
+    uint32_t version;
+
+    void (*touch_down)(WlcsTouch* touch, wl_fixed_t x, wl_fixed_t y);
+    void (*touch_move)(WlcsTouch* touch, wl_fixed_t x, wl_fixed_t y);
+    void (*touch_up)(WlcsTouch* touch);
+
+    void (*destroy)(WlcsTouch* touch);
+};
 
 #ifdef __cplusplus
 }

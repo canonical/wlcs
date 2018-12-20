@@ -34,6 +34,7 @@
 #include <vector>
 #include <algorithm>
 #include <experimental/optional>
+#include <module_deleter.h>
 
 class ShimNotImplemented : public std::logic_error
 {
@@ -51,14 +52,14 @@ public:
 class wlcs::Pointer::Impl
 {
 public:
-    Impl(WlcsPointer* raw_device)
-        : pointer{raw_device, &wlcs_destroy_pointer}
+    Impl(std::shared_ptr<WlcsPointer> const& raw_device)
+        : pointer{raw_device}
     {
     }
 
     void move_to(int x, int y)
     {
-        wlcs_pointer_move_absolute(
+        pointer->move_absolute(
             pointer.get(),
             wl_fixed_from_int(x),
             wl_fixed_from_int(y));
@@ -66,7 +67,7 @@ public:
 
     void move_by(int dx, int dy)
     {
-        wlcs_pointer_move_relative(
+        pointer->move_relative(
             pointer.get(),
             wl_fixed_from_int(dx),
             wl_fixed_from_int(dy));
@@ -74,26 +75,26 @@ public:
 
     void button_down(int button)
     {
-        wlcs_pointer_button_down(
+        pointer->button_down(
             pointer.get(),
             button);
     }
 
     void button_up(int button)
     {
-        wlcs_pointer_button_up(
+        pointer->button_up(
             pointer.get(),
             button);
     }
 
 private:
-    std::unique_ptr<WlcsPointer, decltype(&wlcs_destroy_pointer)> const pointer;
+    std::shared_ptr<WlcsPointer> const pointer;
 };
 
 wlcs::Pointer::~Pointer() = default;
 wlcs::Pointer::Pointer(Pointer&&) = default;
 
-wlcs::Pointer::Pointer(WlcsPointer* raw_device)
+wlcs::Pointer::Pointer(std::shared_ptr<WlcsPointer> const& raw_device)
     : impl{std::make_unique<Impl>(raw_device)}
 {
 }
@@ -143,33 +144,36 @@ class wlcs::Touch::Impl
 {
 public:
     Impl(WlcsTouch* raw_device)
-        : touch{raw_device, &wlcs_destroy_touch}
+        : touch{raw_device, raw_device->destroy}
     {
+        if (touch->version != WLCS_TOUCH_VERSION)
+        {
+            BOOST_THROW_EXCEPTION((
+                std::runtime_error{
+                    std::string{"Unexpected WlcsTouch version. Expected: "} +
+                    std::to_string(WLCS_TOUCH_VERSION) +
+                    " received: " +
+                    std::to_string(touch->version)}));
+        }
     }
 
     void down_at(int x, int y)
     {
-        if (!wlcs_touch_down)
-            BOOST_THROW_EXCEPTION((ShimNotImplemented{"wlcs_touch_down"}));
-        wlcs_touch_down(touch.get(), x, y);
+        touch->touch_down(touch.get(), x, y);
     }
 
     void move_to(int x, int y)
     {
-        if (!wlcs_touch_move)
-            BOOST_THROW_EXCEPTION((ShimNotImplemented{"wlcs_touch_move"}));
-        wlcs_touch_move(touch.get(), x, y);
+        touch->touch_move(touch.get(), x, y);
     }
 
     void up()
     {
-        if (!wlcs_touch_up)
-            BOOST_THROW_EXCEPTION((ShimNotImplemented{"wlcs_touch_up"}));
-        wlcs_touch_up(touch.get());
+        touch->touch_up(touch.get());
     }
 
 private:
-    std::unique_ptr<WlcsTouch, decltype(&wlcs_destroy_touch)> const touch;
+    std::unique_ptr<WlcsTouch, decltype(WlcsTouch::destroy)> const touch;
 };
 
 wlcs::Touch::~Touch() = default;
@@ -198,34 +202,43 @@ void wlcs::Touch::up()
 class wlcs::Server::Impl
 {
 public:
-    Impl(int argc, char const** argv)
-        : server{wlcs_create_server(argc, argv), &wlcs_destroy_server}
+    Impl(std::shared_ptr<WlcsServerIntegration const> const& hooks, int argc, char const** argv)
+        : server{hooks->create_server(argc, argv), hooks->destroy_server},
+          hooks{hooks}
     {
-        if (!wlcs_server_start)
+        if (hooks->version < 1)
         {
-            BOOST_THROW_EXCEPTION((std::logic_error{"Missing required wlcs_server_start definition"}));
+            BOOST_THROW_EXCEPTION((std::runtime_error{"Server integration too old"}));
         }
-        if (!wlcs_server_stop)
+        if (server->version < 1)
         {
-            BOOST_THROW_EXCEPTION((std::logic_error{"Missing required wlcs_server_stop definition"}));
+            BOOST_THROW_EXCEPTION((std::runtime_error{"Server integration too old"}));
+        }
+        if (!server->start)
+        {
+            BOOST_THROW_EXCEPTION((std::logic_error{"Missing required WlcsDisplayServer.start definition"}));
+        }
+        if (!server->stop)
+        {
+            BOOST_THROW_EXCEPTION((std::logic_error{"Missing required WlcsDisplayServer.stop definition"}));
         }
     }
 
     void start()
     {
-        wlcs_server_start(server.get());
+        server->start(server.get());
     }
 
     void stop()
     {
-        wlcs_server_stop(server.get());
+        server->stop(server.get());
     }
 
     int create_client_socket()
     {
-        if (wlcs_server_create_client_socket)
+        if (server->create_client_socket)
         {
-            auto fd = wlcs_server_create_client_socket(server.get());
+            auto fd = server->create_client_socket(server.get());
             if (fd < 0)
             {
                 BOOST_THROW_EXCEPTION((std::system_error{
@@ -241,12 +254,28 @@ public:
         }
     }
 
+    Pointer create_pointer()
+    {
+        if (!server->create_pointer)
+            BOOST_THROW_EXCEPTION((ShimNotImplemented{}));
+
+        auto raw_pointer = std::shared_ptr<WlcsPointer>{
+            server->create_pointer(server.get()),
+            [keep_module_loaded = hooks](WlcsPointer* ptr)
+            {
+                ptr->destroy(ptr);
+            }
+        };
+
+        return Pointer{raw_pointer};
+    }
+
     void move_surface_to(Surface& surface, int x, int y)
     {
         // Ensure the server knows about the IDs we're about to send...
         surface.owner().roundtrip();
 
-        wlcs_server_position_window_absolute(server.get(), surface.owner(), surface, x, y);
+        server->position_window_absolute(server.get(), surface.owner(), surface, x, y);
     }
 
     WlcsDisplayServer* wlcs_server() const
@@ -256,10 +285,14 @@ public:
 
 private:
     std::unique_ptr<WlcsDisplayServer, void(*)(WlcsDisplayServer*)> const server;
+    std::shared_ptr<WlcsServerIntegration const> const hooks;
 };
 
-wlcs::Server::Server(int argc, char const** argv)
-    : impl{std::make_unique<wlcs::Server::Impl>(argc, argv)}
+wlcs::Server::Server(
+    std::shared_ptr<WlcsServerIntegration const> const& hooks,
+    int argc,
+    char const** argv)
+    : impl{std::make_unique<wlcs::Server::Impl>(hooks, argc, argv)}
 {
 }
 
@@ -287,26 +320,21 @@ void wlcs::Server::move_surface_to(Surface& surface, int x, int y)
 
 wlcs::Pointer wlcs::Server::create_pointer()
 {
-    if (!wlcs_server_create_pointer || !wlcs_destroy_pointer)
-    {
-        BOOST_THROW_EXCEPTION((ShimNotImplemented{}));
-    }
-
-    return Pointer{wlcs_server_create_pointer(impl->wlcs_server())};
+    return impl->create_pointer();
 }
 
 wlcs::Touch wlcs::Server::create_touch()
 {
-    if (!wlcs_server_create_touch || !wlcs_destroy_touch)
+    if (!impl->wlcs_server()->create_touch)
     {
         BOOST_THROW_EXCEPTION((ShimNotImplemented{}));
     }
 
-    return Touch{wlcs_server_create_touch(impl->wlcs_server())};
+    return Touch{impl->wlcs_server()->create_touch(impl->wlcs_server())};
 }
 
 wlcs::InProcessServer::InProcessServer()
-    : server{helpers::get_argc(), helpers::get_argv()}
+    : server{helpers::get_test_hooks(), helpers::get_argc(), helpers::get_argv()}
 {
 }
 

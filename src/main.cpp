@@ -18,13 +18,17 @@
 
 #include <gtest/gtest.h>
 
+#include <dlfcn.h>
+
 #include "helpers.h"
 
 int main(int argc, char** argv)
 {
+
     ::testing::InitGoogleTest(&argc, argv);
 
     wlcs::helpers::set_command_line(argc, const_cast<char const**>(argv));
+    wlcs::helpers::set_module_under_test(argv[1]);
 
     return RUN_ALL_TESTS();
 }
