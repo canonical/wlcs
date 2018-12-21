@@ -56,6 +56,30 @@ include_directories(${GMOCK_INCLUDE_DIR} ${GTEST_INCLUDE_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 set(PROTOCOL_SOURCES "")
+
+execute_process(
+  COMMAND wayland-scanner --version
+  OUTPUT_VARIABLE WAYLAND_SCANNER_VERSION_OUTPUT
+  ERROR_VARIABLE WAYLAND_SCANNER_VERSION_OUTPUT
+)
+
+separate_arguments(WAYLAND_SCANNER_VERSION_OUTPUT)
+list(LENGTH WAYLAND_SCANNER_VERSION_OUTPUT VERSION_STRING_COMPONENTS)
+list(GET WAYLAND_SCANNER_VERSION_OUTPUT 1 VERSION_STRING)
+string(STRIP ${VERSION_STRING} VERSION_STRING)
+
+if (NOT(VERSION_STRING_COMPONENTS EQUAL 2))
+  message(AUTHOR_WARNING "Failed to parse wayland-scanner --version output")
+endif()
+
+if (VERSION_STRING VERSION_GREATER 1.14.91)
+  message(STATUS "Found wayland-scanner version ${VERSION_STRING}, using private-code mode")
+  set(WAYLAND_SCANNER_CODE_GENERATION_TYPE "private-code")
+else()
+  message(STATUS "Found wayland-scanner version ${VERSION_STRING}, using (old) code mode")
+  set(WAYLAND_SCANNER_CODE_GENERATION_TYPE "code")
+endif()
+
 macro(GENERATE_PROTOCOL PROTOCOL_NAME)
   set(PROTOCOL_PATH "${CMAKE_CURRENT_SOURCE_DIR}/src/protocol/${PROTOCOL_NAME}.xml")
   set(OUTPUT_PATH_C "${CMAKE_CURRENT_BINARY_DIR}/generated/${PROTOCOL_NAME}.c")
@@ -63,7 +87,7 @@ macro(GENERATE_PROTOCOL PROTOCOL_NAME)
   set(OUTPUT_PATH_CLIENT_H "${CMAKE_CURRENT_BINARY_DIR}/generated/${PROTOCOL_NAME}-client.h")
   add_custom_command(OUTPUT "${OUTPUT_PATH_C}"
     VERBATIM
-    COMMAND "wayland-scanner" "--include-core-only" "private-code" "${PROTOCOL_PATH}" "${OUTPUT_PATH_C}"
+    COMMAND "wayland-scanner" "--include-core-only" ${WAYLAND_SCANNER_CODE_GENERATION_TYPE} "${PROTOCOL_PATH}" "${OUTPUT_PATH_C}"
     DEPENDS "${PROTOCOL_PATH}"
   )
   add_custom_command(OUTPUT "${OUTPUT_PATH_SERVER_H}"
