@@ -21,11 +21,10 @@ cmake_minimum_required(VERSION 3.5)
 cmake_policy(SET CMP0015 NEW)
 cmake_policy(SET CMP0022 NEW)
 
-project(wlcs)
+project(wlcs VERSION 1.0.0)
 
 add_definitions(-D_GNU_SOURCE)
 add_definitions(-D_FILE_OFFSET_BITS=64)
-
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 include(GNUInstallDirs)
@@ -155,4 +154,27 @@ target_link_libraries(
 
   ${GMOCK_LIBRARIES}
   ${GTEST_BOTH_LIBRARIES}
+)
+
+install(
+  TARGETS wlcs
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(
+  DIRECTORY include/wlcs
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/wlcs
+)
+
+configure_file(
+  wlcs.pc.in
+  ${CMAKE_CURRENT_BINARY_DIR}/wlcs.pc
+  @ONLY
+)
+
+install(
+  FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/wlcs.pc
+  DESTINATION
+    ${CMAKE_INSTALL_LIBDIR}/pkgconfig/
 )

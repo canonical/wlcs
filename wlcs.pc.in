@@ -1,0 +1,12 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=${prefix}/@CMAKE_INSTALL_BINDIR@
+libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${prefix}/include
+
+test_runner=${exec_prefix}/wlcs
+
+Name: wlcs
+Description: Wayland Conformance Suite test harness
+Version: @PROJECT_VERSION@
+Requires.private: wayland-client
+Cflags: -I${includedir}
