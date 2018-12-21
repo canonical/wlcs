@@ -25,12 +25,11 @@
 
 #include <gtest/gtest.h>
 
+#include <memory>
 #include <functional>
 #include "shared_library.h"
-#include "module_deleter.h"
 
 #include <wayland-client.h>
-#include <functional>
 
 struct WlcsPointer;
 struct WlcsTouch;

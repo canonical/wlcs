@@ -126,7 +126,6 @@ add_executable(
   src/xdg_shell_stable.cpp
   src/main.cpp
   src/shared_library.cpp
-  src/module_deleter.cpp
 
   ${PROTOCOL_SOURCES}
 

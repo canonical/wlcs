@@ -34,7 +34,6 @@
 #include <vector>
 #include <algorithm>
 #include <experimental/optional>
-#include <module_deleter.h>
 
 class ShimNotImplemented : public std::logic_error
 {
