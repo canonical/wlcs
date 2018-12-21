@@ -112,7 +112,9 @@ GENERATE_PROTOCOL(xdg-shell)
 add_executable(
   wlcs
 
-  include/display_server.h
+  include/wlcs/display_server.h
+  include/wlcs/pointer.h
+  include/wlcs/touch.h
   include/helpers.h
   include/in_process_server.h
   include/xdg_shell_v6.h

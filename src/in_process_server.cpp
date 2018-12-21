@@ -17,10 +17,10 @@
  */
 
 #include "in_process_server.h"
-#include "display_server.h"
+#include "wlcs/display_server.h"
 #include "helpers.h"
-#include "pointer.h"
-#include "touch.h"
+#include "wlcs/pointer.h"
+#include "wlcs/touch.h"
 #include "xdg_shell_v6.h"
 #include "xdg_shell_stable.h"
 #include "generated/wayland-client.h"
