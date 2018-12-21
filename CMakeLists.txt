@@ -53,8 +53,35 @@ pkg_check_modules(WAYLAND_CLIENT REQUIRED wayland-client)
 
 include_directories(include)
 include_directories(${GMOCK_INCLUDE_DIR} ${GTEST_INCLUDE_DIR})
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-add_subdirectory(src/protocol/)
+set(PROTOCOL_SOURCES "")
+macro(GENERATE_PROTOCOL PROTOCOL_NAME)
+  set(PROTOCOL_PATH "${CMAKE_CURRENT_SOURCE_DIR}/src/protocol/${PROTOCOL_NAME}.xml")
+  set(OUTPUT_PATH_C "${CMAKE_CURRENT_BINARY_DIR}/generated/${PROTOCOL_NAME}.c")
+  set(OUTPUT_PATH_SERVER_H "${CMAKE_CURRENT_BINARY_DIR}/generated/${PROTOCOL_NAME}-server.h")
+  set(OUTPUT_PATH_CLIENT_H "${CMAKE_CURRENT_BINARY_DIR}/generated/${PROTOCOL_NAME}-client.h")
+  add_custom_command(OUTPUT "${OUTPUT_PATH_C}"
+    VERBATIM
+    COMMAND "wayland-scanner" "--include-core-only" "private-code" "${PROTOCOL_PATH}" "${OUTPUT_PATH_C}"
+    DEPENDS "${PROTOCOL_PATH}"
+  )
+  add_custom_command(OUTPUT "${OUTPUT_PATH_SERVER_H}"
+    VERBATIM
+    COMMAND "wayland-scanner" "--include-core-only" "server-header" "${PROTOCOL_PATH}" "${OUTPUT_PATH_SERVER_H}"
+    DEPENDS "${PROTOCOL_PATH}"
+  )
+  add_custom_command(OUTPUT "${OUTPUT_PATH_CLIENT_H}"
+    VERBATIM
+    COMMAND "wayland-scanner" "--include-core-only" "client-header" "${PROTOCOL_PATH}" "${OUTPUT_PATH_CLIENT_H}"
+    DEPENDS "${PROTOCOL_PATH}"
+  )
+  list(APPEND PROTOCOL_SOURCES ${OUTPUT_PATH_C} ${OUTPUT_PATH_CLIENT_H})
+endmacro()
+
+GENERATE_PROTOCOL(wayland)
+GENERATE_PROTOCOL(xdg-shell-unstable-v6)
+GENERATE_PROTOCOL(xdg-shell)
 
 add_library(
   wlcs SHARED
@@ -72,9 +99,7 @@ add_library(
   src/xdg_shell_stable.cpp
   src/main.cpp
 
-  src/generated/wayland.c
-  src/generated/xdg-shell-unstable-v6.c
-  src/generated/xdg-shell.c
+  ${PROTOCOL_SOURCES}
 
   tests/test_bad_buffer.cpp
   tests/copy_cut_paste.cpp
@@ -100,5 +125,3 @@ target_link_libraries(
   ${GMOCK_LIBRARIES}
   ${GTEST_BOTH_LIBRARIES}
 )
-
-add_dependencies(wlcs wlcs_protocols)
