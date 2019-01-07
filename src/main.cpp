@@ -20,6 +20,9 @@
 
 #include <dlfcn.h>
 
+#include "shared_library.h"
+#include "wlcs/display_server.h"
+
 #include "helpers.h"
 
 int main(int argc, char** argv)
@@ -27,8 +30,51 @@ int main(int argc, char** argv)
 
     ::testing::InitGoogleTest(&argc, argv);
 
-    wlcs::helpers::set_command_line(argc, const_cast<char const**>(argv));
-    wlcs::helpers::set_module_under_test(argv[1]);
+    if (argc < 2 || !argv[1] || std::string{"--help"} == argv[1])
+    {
+        std::cerr
+            << "WayLand Conformance Suite test runner" << std::endl
+            << "Usage: " << argv[0] << " COMPOSITOR_INTEGRATION_MODULE [GTEST OPTIONS]... [COMPOSITOR_OPTIONS]..." << std::endl;
+        return 1;
+    }
+
+    auto const integration_filename = argv[1];
+
+    // Shuffle the integration module argument out of argv
+    for (auto i = 1 ; i < (argc - 1) ; ++i)
+    {
+        argv[i] = argv[i + 1];
+    }
+    wlcs::helpers::set_command_line(argc - 1, const_cast<char const**>(argv));
+
+    std::shared_ptr<wlcs::SharedLibrary> dso;
+    try
+    {
+        dso = std::make_shared<wlcs::SharedLibrary>(integration_filename);
+    }
+    catch (std::exception const& err)
+    {
+        std::cerr
+            << "Failed to load compositor integration module " << integration_filename << ": " << err.what() << std::endl;
+        return 1;
+    }
+
+    std::shared_ptr<WlcsServerIntegration const> entry_point;
+    try
+    {
+        entry_point = std::shared_ptr<WlcsServerIntegration const>{
+            dso,
+            dso->load_function<WlcsServerIntegration const*>("wlcs_server_integration")
+        };
+    }
+    catch (std::exception const& err)
+    {
+        std::cerr
+            << "Failed to load compositor entry point: " << err.what() << std::endl;
+        return 1;
+    }
+
+    wlcs::helpers::set_entry_point(entry_point);
 
     return RUN_ALL_TESTS();
 }

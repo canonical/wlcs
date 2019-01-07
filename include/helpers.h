@@ -35,7 +35,7 @@ void set_command_line(int argc, char const** argv);
 int get_argc();
 char const** get_argv();
 
-void set_module_under_test(char const* dso_name);
+void set_entry_point(std::shared_ptr<WlcsServerIntegration const> const& entry_point);
 
 std::shared_ptr<WlcsServerIntegration const> get_test_hooks();
 }
