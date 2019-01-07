@@ -162,7 +162,7 @@ install(
 
 install(
   DIRECTORY include/wlcs
-  DESTINATION ${CMAKE_INSTALL_PREFIX}/wlcs
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/include/
 )
 
 configure_file(
