@@ -17,5 +17,5 @@ execute: |
     cd $SPREAD_PATH
     cd $(mktemp --directory)
     cmake $SPREAD_PATH
-    make -j
+    make -j4
 
