@@ -154,7 +154,10 @@ set(EXECUTABLE_TARGETS wlcs)
 if (WLCS_BUILD_ASAN)
   add_executable(wlcs.asan ${WLCS_SOURCES})
   target_compile_options(wlcs.asan PUBLIC -fsanitize=address -fno-omit-frame-pointer)
-  target_link_options(wlcs.asan PUBLIC -fsanitize=address)
+  set_target_properties(
+    wlcs.asan
+    PROPERTIES
+    LINK_FLAGS -fsanitize=address)
 
   # Explicitly linking with the sanitiser is harmless
   target_link_libraries(wlcs.asan asan)
@@ -164,7 +167,10 @@ endif()
 if (WLCS_BUILD_TSAN)
   add_executable(wlcs.tsan ${WLCS_SOURCES})
   target_compile_options(wlcs.tsan PUBLIC -fsanitize=thread -fno-omit-frame-pointer)
-  target_link_options(wlcs.tsan PUBLIC -fsanitize=thread)
+  set_target_properties(
+    wlcs.tsan
+    PROPERTIES
+    LINK_FLAGS -fsanitize=thread)
   # Explicitly linking with the sanitiser is harmless.
   target_link_libraries(wlcs.tsan tsan)
   list(APPEND EXECUTABLE_TARGETS wlcs.tsan)
