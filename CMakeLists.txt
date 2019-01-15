@@ -130,6 +130,8 @@ set(
   src/xdg_shell_stable.cpp
   src/main.cpp
   src/shared_library.cpp
+  src/xfail_supporting_test_listener.h
+  src/xfail_supporting_test_listener.cpp
 
   ${PROTOCOL_SOURCES}
 

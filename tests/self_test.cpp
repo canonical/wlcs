@@ -100,3 +100,10 @@ TEST_F(SelfTest, given_second_client_when_both_create_a_surface_nothing_bad_happ
         client2.roundtrip();
     }
 }
+
+TEST_F(SelfTest, xfail_failure_is_noted)
+{
+    ::testing::Test::RecordProperty("wlcs-skip-test", "Reason goes here");
+
+    FAIL() << "This message shouldn't be seen";
+}
