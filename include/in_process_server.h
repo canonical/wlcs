@@ -42,7 +42,7 @@ class Pointer
 {
 public:
     ~Pointer();
-      Pointer(Pointer&&);
+    Pointer(Pointer&&);
 
     void move_to(int x, int y);
     void move_by(int dx, int dy);
