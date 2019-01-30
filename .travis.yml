@@ -19,11 +19,6 @@ addons:
 
 stages:
 - name: test
-  # don't test on pushes to master or release pull requests or tag events
-  # TODO: enable release pull request testing when we have more CI power
-  if: NOT (( branch = master AND type = push )
-             OR ( head_branch =~ ^release/[\d\.]+$ ))
-      AND tag IS blank
 - name: upload to ppa:mir-team
   if: type = push
       AND repo = MirServer/wlcs
