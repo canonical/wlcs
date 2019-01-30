@@ -30,6 +30,7 @@ install:
   - sudo adduser $USER lxd
   - sudo apt remove --assume-yes lxd
   - wget https://cooperteam.net/spread_2017.09.21_amd64.snap
+  - sudo snap run lxd init --auto
   - sudo snap install --dangerous spread_2017.09.21_amd64.snap
   - sudo snap connect spread:lxd lxd:lxd
 
