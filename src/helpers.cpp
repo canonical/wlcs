@@ -18,6 +18,7 @@
  */
 
 #include "helpers.h"
+#include "shared_library.h"
 
 #include <boost/throw_exception.hpp>
 #include <system_error>
@@ -89,6 +90,8 @@ namespace
 {
 static int argc;
 static char const** argv;
+
+std::shared_ptr<WlcsServerIntegration const> entry_point;
 }
 
 void wlcs::helpers::set_command_line(int argc, char const** argv)
@@ -105,4 +108,14 @@ int wlcs::helpers::get_argc()
 char const** wlcs::helpers::get_argv()
 {
     return ::argv;
+}
+
+void wlcs::helpers::set_entry_point(std::shared_ptr<WlcsServerIntegration const> const& entry_point)
+{
+    ::entry_point = entry_point;
+}
+
+std::shared_ptr<WlcsServerIntegration const> wlcs::helpers::get_test_hooks()
+{
+    return ::entry_point;
 }

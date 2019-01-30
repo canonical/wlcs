@@ -20,6 +20,9 @@
 #define WLCS_HELPERS_H_
 
 #include <cstddef>
+#include <memory>
+
+struct WlcsServerIntegration;
 
 namespace wlcs
 {
@@ -31,6 +34,10 @@ void set_command_line(int argc, char const** argv);
 
 int get_argc();
 char const** get_argv();
+
+void set_entry_point(std::shared_ptr<WlcsServerIntegration const> const& entry_point);
+
+std::shared_ptr<WlcsServerIntegration const> get_test_hooks();
 }
 }
 

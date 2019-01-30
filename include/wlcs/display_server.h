@@ -27,25 +27,36 @@ extern "C" {
 typedef struct wl_surface wl_surface;
 typedef struct wl_display wl_display;
 
-typedef struct WlcsDisplayServer WlcsDisplayServer;
 typedef struct WlcsPointer WlcsPointer;
 typedef struct WlcsTouch WlcsTouch;
 
-WlcsDisplayServer* wlcs_create_server(int argc, char const** argv) __attribute__((weak));
-void wlcs_destroy_server(WlcsDisplayServer* server) __attribute__((weak));
+#define WLCS_DISPLAY_SERVER_VERSION 1
 
-void wlcs_server_start(WlcsDisplayServer* server) __attribute__((weak));
-void wlcs_server_stop(WlcsDisplayServer* server) __attribute__((weak));
+struct WlcsDisplayServer
+{
+    uint32_t version;
 
-int wlcs_server_create_client_socket(WlcsDisplayServer* server) __attribute__((weak));
+    void (*start)(WlcsDisplayServer* server);
+    void (*stop)(WlcsDisplayServer* server);
 
-void wlcs_server_position_window_absolute (WlcsDisplayServer* server, wl_display* client, wl_surface* surface, int x, int y) __attribute__((weak));
+    int (*create_client_socket)(WlcsDisplayServer* server);
 
-WlcsPointer* wlcs_server_create_pointer(WlcsDisplayServer* server) __attribute__((weak));
-void wlcs_destroy_pointer(WlcsPointer* pointer) __attribute__((weak));
+    void (*position_window_absolute)(WlcsDisplayServer* server, wl_display* client, wl_surface* surface, int x, int y);
 
-WlcsTouch* wlcs_server_create_touch(WlcsDisplayServer* server) __attribute__((weak));
-void wlcs_destroy_touch(WlcsTouch* pointer) __attribute__((weak));
+    WlcsPointer* (*create_pointer)(WlcsDisplayServer* server);
+    WlcsTouch* (*create_touch)(WlcsDisplayServer* server);
+};
+
+#define WLCS_SERVER_INTEGRATION_VERSION 1
+
+struct WlcsServerIntegration
+{
+    uint32_t version;
+
+    WlcsDisplayServer* (*create_server)(int argc, char const** argv);
+    void (*destroy_server)(WlcsDisplayServer* server);
+};
+
 
 #ifdef __cplusplus
 }

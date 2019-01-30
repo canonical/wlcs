@@ -25,10 +25,15 @@
 
 #include <gtest/gtest.h>
 
+#include <memory>
 #include <functional>
+#include "shared_library.h"
+
+#include <wayland-client.h>
 
 struct WlcsPointer;
 struct WlcsTouch;
+struct WlcsServerIntegration;
 
 namespace wlcs
 {
@@ -52,7 +57,7 @@ public:
 
 private:
     friend class Server;
-    Pointer(WlcsPointer* raw_device);
+    explicit Pointer(std::shared_ptr<WlcsPointer> const& raw_device);
 
     class Impl;
     std::unique_ptr<Impl> impl;
@@ -81,7 +86,10 @@ class Surface;
 class Server
 {
 public:
-    Server(int argc, char const** argv);
+    Server(
+        std::shared_ptr<WlcsServerIntegration const> const& module,
+        int argc,
+        char const** argv);
     ~Server();
 
     int create_client_socket();
@@ -103,7 +111,7 @@ class Client;
 class Surface
 {
 public:
-    Surface(Client& client);
+    explicit Surface(Client& client);
     virtual ~Surface();
 
     Surface(Surface&& other);

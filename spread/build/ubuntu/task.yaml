@@ -1,5 +1,5 @@
 summary: Build (on Ubuntu)
-systems: [-fedora-26]
+systems: [-fedora-*]
 
 execute: |
     apt-get update
@@ -17,5 +17,5 @@ execute: |
     cd $SPREAD_PATH
     cd $(mktemp --directory)
     cmake $SPREAD_PATH
-    make -j
+    make -j$(nproc)
 

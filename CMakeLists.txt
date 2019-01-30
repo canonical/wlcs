@@ -21,11 +21,10 @@ cmake_minimum_required(VERSION 3.5)
 cmake_policy(SET CMP0015 NEW)
 cmake_policy(SET CMP0022 NEW)
 
-project(wlcs)
+project(wlcs VERSION 1.0.0)
 
 add_definitions(-D_GNU_SOURCE)
 add_definitions(-D_FILE_OFFSET_BITS=64)
-
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 include(GNUInstallDirs)
@@ -109,10 +108,16 @@ GENERATE_PROTOCOL(wayland)
 GENERATE_PROTOCOL(xdg-shell-unstable-v6)
 GENERATE_PROTOCOL(xdg-shell)
 
-add_library(
-  wlcs SHARED
+option(WLCS_BUILD_ASAN "Build a test runner with AddressSanitizer annotations" ON)
+option(WLCS_BUILD_TSAN "Build a test runner with ThreadSanitizer annotations" ON)
+option(WLCS_BUILD_UBSAN "Build a test runner with UndefinedBehaviourSanitizer annotations" ON)
 
-  include/display_server.h
+set(
+  WLCS_SOURCES
+
+  include/wlcs/display_server.h
+  include/wlcs/pointer.h
+  include/wlcs/touch.h
   include/helpers.h
   include/in_process_server.h
   include/xdg_shell_v6.h
@@ -124,6 +129,7 @@ add_library(
   src/xdg_shell_v6.cpp
   src/xdg_shell_stable.cpp
   src/main.cpp
+  src/shared_library.cpp
 
   ${PROTOCOL_SOURCES}
 
@@ -143,11 +149,77 @@ add_library(
   tests/self_test.cpp
 )
 
-target_link_libraries(
-  wlcs
+add_executable(wlcs ${WLCS_SOURCES})
+set(EXECUTABLE_TARGETS wlcs)
+if (WLCS_BUILD_ASAN)
+  add_executable(wlcs.asan ${WLCS_SOURCES})
+  target_compile_options(wlcs.asan PUBLIC -fsanitize=address -fno-omit-frame-pointer)
+  set_target_properties(
+    wlcs.asan
+    PROPERTIES
+    LINK_FLAGS -fsanitize=address)
 
-  ${WAYLAND_CLIENT_LDFLAGS} ${WAYLAND_CLIENT_LIBRARIES}
+  # Explicitly linking with the sanitiser is harmless
+  target_link_libraries(wlcs.asan asan)
+  list(APPEND EXECUTABLE_TARGETS wlcs.asan)
+endif()
 
-  ${GMOCK_LIBRARIES}
-  ${GTEST_BOTH_LIBRARIES}
+if (WLCS_BUILD_TSAN)
+  add_executable(wlcs.tsan ${WLCS_SOURCES})
+  target_compile_options(wlcs.tsan PUBLIC -fsanitize=thread -fno-omit-frame-pointer)
+  set_target_properties(
+    wlcs.tsan
+    PROPERTIES
+    LINK_FLAGS -fsanitize=thread)
+  # Explicitly linking with the sanitiser is harmless.
+  target_link_libraries(wlcs.tsan tsan)
+  list(APPEND EXECUTABLE_TARGETS wlcs.tsan)
+endif()
+
+if (WLCS_BUILD_UBSAN)
+  add_executable(wlcs.ubsan ${WLCS_SOURCES})
+  target_compile_options(wlcs.ubsan PUBLIC -fsanitize=undefined)
+  set_target_properties(
+    wlcs.ubsan
+    PROPERTIES
+    LINK_FLAGS -fsanitize=undefined)
+
+  # Unsure quite why explicitly linking with ubsan is required, but here we are…
+  target_link_libraries(wlcs.ubsan ubsan)
+  list(APPEND EXECUTABLE_TARGETS wlcs.ubsan)
+endif()
+
+foreach(TARGET IN LISTS EXECUTABLE_TARGETS)
+  target_link_libraries(
+    ${TARGET}
+
+    ${WAYLAND_CLIENT_LDFLAGS} ${WAYLAND_CLIENT_LIBRARIES}
+    dl
+
+    ${GMOCK_LIBRARY}
+    ${GTEST_LIBRARY}
+  )
+endforeach(TARGET)
+
+install(
+  TARGETS ${EXECUTABLE_TARGETS}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR}/wlcs
+)
+
+install(
+  DIRECTORY include/wlcs
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/include/
+)
+
+configure_file(
+  wlcs.pc.in
+  ${CMAKE_CURRENT_BINARY_DIR}/wlcs.pc
+  @ONLY
+)
+
+install(
+  FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/wlcs.pc
+  DESTINATION
+    ${CMAKE_INSTALL_LIBDIR}/pkgconfig/
 )
