@@ -13,6 +13,10 @@ branches:
   # release tag
   - /^v[\d\.]+$/
 
+addons:
+  - snaps:
+    - lxd
+
 stages:
 - name: test
 - name: upload to ppa:mir-team
@@ -24,6 +28,8 @@ stages:
 
 install:
   - sudo adduser $USER lxd
+  - sudo apt remove --assume-yes lxd
+  - sudo snap run lxd init --auto
 
 env:
   global:
@@ -38,8 +44,7 @@ env:
 
 script:
   - sg lxd -c 'lxc launch $REMOTE:$IMAGE test-env'
-  - sg lxd -c 'lxc exec test-env -- mkdir /build'
-  - sg lxd -c 'lxc file push . test-env/build/'
+  - sg lxd -c 'lxc file push -r -p . test-env/build/'
   - sg lxd -c 'lxc exec test-env -- apt install build-essential g++ debhelper cmake libboost-dev libgtest-dev libwayland-dev pkg-config google-mock' 
   - sg lxd -c 'lxc exec test-env -- sh -c "cd /build ; debuild -us -uc"'
 
