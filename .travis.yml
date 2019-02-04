@@ -14,8 +14,8 @@ branches:
   - /^v[\d\.]+$/
 
 addons:
-  - snaps:
-    - lxd
+  snaps:
+  - lxd
 
 stages:
 - name: test
