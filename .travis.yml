@@ -13,10 +13,6 @@ branches:
   # release tag
   - /^v[\d\.]+$/
 
-addons:
-  snaps:
-  -  lxd
-
 stages:
 - name: test
 - name: upload to ppa:mir-team
@@ -28,26 +24,23 @@ stages:
 
 install:
   - sudo adduser $USER lxd
-  - sudo apt remove --assume-yes lxd
-  - wget https://cooperteam.net/spread_2017.09.21_amd64.snap
-  - sudo snap run lxd init --auto
-  - sudo snap install --dangerous spread_2017.09.21_amd64.snap
-  - sudo snap connect spread:lxd lxd:lxd
 
 env:
   global:
   - DEBFULLNAME="Mir CI Bot"
   - DEBEMAIL="mir-ci-bot@canonical.com"
   matrix:
-  - SYSTEM=ubuntu-16.04 VARIANT=gcc
-  - SYSTEM=ubuntu-18.04 VARIANT=gcc
-  - SYSTEM=ubuntu-18.10 VARIANT=gcc
-  - SYSTEM=ubuntu-devel VARIANT=gcc
-  - SYSTEM=ubuntu-devel VARIANT=clang
-  - SYSTEM=fedora-29 VARIANT=gcc
+  - REMOTE=ubuntu IMAGE=16.04
+  - REMOTE=ubuntu IMAGE=18.04
+  - REMOTE=ubuntu IMAGE=18.10
+  - REMOTE=ubuntu IMAGE=ubuntu-daily
+  - REMOTE=images IMAGE=fedora/29
 
 script:
-  - sg lxd -c 'LXD_DIR=/var/snap/lxd/common/lxd snap run spread lxd:$SYSTEM:...:$VARIANT'
+  - sg lxd -c 'lxc launch $REMOTE:$IMAGE test-env'
+  - sg lxd -c 'lxc file push -p -r . test-env/build/'
+  - sg lxd -c 'lxc exec test-env -- apt install build-essential g++ debhelper cmake libboost-dev libgtest-dev libwayland-dev pkg-config google-mock' 
+  - sg lxd -c 'lxc exec test-env -- sh -c "cd /build ; debuild -us -uc"'
 
 jobs:
   include:
