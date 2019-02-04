@@ -43,10 +43,10 @@ env:
   - REMOTE=images IMAGE=fedora/29
 
 script:
-  - sg lxd -c 'lxc launch $REMOTE:$IMAGE test-env'
-  - sg lxd -c 'lxc file push -r -p . test-env/build/'
-  - sg lxd -c 'lxc exec test-env -- apt install build-essential g++ debhelper cmake libboost-dev libgtest-dev libwayland-dev pkg-config google-mock' 
-  - sg lxd -c 'lxc exec test-env -- sh -c "cd /build ; debuild -us -uc"'
+  - sg lxd -c 'snap run lxc launch $REMOTE:$IMAGE test-env'
+  - sg lxd -c 'snap run lxc file push -r -p . test-env/build/'
+  - sg lxd -c 'snap run lxc exec test-env -- apt install build-essential g++ debhelper cmake libboost-dev libgtest-dev libwayland-dev pkg-config google-mock'
+  - sg lxd -c 'snap run lxc exec test-env -- sh -c "cd /build ; debuild -us -uc"'
 
 jobs:
   include:
