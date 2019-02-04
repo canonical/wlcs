@@ -1,4 +1,3 @@
-sudo: required
 dist: xenial
 
 language: cpp
@@ -22,9 +21,6 @@ stages:
             OR branch =~ ^release/[\d\.]+$
             OR tag =~ ^v[\d\.]+$ )
 
-install:
-  - sudo adduser $USER lxd
-
 env:
   global:
   - DEBFULLNAME="Mir CI Bot"
@@ -37,10 +33,10 @@ env:
   - REMOTE=images IMAGE=fedora/29
 
 script:
-  - sg lxd -c 'lxc launch $REMOTE:$IMAGE test-env'
-  - sg lxd -c 'lxc file push -p -r . test-env/build/'
-  - sg lxd -c 'lxc exec test-env -- apt install build-essential g++ debhelper cmake libboost-dev libgtest-dev libwayland-dev pkg-config google-mock' 
-  - sg lxd -c 'lxc exec test-env -- sh -c "cd /build ; debuild -us -uc"'
+  - lxc launch $REMOTE:$IMAGE test-env
+  - lxc file push . test-env/build/ -p -r
+  - lxc exec test-env -- apt install build-essential g++ debhelper cmake libboost-dev libgtest-dev libwayland-dev pkg-config google-mock
+  - lxc exec test-env -- sh -c "cd /build ; debuild -us -uc"
 
 jobs:
   include:
