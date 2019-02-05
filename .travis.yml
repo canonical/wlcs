@@ -44,8 +44,10 @@ env:
 
 script:
   - which lxc
-  - sg lxd -c 'snap run lxd.lxc list'
   - sg lxd -c 'snap run lxd.lxc launch $REMOTE:$IMAGE test-env'
+  - sg lxd -c 'snap run lxd.lxc list'
+  - sg lxd -c 'snap run lxd.lxc network info lxdbr0'
+  - sg lxd -c 'snap run lxd.lxc network list'
   - sg lxd -c 'snap run lxd.lxc file push -r -p . test-env/build/'
   - sg lxd -c 'snap run lxd.lxc exec test-env -- apt update'
   - sg lxd -c 'snap run lxd.lxc exec test-env -- apt install build-essential g++ debhelper cmake libboost-dev libgtest-dev libwayland-dev pkg-config google-mock'
