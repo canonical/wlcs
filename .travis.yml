@@ -39,7 +39,7 @@ env:
   - REMOTE=ubuntu IMAGE=16.04
   - REMOTE=ubuntu IMAGE=18.04
   - REMOTE=ubuntu IMAGE=18.10
-  - REMOTE=ubuntu IMAGE=ubuntu-daily
+  - REMOTE=ubuntu-daily IMAGE=19.04
   - REMOTE=images IMAGE=fedora/29
 
 script:
@@ -49,8 +49,8 @@ script:
   - sg lxd -c 'snap run lxd.lxc network info lxdbr0'
   - sg lxd -c 'snap run lxd.lxc network list'
   - sg lxd -c 'snap run lxd.lxc file push -r -p . test-env/build/'
-  - sg lxd -c 'snap run lxd.lxc exec test-env -- apt update'
-  - sg lxd -c 'snap run lxd.lxc exec test-env -- apt install build-essential g++ debhelper cmake libboost-dev libgtest-dev libwayland-dev pkg-config google-mock'
+  - sg lxd -c 'snap run lxd.lxc exec test-env -- sh -c "apt update || sleep 10 || apt update || sleep 30 || apt-update"'
+  - sg lxd -c 'snap run lxd.lxc exec test-env -- apt --yes install build-essential g++ debhelper cmake libboost-dev libgtest-dev libwayland-dev pkg-config google-mock'
   - sg lxd -c 'snap run lxd.lxc exec test-env -- sh -c "cd /build ; debuild -us -uc"'
 
 jobs:
