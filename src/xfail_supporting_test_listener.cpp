@@ -19,18 +19,7 @@
 #include "xfail_supporting_test_listener.h"
 #include <gtest/gtest.h>
 #include <chrono>
-
-namespace testing
-{
-namespace internal
-{
-enum class GTestColor
-{
-    Default, Red, Green, Yellow
-};
-extern void ColoredPrintf(GTestColor color, const char* fmt, ...);
-}
-}
+#include "termcolor.hpp"
 
 testing::XFailSupportingTestListenerWrapper::XFailSupportingTestListenerWrapper(std::unique_ptr<testing::TestEventListener>&& wrapped)
         : delegate{std::move(wrapped)}
@@ -99,22 +88,23 @@ void testing::XFailSupportingTestListenerWrapper::OnTestPartResult(testing::Test
 
 void testing::XFailSupportingTestListenerWrapper::OnTestEnd(testing::TestInfo const& test_info)
 {
-    using namespace testing::internal;
     if (current_skip_reasons)
     {
         for (auto const& reason : *current_skip_reasons)
         {
-            ColoredPrintf(GTestColor::Yellow, "[          ]");
-            ColoredPrintf(GTestColor::Default, " %s\n", reason.c_str());
+            std::cout
+                << termcolor::yellow << "[          ]"
+                << termcolor::reset << " " << reason << std::endl;
         }
         auto elapsed_time = std::chrono::steady_clock::now() - current_test_start;
 
-        ColoredPrintf(GTestColor::Yellow, "[     SKIP ]");
-        ColoredPrintf(
-            GTestColor::Default, " %s.%s (%ld ms)\n",
-            test_info.test_case_name(),
-            test_info.name(),
-            std::chrono::duration_cast<std::chrono::milliseconds>(elapsed_time).count());
+        std::cout
+            << termcolor::yellow << "[     SKIP ]"
+            << termcolor::reset << " "
+            << test_info.test_case_name() << "." << test_info.name()
+            << " ("
+            << std::chrono::duration_cast<std::chrono::milliseconds>(elapsed_time).count()
+            << "ms)" << std::endl;
     }
     else
     {
@@ -138,45 +128,67 @@ void testing::XFailSupportingTestListenerWrapper::OnEnvironmentsTearDownEnd(test
     delegate->OnEnvironmentsTearDownEnd(unit_test);
 }
 
+namespace
+{
+std::string singular_or_plural(char const* base, int count)
+{
+    if (count == 1)
+    {
+        return base;
+    }
+    return std::string{base} + "s";
+}
+}
+
 void testing::XFailSupportingTestListenerWrapper::OnTestIterationEnd(testing::UnitTest const& unit_test, int /*iteration*/)
 {
-    using namespace testing::internal;
-    ColoredPrintf(GTestColor::Green, "[==========] ");
+    std::cout
+        << termcolor::green << "[==========] "
+        << termcolor::reset
+        << unit_test.test_to_run_count()
+        << " tests from "
+        << unit_test.test_case_to_run_count()
+        << " test cases run. ("
+        << unit_test.elapsed_time()
+        << "ms total elapsed)" << std::endl;
 
-    ColoredPrintf(
-        GTestColor::Default, "%i tests from %i test cases run. (%ims total elapsed)\n",
-        unit_test.test_to_run_count(),
-        unit_test.test_case_to_run_count(),
-        unit_test.elapsed_time());
-    ColoredPrintf(GTestColor::Green, "[  PASSED  ]");
-    ColoredPrintf(GTestColor::Default,
-        " %i test%s\n",
-        unit_test.successful_test_count(),
-        unit_test.successful_test_count() == 1 ? "" : "s");
-    if (skipped_test_names.size() > 0)
+    std::cout
+        << termcolor::green << "[  PASSED  ]"
+        << termcolor::reset
+        << " "
+        << unit_test.successful_test_count()
+        << singular_or_plural(" test", unit_test.successful_test_count()) << std::endl;
+
+    auto const skipped_tests = skipped_test_names.size();
+    if (skipped_tests > 0)
     {
-        ColoredPrintf(GTestColor::Yellow, "[  SKIPPED ]");
-        ColoredPrintf(GTestColor::Default,
-                      " %i test%s skipped:\n",
-                      skipped_test_names.size(),
-                      skipped_test_names.size() == 1 ? "" : "s");
+        std::cout
+            << termcolor::yellow << "[  SKIPPED ] "
+            << termcolor::reset
+            << skipped_tests
+            << singular_or_plural(" test", skipped_tests)
+            << " skipped:" << std::endl;
         for (auto const name : skipped_test_names)
         {
-            ColoredPrintf(GTestColor::Yellow, "[  SKIPPED ]");
-            ColoredPrintf(GTestColor::Default, " %s\n", name.c_str());
+            std::cout
+                << termcolor::yellow << "[  SKIPPED ] "
+                << termcolor::reset << name << std::endl;
         }
     }
-    if (failed_test_names.size() > 0)
+    auto const failed_tests = failed_test_names.size();
+    if (failed_tests > 0)
     {
-        ColoredPrintf(GTestColor::Red, "[  FAILED  ]");
-        ColoredPrintf(GTestColor::Default,
-                      " %i test%s failed:\n",
-                      failed_test_names.size(),
-                      failed_test_names.size() == 1 ? "" : "s");
+        std::cout
+            << termcolor::red << "[  FAILED  ] "
+            << termcolor::reset
+            << failed_tests
+            << singular_or_plural(" test", failed_tests)
+            << " failed:" << std::endl;
         for (auto const name : failed_test_names)
         {
-            ColoredPrintf(GTestColor::Red, "[  FAILED  ]");
-            ColoredPrintf(GTestColor::Default, " %s\n", name.c_str());
+            std::cout
+                << termcolor::red << "[  FAILED  ] "
+                << termcolor::reset << name << std::endl;
         }
     }
 }

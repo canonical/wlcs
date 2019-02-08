@@ -132,6 +132,7 @@ set(
   src/shared_library.cpp
   src/xfail_supporting_test_listener.h
   src/xfail_supporting_test_listener.cpp
+  src/termcolor.hpp
 
   ${PROTOCOL_SOURCES}
 
