@@ -107,3 +107,8 @@ TEST_F(SelfTest, xfail_failure_is_noted)
 
     FAIL() << "This message shouldn't be seen";
 }
+
+TEST_F(SelfTest, expected_missing_extension_is_xfail)
+{
+    throw wlcs::ExtensionExpectedlyNotSupported("xdg_not_really_an_extension", 1);
+}

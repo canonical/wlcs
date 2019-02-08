@@ -48,6 +48,17 @@ public:
     }
 };
 
+wlcs::ExtensionExpectedlyNotSupported::ExtensionExpectedlyNotSupported(char const* extension, uint32_t version)
+    : std::runtime_error{
+        std::string{"Extension: "} +
+        extension + " version " + std::to_string(version) +
+        " not supported by compositor under test."}
+{
+    auto const skip_reason =
+        std::string{"Missing extension: "} + extension + " v" + std::to_string(version);
+    ::testing::Test::RecordProperty("wlcs-skip-test", skip_reason);
+}
+
 class wlcs::Pointer::Impl
 {
 public:
