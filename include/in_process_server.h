@@ -258,6 +258,12 @@ private:
     std::string const message;
 };
 
+class ExtensionExpectedlyNotSupported : public std::runtime_error
+{
+public:
+    ExtensionExpectedlyNotSupported(char const* extension, uint32_t version);
+};
+
 class InProcessServer : public testing::Test
 {
 public:

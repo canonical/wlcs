@@ -17,17 +17,20 @@
  */
 
 #include <gtest/gtest.h>
+#include <iostream>
+#include <memory>
 
 #include <dlfcn.h>
 
+#include "xfail_supporting_test_listener.h"
 #include "shared_library.h"
 #include "wlcs/display_server.h"
 
 #include "helpers.h"
 
+
 int main(int argc, char** argv)
 {
-
     ::testing::InitGoogleTest(&argc, argv);
 
     if (argc < 2 || !argv[1] || std::string{"--help"} == argv[1])
@@ -76,6 +79,17 @@ int main(int argc, char** argv)
 
     wlcs::helpers::set_entry_point(entry_point);
 
-    return RUN_ALL_TESTS();
+    auto& listeners = ::testing::UnitTest::GetInstance()->listeners();
+    auto wrapping_listener = new testing::XFailSupportingTestListenerWrapper{
+        std::unique_ptr<::testing::TestEventListener>{
+            listeners.Release(listeners.default_result_printer())}};
+    listeners.Append(wrapping_listener);
+
+    auto result = RUN_ALL_TESTS();
+    if (result || wrapping_listener->failed())
+    {
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
 }
 
