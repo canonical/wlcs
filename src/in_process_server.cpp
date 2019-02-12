@@ -34,6 +34,7 @@
 #include <vector>
 #include <algorithm>
 #include <experimental/optional>
+#include <unordered_map>
 
 class ShimNotImplemented : public std::logic_error
 {
@@ -209,12 +210,33 @@ void wlcs::Touch::up()
     impl->up();
 }
 
+namespace
+{
+std::shared_ptr<std::unordered_map<char const*, uint32_t> const> extract_supported_extensions(WlcsDisplayServer* server)
+{
+    if (server->version < 2)
+    {
+        return {};
+    }
+
+    auto const descriptor = server->get_descriptor();
+    auto extensions = std::make_shared<std::unordered_map<char const*, uint32_t>>();
+
+    for (auto i = 0u; i < descriptor->num_extensions; ++i)
+    {
+        (*extensions)[descriptor->supported_extensions[i].name] = descriptor->supported_extensions[i].version;
+    }
+    return extensions;
+}
+}
+
 class wlcs::Server::Impl
 {
 public:
     Impl(std::shared_ptr<WlcsServerIntegration const> const& hooks, int argc, char const** argv)
         : server{hooks->create_server(argc, argv), hooks->destroy_server},
-          hooks{hooks}
+          hooks{hooks},
+          supported_extensions_{extract_supported_extensions(server.get())}
     {
         if (hooks->version < 1)
         {
@@ -293,9 +315,15 @@ public:
         return server.get();
     }
 
+    std::shared_ptr<std::unordered_map<char const*, uint32_t> const> supported_extensions() const
+    {
+        return supported_extensions_;
+    }
+
 private:
     std::unique_ptr<WlcsDisplayServer, void(*)(WlcsDisplayServer*)> const server;
     std::shared_ptr<WlcsServerIntegration const> const hooks;
+    std::shared_ptr<std::unordered_map<char const*, uint32_t> const> const supported_extensions_;
 };
 
 wlcs::Server::Server(
@@ -316,6 +344,11 @@ void wlcs::Server::start()
 void wlcs::Server::stop()
 {
     impl->stop();
+}
+
+std::shared_ptr<std::unordered_map<char const*, uint32_t> const> wlcs::Server::supported_extensions()
+{
+    return impl->supported_extensions();
 }
 
 int wlcs::Server::create_client_socket()
@@ -388,6 +421,7 @@ class wlcs::Client::Impl
 {
 public:
     Impl(Server& server)
+        : supported_extensions{server.supported_extensions()}
     {
         try
         {
@@ -647,7 +681,17 @@ public:
 
         if (result.bound_interface == nullptr)
         {
-            BOOST_THROW_EXCEPTION((std::runtime_error{"Failed to acquire interface"}));
+            if (
+                supported_extensions &&
+                (supported_extensions->count(interface.c_str()) == 0 ||
+                 supported_extensions->at(interface.c_str()) < version))
+            {
+                BOOST_THROW_EXCEPTION((ExtensionExpectedlyNotSupported{interface.c_str(), version}));
+            }
+            else
+            {
+                BOOST_THROW_EXCEPTION((std::runtime_error{"Failed to acquire interface"}));
+            }
         }
 
         return result.bound_interface;
@@ -948,6 +992,8 @@ private:
         &global_handler,
         &global_removed
     };
+
+    std::shared_ptr<std::unordered_map<char const*, uint32_t> const> const supported_extensions;
 
     struct wl_display* display;
     struct wl_registry* registry = nullptr;
