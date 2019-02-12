@@ -33,6 +33,8 @@ void testing::XFailSupportingTestListenerWrapper::OnTestProgramStart(testing::Un
 
 void testing::XFailSupportingTestListenerWrapper::OnTestIterationStart(testing::UnitTest const& unit_test, int iteration)
 {
+    failed_test_names.clear();
+    skipped_test_names.clear();
     delegate->OnTestIterationStart(unit_test, iteration);
 }
 
