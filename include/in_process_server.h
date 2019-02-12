@@ -27,6 +27,7 @@
 
 #include <memory>
 #include <functional>
+#include <unordered_map>
 #include "shared_library.h"
 
 #include <wayland-client.h>
@@ -101,6 +102,8 @@ public:
 
     void start();
     void stop();
+
+    std::shared_ptr<std::unordered_map<char const*, uint32_t> const> supported_extensions();
 private:
     class Impl;
     std::unique_ptr<Impl> const impl;

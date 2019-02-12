@@ -30,8 +30,22 @@ typedef struct wl_display wl_display;
 typedef struct WlcsPointer WlcsPointer;
 typedef struct WlcsTouch WlcsTouch;
 
-#define WLCS_DISPLAY_SERVER_VERSION 1
+#define WLCS_INTEGRATION_DESCRIPTOR_VERSION 1
+struct WlcsExtensionDescriptor
+{
+    char const* name;
+    uint32_t version;
+};
 
+struct WlcsIntegrationDescriptor
+{
+    uint32_t version;
+
+    size_t num_extensions;
+    WlcsExtensionDescriptor const* supported_extensions;
+};
+
+#define WLCS_DISPLAY_SERVER_VERSION 2
 struct WlcsDisplayServer
 {
     uint32_t version;
@@ -45,10 +59,12 @@ struct WlcsDisplayServer
 
     WlcsPointer* (*create_pointer)(WlcsDisplayServer* server);
     WlcsTouch* (*create_touch)(WlcsDisplayServer* server);
+
+    /* Added in version 2 */
+    WlcsIntegrationDescriptor const* (*get_descriptor)();
 };
 
 #define WLCS_SERVER_INTEGRATION_VERSION 1
-
 struct WlcsServerIntegration
 {
     uint32_t version;

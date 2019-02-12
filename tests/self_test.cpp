@@ -112,3 +112,41 @@ TEST_F(SelfTest, expected_missing_extension_is_xfail)
 {
     throw wlcs::ExtensionExpectedlyNotSupported("xdg_not_really_an_extension", 1);
 }
+
+TEST_F(SelfTest, acquiring_unsupported_extension_is_xfail)
+{
+    auto const extension_list = the_server().supported_extensions();
+
+    if (!extension_list)
+    {
+        ::testing::Test::RecordProperty("wlcs-skip-test", "Compositor Integration module is too old for expected extension failures");
+        FAIL() << "Requires unsupported feature from module under test";
+    }
+
+    auto unsupported_extension =
+        std::string{"wlcs_non_existent_extension"} + extension_list->begin()->first;
+
+    Client client{the_server()};
+
+    client.acquire_interface(unsupported_extension, &wl_buffer_interface, 1);
+
+    FAIL() << "We should have (x)failed at acquiring the interface";
+}
+
+TEST_F(SelfTest, acquiring_unsupported_extension_version_is_xfail)
+{
+    auto const extension_list = the_server().supported_extensions();
+
+    if (!extension_list)
+    {
+        ::testing::Test::RecordProperty("wlcs-skip-test", "Compositor Integration module is too old for expected extension failures");
+        FAIL() << "Requires unsupported feature from module under test";
+    }
+
+    auto const unsupported_extension_version = extension_list->begin()->second + 1;
+    Client client{the_server()};
+
+    client.acquire_interface(extension_list->begin()->first, &wl_buffer_interface, unsupported_extension_version);
+
+    FAIL() << "We should have (x)failed at acquiring the interface";
+}
