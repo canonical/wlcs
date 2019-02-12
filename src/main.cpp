@@ -85,8 +85,13 @@ int main(int argc, char** argv)
             listeners.Release(listeners.default_result_printer())}};
     listeners.Append(wrapping_listener);
 
-    auto result = RUN_ALL_TESTS();
-    if (result || wrapping_listener->failed())
+    /* (void)! is apparently the magical incantation required to get GCC to
+     * *actually* silently ignore the return value of a function declared with
+     * __attribute__(("warn_unused_result"))
+     * cf: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=66425
+     */
+    (void)!RUN_ALL_TESTS();
+    if (wrapping_listener->failed())
     {
         return EXIT_FAILURE;
     }
