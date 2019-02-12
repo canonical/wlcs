@@ -2,9 +2,13 @@ summary: Build (on Ubuntu)
 systems: [-fedora-*]
 
 execute: |
+    # Grab builds of Mir git master
+    add-apt-repository ppa:mir-team/dev
+
     apt-get update
 
     apt install --yes \
+        dpkg-dev \
         libwayland-dev \
         cmake \
         clang \
@@ -12,10 +16,14 @@ execute: |
         pkg-config \
         libgtest-dev \
         google-mock \
-        libboost-dev
+        libboost-dev \
+        mir-test-tools
 
+    # Check that we build…
     cd $SPREAD_PATH
     cd $(mktemp --directory)
     cmake $SPREAD_PATH
     make -j$(nproc)
 
+    # …and check that the Mir tests pass
+    ./wlcs /usr/lib/$(dpkg-architecture -qDEB_HOST_MULTIARCH)/mir/miral_wlcs_integration.so
