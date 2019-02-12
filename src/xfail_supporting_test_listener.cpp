@@ -33,6 +33,8 @@ void testing::XFailSupportingTestListenerWrapper::OnTestProgramStart(testing::Un
 
 void testing::XFailSupportingTestListenerWrapper::OnTestIterationStart(testing::UnitTest const& unit_test, int iteration)
 {
+    failed_test_names.clear();
+    skipped_test_names.clear();
     delegate->OnTestIterationStart(unit_test, iteration);
 }
 
@@ -178,6 +180,12 @@ void testing::XFailSupportingTestListenerWrapper::OnTestIterationEnd(testing::Un
     auto const failed_tests = failed_test_names.size();
     if (failed_tests > 0)
     {
+        /* Mark the test run as a failure; if multiple iterations are run
+         * only one might fail, making failed_test_names() an unreliable
+         * indicator.
+         */
+        failed_ = true;
+
         std::cout
             << termcolor::red << "[  FAILED  ] "
             << termcolor::reset
