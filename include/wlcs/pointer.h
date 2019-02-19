@@ -26,6 +26,7 @@ extern "C" {
 
 #define WLCS_POINTER_VERSION 1
 
+typedef struct WlcsPointer WlcsPointer;
 struct WlcsPointer
 {
     uint32_t version;
