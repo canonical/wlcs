@@ -152,6 +152,8 @@ set(
   tests/self_test.cpp
 )
 
+add_library(test_c_compile OBJECT src/test_c_compile.c)
+
 add_executable(wlcs ${WLCS_SOURCES})
 set(EXECUTABLE_TARGETS wlcs)
 if (WLCS_BUILD_ASAN)
