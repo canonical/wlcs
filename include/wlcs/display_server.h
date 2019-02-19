@@ -19,6 +19,7 @@
 #define WLCS_SERVER_H_
 
 #include <stdint.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,12 +32,14 @@ typedef struct WlcsPointer WlcsPointer;
 typedef struct WlcsTouch WlcsTouch;
 
 #define WLCS_INTEGRATION_DESCRIPTOR_VERSION 1
+typedef struct WlcsExtensionDescriptor WlcsExtensionDescriptor;
 struct WlcsExtensionDescriptor
 {
     char const* name;
     uint32_t version;
 };
 
+typedef struct WlcsIntegrationDescriptor WlcsIntegrationDescriptor;
 struct WlcsIntegrationDescriptor
 {
     uint32_t version;
@@ -46,6 +49,7 @@ struct WlcsIntegrationDescriptor
 };
 
 #define WLCS_DISPLAY_SERVER_VERSION 2
+typedef struct WlcsDisplayServer WlcsDisplayServer;
 struct WlcsDisplayServer
 {
     uint32_t version;
@@ -65,6 +69,7 @@ struct WlcsDisplayServer
 };
 
 #define WLCS_SERVER_INTEGRATION_VERSION 1
+typedef struct WlcsServerIntegration WlcsServerIntegration;
 struct WlcsServerIntegration
 {
     uint32_t version;
@@ -73,6 +78,7 @@ struct WlcsServerIntegration
     void (*destroy_server)(WlcsDisplayServer* server);
 };
 
+extern WlcsServerIntegration const wlcs_server_integration;
 
 #ifdef __cplusplus
 }

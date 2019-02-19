@@ -26,6 +26,7 @@ extern "C" {
 
 #define WLCS_TOUCH_VERSION 1
 
+typedef struct WlcsTouch WlcsTouch;
 struct WlcsTouch
 {
     uint32_t version;
