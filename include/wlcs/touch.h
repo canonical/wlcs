@@ -29,7 +29,7 @@ extern "C" {
 typedef struct WlcsTouch WlcsTouch;
 struct WlcsTouch
 {
-    uint32_t version;
+    uint32_t version; /**< Version of the struct this instance provides */
 
     void (*touch_down)(WlcsTouch* touch, wl_fixed_t x, wl_fixed_t y);
     void (*touch_move)(WlcsTouch* touch, wl_fixed_t x, wl_fixed_t y);

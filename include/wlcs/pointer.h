@@ -27,16 +27,38 @@ extern "C" {
 #define WLCS_POINTER_VERSION 1
 
 typedef struct WlcsPointer WlcsPointer;
+/**
+ * An object to manipulate the server's pointer state
+ */
 struct WlcsPointer
 {
-    uint32_t version;
+    uint32_t version; /**< Version of the struct this instance provides */
 
+    /**
+     * Move the pointer to the specified location, in compositor coördinate space
+     */
     void (*move_absolute)(WlcsPointer* pointer, wl_fixed_t x, wl_fixed_t y);
+    /**
+     * Move the pointer by the specified amount, in compositor coördinates.
+     */
     void (*move_relative)(WlcsPointer* pointer, wl_fixed_t dx, wl_fixed_t dy);
 
+    /**
+     * Generate a button-up event
+     *
+     * \param button    Button code (as per wl_pointer. eg: BTN_LEFT)
+     */
     void (*button_up)(WlcsPointer* pointer, int button);
+    /**
+     * Generate a button-down event
+     *
+     * \param button    Button code (as per wl_pointer. eg: BTN_LEFT)
+     */
     void (*button_down)(WlcsPointer* pointer, int button);
 
+    /**
+     * Destroy this pointer, freeing any resources.
+     */
     void (*destroy)(WlcsPointer* pointer);
 };
 
