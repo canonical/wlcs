@@ -75,8 +75,8 @@ struct WlcsDisplayServer
      * will need to be run in a separate thread.
      *
      * This does not need to block until the display server is ready to process
-     * input, but it does need to be able to process other calls (notably
-     * create_client_socket) once this returns.
+     * input, but the WlcsDisplayServer does need to be able to process other
+     * calls (notably create_client_socket) once this returns.
      */
     void (*start)(WlcsDisplayServer* server);
 
