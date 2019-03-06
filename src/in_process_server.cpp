@@ -612,6 +612,21 @@ public:
         return nullptr;
     }
 
+    wl_keyboard* the_keyboard() const
+    {
+        return keyboard;
+    }
+
+    wl_pointer* the_pointer() const
+    {
+        return pointer;
+    }
+
+    wl_touch* the_touch() const
+    {
+        return touch;
+    }
+
     std::pair<wl_fixed_t, wl_fixed_t> pointer_position() const
     {
         return current_pointer_location.value().coordinates;
@@ -1135,6 +1150,21 @@ wl_surface* wlcs::Client::focused_window() const
 wl_surface* wlcs::Client::touched_window() const
 {
     return impl->touched_window();
+}
+
+wl_keyboard* wlcs::Client::keyboard() const
+{
+    return impl->the_keyboard();
+}
+
+wl_pointer* wlcs::Client::pointer() const
+{
+    return impl->the_pointer();
+}
+
+wl_touch* wlcs::Client::touch() const
+{
+    return impl->the_touch();
 }
 
 std::pair<wl_fixed_t, wl_fixed_t> wlcs::Client::pointer_position() const

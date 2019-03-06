@@ -198,6 +198,9 @@ public:
     xdg_wm_base* xdg_shell_stable() const;
     wl_surface* focused_window() const;
     wl_surface* touched_window() const;
+    wl_keyboard* keyboard() const;
+    wl_pointer* pointer() const;
+    wl_touch* touch() const;
     std::pair<wl_fixed_t, wl_fixed_t> pointer_position() const;
     std::pair<wl_fixed_t, wl_fixed_t> touch_position() const;
 
