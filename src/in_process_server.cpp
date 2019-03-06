@@ -452,6 +452,7 @@ public:
         if (subcompositor) wl_subcompositor_destroy(subcompositor);
         if (registry) wl_registry_destroy(registry);
         if (seat) wl_seat_destroy(seat);
+        if (keyboard) wl_keyboard_destroy(keyboard);
         if (pointer) wl_pointer_destroy(pointer);
         if (touch) wl_touch_destroy(touch);
         if (data_device_manager) wl_data_device_manager_destroy(data_device_manager);
@@ -718,6 +719,15 @@ public:
     }
 
 private:
+    static constexpr wl_keyboard_listener keyboard_listener = {
+        nullptr, // keymap
+        nullptr, // enter
+        nullptr, // leave
+        nullptr, // key
+        nullptr, // modifiers
+        nullptr, // repeat_info
+    };
+
     static void pointer_enter(
         void* ctx,
         wl_pointer* /*pointer*/,
@@ -901,6 +911,12 @@ private:
     {
         auto me = static_cast<Impl*>(ctx);
 
+        if (capabilities & WL_SEAT_CAPABILITY_KEYBOARD)
+        {
+            me->keyboard = wl_seat_get_keyboard(seat);
+            wl_keyboard_add_listener(me->keyboard, &keyboard_listener, me);
+        }
+
         if (capabilities & WL_SEAT_CAPABILITY_POINTER)
         {
             me->pointer = wl_seat_get_pointer(seat);
@@ -1002,6 +1018,7 @@ private:
     struct wl_shm* shm = nullptr;
     struct wl_shell* shell = nullptr;
     struct wl_seat* seat = nullptr;
+    struct wl_keyboard* keyboard = nullptr;
     struct wl_pointer* pointer = nullptr;
     struct wl_touch* touch = nullptr;
     struct wl_data_device_manager* data_device_manager = nullptr;
