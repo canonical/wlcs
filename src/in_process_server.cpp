@@ -709,21 +709,8 @@ public:
     {
         Surface surface{client};
 
-        wl_shell_surface * shell_surface = wl_shell_get_shell_surface(shell, surface);
-        run_on_destruction([shell_surface]()
-            {
-                wl_shell_surface_destroy(shell_surface);
-            });
-        wl_shell_surface_set_toplevel(shell_surface);
+        surface.make_visible(width, height);
 
-        wl_surface_commit(surface);
-
-        surface.attach_buffer(width, height);
-
-        bool surface_rendered{false};
-        surface.add_frame_callback([&surface_rendered](auto) { surface_rendered = true; });
-        wl_surface_commit(surface);
-        dispatch_until([&surface_rendered]() { return surface_rendered; });
         return surface;
     }
 
@@ -1512,6 +1499,24 @@ public:
         wl_callback_add_listener(callback, &frame_listener, holder.release());
     }
 
+    void make_visible(int width, int height)
+    {
+        wl_shell_surface* shell_surface = wl_shell_get_shell_surface(owner_.shell(), surface_);
+        owner_.run_on_destruction([shell_surface]()
+            {
+                wl_shell_surface_destroy(shell_surface);
+            });
+        wl_shell_surface_set_toplevel(shell_surface);
+        wl_surface_commit(surface_);
+
+        attach_buffer(width, height);
+
+        bool rendered{false};
+        add_frame_callback([&rendered](auto) { rendered = true; });
+        wl_surface_commit(surface_);
+        owner_.dispatch_until([&rendered]() { return rendered; });
+    }
+
     Client& owner() const
     {
         return owner_;
@@ -1573,6 +1578,11 @@ void wlcs::Surface::attach_buffer(int width, int height)
 void wlcs::Surface::add_frame_callback(std::function<void(int)> const& on_frame)
 {
     impl->add_frame_callback(on_frame);
+}
+
+void wlcs::Surface::make_visible(int width, int height)
+{
+    impl->make_visible(width, height);
 }
 
 wlcs::Client& wlcs::Surface::owner() const
