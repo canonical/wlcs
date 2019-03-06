@@ -588,4 +588,68 @@ TEST_F(ClientSurfaceEventsTest, buffer_release)
     EXPECT_TRUE(buffer_released[2]);
 }
 
+TEST_F(ClientSurfaceEventsTest, surface_gets_enter_event)
+{
+    using namespace testing;
+
+    wlcs::Client client{the_server()};
+    auto surface = wlcs::Surface{client};
+
+    wl_surface_listener listener = {
+        // enter
+        [](void* data, struct wl_surface*, struct wl_output*)
+            {
+                *(int*)data += 1;
+            },
+        // leave
+        [](void*, struct wl_surface*, struct wl_output*)
+            {
+                FAIL() << "surface.leave was not supposed to be called";
+            }};
+    int surface_enter_count = 0;
+    wl_surface_add_listener(surface, &listener, &surface_enter_count);
+
+    EXPECT_THAT(surface_enter_count, Eq(0));
+    surface.make_visible(100, 100);
+
+    client.dispatch_until(
+        [&surface_enter_count]()
+        {
+            return surface_enter_count == 1;
+        });
+}
+
+TEST_F(ClientSurfaceEventsTest, surface_gets_leave_event)
+{
+    using namespace testing;
+
+    wlcs::Client client{the_server()};
+    auto surface = wlcs::Surface{client};
+
+    wl_surface_listener listener = {
+        // enter
+        [](void*, struct wl_surface*, struct wl_output*)
+            {
+                // Ignore
+            },
+        [](void* data, struct wl_surface*, struct wl_output*) // leave
+            {
+                *(int*)data += 1;
+            }};
+    int surface_leave_count = 0;
+    wl_surface_add_listener(surface, &listener, &surface_leave_count);
+
+    surface.make_visible(100, 100);
+
+    EXPECT_THAT(surface_leave_count, Eq(0));
+
+    the_server().move_surface_to(surface, -150, -150);
+
+    client.dispatch_until(
+        [&surface_leave_count]()
+        {
+            return surface_leave_count == 1;
+        });
+}
+
 // TODO: make parameterized for different types of shell surfaces
