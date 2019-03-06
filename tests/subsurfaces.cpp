@@ -470,6 +470,36 @@ TEST_P(SubsurfaceTest, one_subsurface_to_another_fallthrough)
                     wl_fixed_from_int(pointer_y_2 - subsurface_top_y))));
 }
 
+TEST_P(SubsurfaceTest, place_below_simple)
+{
+    auto subsurface_moving_down{wlcs::Subsurface::create_visible(main_surface, 0, 0, subsurface_width, subsurface_height)};
+    wl_subsurface_place_below(subsurface_moving_down, subsurface);
+
+    input_device->to_screen_position(5 + surface_x, 5 + surface_y);
+    client.roundtrip();
+
+    ASSERT_THAT(input_device->focused_window(), Ne((wl_surface*)subsurface_moving_down))
+        << "subsurface.place_below() did not have an effect";
+
+    ASSERT_THAT(input_device->focused_window(), Ne((wl_surface*)subsurface))
+        << "wrong surface/subsurface on top";
+}
+
+TEST_P(SubsurfaceTest, place_above_simple)
+{
+    auto subsurface_being_covered{wlcs::Subsurface::create_visible(main_surface, 0, 0, subsurface_width, subsurface_height)};
+    wl_subsurface_place_above(subsurface, subsurface_being_covered);
+
+    input_device->to_screen_position(5 + surface_x, 5 + surface_y);
+    client.roundtrip();
+
+    ASSERT_THAT(input_device->focused_window(), Ne((wl_surface*)subsurface_being_covered))
+        << "subsurface.place_above() did not have an effect";
+
+    ASSERT_THAT(input_device->focused_window(), Ne((wl_surface*)subsurface))
+        << "wrong surface/subsurface on top";
+}
+
 TEST_P(SubsurfaceTest, subsurface_of_a_subsurface_handled)
 {
     int const pointer_x_0 = 3, pointer_y_0 = 3;
@@ -596,6 +626,6 @@ INSTANTIATE_TEST_CASE_P(
         }
     ));
 
-// TODO: subsurface reordering (not in Mir yet)
-
 // TODO: combinations of sync and desync at various levels of the tree
+
+// TODO: "bad_surface" error
