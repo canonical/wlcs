@@ -495,6 +495,53 @@ TEST_F(ClientSurfaceEventsTest, surface_moves_while_under_pointer)
         });
 }
 
+TEST_F(ClientSurfaceEventsTest, frame_timestamp_increases)
+{
+    using namespace testing;
+
+    wlcs::Client client{the_server()};
+
+    auto surface = client.create_visible_surface(100, 100);
+
+    std::array<wlcs::ShmBuffer, 3> buffers = {{
+        wlcs::ShmBuffer{client, 100, 100},
+        wlcs::ShmBuffer{client, 100, 100},
+        wlcs::ShmBuffer{client, 100, 100}
+    }};
+
+    /*
+     * The first buffer must never be released, since it is replaced before
+     * it is committed, therefore it never becomes busy.
+     */
+    wl_surface_attach(surface, buffers[0], 0, 0);
+    wl_surface_attach(surface, buffers[1], 0, 0);
+
+    int prev_frame_time = 0;
+    int frame_callback_count = 0;
+    surface.add_frame_callback(
+        [&](int time)
+        {
+            EXPECT_THAT(time, Gt(prev_frame_time));
+            prev_frame_time = time;
+            frame_callback_count++;
+        });
+    wl_surface_commit(surface);
+
+    /**
+     * We need to sleep for multiple miliseconds to make sure the timestamp
+     * really does go up
+     */
+    usleep(10000);
+
+    wl_surface_attach(surface, buffers[2], 0, 0);
+    wl_surface_commit(surface);
+
+    client.dispatch_until([&frame_callback_count]()
+        {
+            return frame_callback_count >= 2;
+        });
+}
+
 TEST_F(ClientSurfaceEventsTest, buffer_release)
 {
     wlcs::Client client{the_server()};
