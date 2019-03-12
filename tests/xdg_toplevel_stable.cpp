@@ -35,7 +35,8 @@
 
 using namespace testing;
 
-
+namespace
+{
 class ConfigurationWindow
 {
 public:
@@ -93,6 +94,7 @@ public:
     int surface_configure_count{0};
     wlcs::XdgToplevelStable::State state{0, 0, nullptr};
 };
+}
 
 using XdgToplevelStableTest = wlcs::InProcessServer;
 
