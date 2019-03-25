@@ -464,50 +464,92 @@ wlcs::ExtensionExpectedlyNotSupported::ExtensionExpectedlyNotSupported(char cons
 class wlcs::Pointer::Impl
 {
 public:
-    Impl(std::shared_ptr<WlcsPointer> const& raw_device)
-        : pointer{raw_device}
+    template<typename Proxy>
+    Impl(
+        WlcsPointer* raw_device,
+        std::shared_ptr<Proxy> const& proxy,
+        std::shared_ptr<void const> const& keep_dso_loaded)
+        : keep_dso_loaded{keep_dso_loaded},
+          pointer{raw_device}
     {
+        setup_thunks(proxy);
+    }
+
+    ~Impl()
+    {
+        destroy_thunk();
     }
 
     void move_to(int x, int y)
     {
-        pointer->move_absolute(
-            pointer.get(),
-            wl_fixed_from_int(x),
-            wl_fixed_from_int(y));
+        move_absolute_thunk(x, y);
     }
 
     void move_by(int dx, int dy)
     {
-        pointer->move_relative(
-            pointer.get(),
-            wl_fixed_from_int(dx),
-            wl_fixed_from_int(dy));
+        move_relative_thunk(dx, dy);
     }
 
     void button_down(int button)
     {
-        pointer->button_down(
-            pointer.get(),
-            button);
+        button_down_thunk(button);
     }
 
     void button_up(int button)
     {
-        pointer->button_up(
-            pointer.get(),
-            button);
+        button_up_thunk(button);
     }
 
 private:
-    std::shared_ptr<WlcsPointer> const pointer;
+    template<typename Proxy>
+    void setup_thunks(std::shared_ptr<Proxy> const& proxy)
+    {
+        move_absolute_thunk = proxy->register_op(
+            [this](int x, int y)
+            {
+                pointer->move_absolute(pointer, x, y);
+            });
+        move_relative_thunk = proxy->register_op(
+            [this](int dx, int dy)
+            {
+                pointer->move_relative(pointer, dx, dy);
+            });
+        button_down_thunk = proxy->register_op(
+            [this](int button)
+            {
+                pointer->button_down(pointer, button);
+            });
+        button_up_thunk = proxy->register_op(
+            [this](int button)
+            {
+                pointer->button_up(pointer, button);
+            });
+        destroy_thunk = proxy->register_op(
+            [this]()
+            {
+                pointer->destroy(pointer);
+            });
+    }
+
+    std::shared_ptr<void const> const keep_dso_loaded;
+    WlcsPointer* const pointer;
+
+    std::function<void(int, int)> move_absolute_thunk;
+    std::function<void(int, int)> move_relative_thunk;
+    std::function<void(int)> button_down_thunk;
+    std::function<void(int)> button_up_thunk;
+    std::function<void()> destroy_thunk;
 };
 
 wlcs::Pointer::~Pointer() = default;
 wlcs::Pointer::Pointer(Pointer&&) = default;
 
-wlcs::Pointer::Pointer(std::shared_ptr<WlcsPointer> const& raw_device)
-    : impl{std::make_unique<Impl>(raw_device)}
+template<typename Proxy>
+wlcs::Pointer::Pointer(
+    WlcsPointer* raw_device,
+    std::shared_ptr<Proxy> const& proxy,
+    std::shared_ptr<void const> const& keep_dso_loaded)
+    : impl{std::make_unique<Impl>(raw_device, proxy, keep_dso_loaded)}
 {
 }
 
@@ -555,8 +597,13 @@ void wlcs::Pointer::left_click()
 class wlcs::Touch::Impl
 {
 public:
-    Impl(WlcsTouch* raw_device)
-        : touch{raw_device, raw_device->destroy}
+    template<typename Proxy>
+    Impl(
+        WlcsTouch* raw_device,
+        std::shared_ptr<Proxy> const& proxy,
+        std::shared_ptr<void const> const& keep_dso_loaded)
+        : keep_dso_loaded{keep_dso_loaded},
+          touch{raw_device, proxy->register_op([](WlcsTouch* raw_device) { raw_device->destroy(raw_device); })}
     {
         if (touch->version != WLCS_TOUCH_VERSION)
         {
@@ -567,6 +614,7 @@ public:
                     " received: " +
                     std::to_string(touch->version)}));
         }
+        set_up_thunks(proxy);
     }
 
     void down_at(int x, int y)
@@ -585,14 +633,43 @@ public:
     }
 
 private:
-    std::unique_ptr<WlcsTouch, decltype(WlcsTouch::destroy)> const touch;
+    template<typename Proxy>
+    void set_up_thunks(std::shared_ptr<Proxy> const& proxy)
+    {
+        touch_down_thunk = proxy->register_op(
+            [this](int x, int y)
+            {
+                touch->touch_down(touch.get(), x, y);
+            });
+        touch_move_thunk = proxy->register_op(
+            [this](int x, int y)
+            {
+                touch->touch_move(touch.get(), x, y);
+            });
+        touch_up_thunk = proxy->register_op(
+            [this]()
+            {
+                touch->touch_up(touch.get());
+            });
+    }
+
+    std::shared_ptr<void const> const keep_dso_loaded;
+    std::unique_ptr<WlcsTouch, std::function<void(WlcsTouch*)>> const touch;
+
+    std::function<void(int, int)> touch_down_thunk;
+    std::function<void(int, int)> touch_move_thunk;
+    std::function<void()> touch_up_thunk;
 };
 
 wlcs::Touch::~Touch() = default;
 wlcs::Touch::Touch(Touch&&) = default;
 
-wlcs::Touch::Touch(WlcsTouch* raw_device)
-    : impl{std::make_unique<Impl>(raw_device)}
+template<typename Proxy>
+wlcs::Touch::Touch(
+    WlcsTouch* raw_device,
+    std::shared_ptr<Proxy> const& proxy,
+    std::shared_ptr<void const> const& keep_dso_loaded)
+    : impl{std::make_unique<Impl>(raw_device, proxy, keep_dso_loaded)}
 {
 }
 
@@ -629,6 +706,16 @@ std::shared_ptr<std::unordered_map<char const*, uint32_t> const> extract_support
     }
     return extensions;
 }
+
+class NullProxy
+{
+public:
+    template<typename Callable>
+    auto register_op(Callable handler)
+    {
+        return std::move(handler);
+    }
+};
 }
 
 class wlcs::Server::Impl
@@ -636,6 +723,7 @@ class wlcs::Server::Impl
 public:
     Impl(std::shared_ptr<WlcsServerIntegration const> const& hooks, int argc, char const** argv)
         : server{hooks->create_server(argc, argv), hooks->destroy_server},
+          thread_context{make_context_if_needed(*server)},
           hooks{hooks},
           supported_extensions_{extract_supported_extensions(server.get())}
     {
@@ -647,60 +735,76 @@ public:
         {
             BOOST_THROW_EXCEPTION((std::runtime_error{"Server integration too old"}));
         }
-        if (!server->start)
-        {
-            BOOST_THROW_EXCEPTION((std::logic_error{"Missing required WlcsDisplayServer.start definition"}));
-        }
         if (!server->stop)
         {
             BOOST_THROW_EXCEPTION((std::logic_error{"Missing required WlcsDisplayServer.stop definition"}));
+        }
+        if (thread_context)
+        {
+            initialise_thunks(thread_context->proxy);
+        }
+        else
+        {
+            initialise_thunks(std::make_shared<NullProxy>());
         }
     }
 
     void start()
     {
-        server->start(server.get());
+        if (thread_context)
+        {
+            thread_context->server_thread = std::thread{
+                [this]()
+                {
+                    server->start_on_this_thread(server.get(), thread_context->event_loop.get());
+                }};
+        }
+        else
+        {
+            server->start(server.get());
+        }
     }
 
     void stop()
     {
-        server->stop(server.get());
+        stop_thunk();
     }
 
     int create_client_socket()
     {
-        if (server->create_client_socket)
+        auto fd = create_client_socket_thunk();
+        if (fd < 0)
         {
-            auto fd = server->create_client_socket(server.get());
-            if (fd < 0)
-            {
-                BOOST_THROW_EXCEPTION((std::system_error{
-                    errno,
-                    std::system_category(),
-                    "Failed to get client socket from server"}));
-            }
-            return fd;
+            BOOST_THROW_EXCEPTION((std::system_error{
+                errno,
+                std::system_category(),
+                "Failed to get client socket from server"}));
         }
-        else
-        {
-            BOOST_THROW_EXCEPTION(ShimNotImplemented{});
-        }
+        return fd;
     }
 
     Pointer create_pointer()
     {
-        if (!server->create_pointer)
-            BOOST_THROW_EXCEPTION((ShimNotImplemented{}));
+        if (thread_context)
+        {
+            return Pointer{create_pointer_thunk(), thread_context->proxy, hooks};
+        }
+        else
+        {
+            return Pointer{create_pointer_thunk(), std::make_shared<NullProxy>(), hooks};
+        }
+    }
 
-        auto raw_pointer = std::shared_ptr<WlcsPointer>{
-            server->create_pointer(server.get()),
-            [keep_module_loaded = hooks](WlcsPointer* ptr)
-            {
-                ptr->destroy(ptr);
-            }
-        };
-
-        return Pointer{raw_pointer};
+    Touch create_touch()
+    {
+        if (thread_context)
+        {
+            return Touch{create_touch_thunk(), thread_context->proxy, hooks};
+        }
+        else
+        {
+            return Touch{create_touch_thunk(), std::make_shared<NullProxy>(), hooks};
+        }
     }
 
     void move_surface_to(Surface& surface, int x, int y)
@@ -708,7 +812,7 @@ public:
         // Ensure the server knows about the IDs we're about to send...
         surface.owner().roundtrip();
 
-        server->position_window_absolute(server.get(), surface.owner(), surface, x, y);
+        position_window_absolute_thunk(surface.owner(), surface, x, y);
     }
 
     WlcsDisplayServer* wlcs_server() const
@@ -722,9 +826,103 @@ public:
     }
 
 private:
+    struct ThreadContext
+    {
+        explicit ThreadContext(std::unique_ptr<struct wl_event_loop, decltype(&wl_event_loop_destroy)> loop)
+            : event_loop{std::move(loop)},
+              proxy{std::make_shared<ThreadProxy>(event_loop.get())}
+        {
+        }
+        ThreadContext(ThreadContext&&) = default;
+
+        ~ThreadContext()
+        {
+            if (server_thread.joinable())
+            {
+                server_thread.join();
+            }
+        }
+
+        std::unique_ptr<struct wl_event_loop, void(*)(struct wl_event_loop*)> event_loop;
+        std::thread server_thread;
+        std::shared_ptr<ThreadProxy> proxy;
+    };
+
+    static std::experimental::optional<ThreadContext> make_context_if_needed(WlcsDisplayServer const& server)
+    {
+        if (server.version >= 3)
+        {
+            if (!server.start)
+            {
+                if (!server.start_on_this_thread)
+                {
+                    BOOST_THROW_EXCEPTION((
+                        std::runtime_error{"Server integration missing both start() and start_on_this_thread()"}));
+                }
+                auto loop = std::unique_ptr<struct wl_event_loop, decltype(&wl_event_loop_destroy)>{
+                    wl_event_loop_create(),
+                    &wl_event_loop_destroy
+                };
+                if (!loop)
+                {
+                    BOOST_THROW_EXCEPTION((
+                        std::runtime_error{"Failed to create eventloop for WLCS events"}));
+                }
+
+                return {ThreadContext{std::move(loop)}};
+            }
+        }
+        return {};
+    };
+
     std::unique_ptr<WlcsDisplayServer, void(*)(WlcsDisplayServer*)> const server;
+    std::experimental::optional<ThreadContext> thread_context;
     std::shared_ptr<WlcsServerIntegration const> const hooks;
     std::shared_ptr<std::unordered_map<char const*, uint32_t> const> const supported_extensions_;
+
+    template<typename Proxy>
+    void initialise_thunks(std::shared_ptr<Proxy> proxy)
+    {
+        stop_thunk = proxy->register_op(
+            [this]()
+            {
+                server->stop(server.get());
+            });
+        create_client_socket_thunk = proxy->register_op(
+            [this]()
+            {
+                return server->create_client_socket(server.get());
+            });
+        create_pointer_thunk = proxy->register_op(
+            [this]()
+            {
+                return server->create_pointer(server.get());
+            });
+        create_touch_thunk = proxy->register_op(
+            [this]()
+            {
+                return server->create_touch(server.get());
+            });
+        position_window_absolute_thunk = proxy->register_op(
+            [this](
+                struct wl_display* client,
+                struct wl_surface* surface,
+                int x,
+                int y)
+            {
+                server->position_window_absolute(
+                    server.get(),
+                    client,
+                    surface,
+                    x,
+                    y);
+            });
+    }
+    std::function<void()> stop_thunk;
+    std::function<int()> create_client_socket_thunk;
+    std::function<WlcsPointer*()> create_pointer_thunk;
+    std::function<WlcsTouch*()> create_touch_thunk;
+    std::function<void(struct wl_display*, struct wl_surface*, int, int)> position_window_absolute_thunk;
 };
 
 wlcs::Server::Server(
@@ -769,12 +967,7 @@ wlcs::Pointer wlcs::Server::create_pointer()
 
 wlcs::Touch wlcs::Server::create_touch()
 {
-    if (!impl->wlcs_server()->create_touch)
-    {
-        BOOST_THROW_EXCEPTION((ShimNotImplemented{}));
-    }
-
-    return Touch{impl->wlcs_server()->create_touch(impl->wlcs_server())};
+    return impl->create_touch();
 }
 
 wlcs::InProcessServer::InProcessServer()
