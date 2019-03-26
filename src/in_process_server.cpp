@@ -482,12 +482,12 @@ public:
 
     void move_to(int x, int y)
     {
-        move_absolute_thunk(x, y);
+        move_absolute_thunk(wl_fixed_from_int(x), wl_fixed_from_int(y));
     }
 
     void move_by(int dx, int dy)
     {
-        move_relative_thunk(dx, dy);
+        move_relative_thunk(wl_fixed_from_int(dx), wl_fixed_from_int(dy));
     }
 
     void button_down(int button)
@@ -505,12 +505,12 @@ private:
     void setup_thunks(std::shared_ptr<Proxy> const& proxy)
     {
         move_absolute_thunk = proxy->register_op(
-            [this](int x, int y)
+            [this](wl_fixed_t x, wl_fixed_t y)
             {
                 pointer->move_absolute(pointer, x, y);
             });
         move_relative_thunk = proxy->register_op(
-            [this](int dx, int dy)
+            [this](wl_fixed_t dx, wl_fixed_t dy)
             {
                 pointer->move_relative(pointer, dx, dy);
             });
@@ -534,8 +534,8 @@ private:
     std::shared_ptr<void const> const keep_dso_loaded;
     WlcsPointer* const pointer;
 
-    std::function<void(int, int)> move_absolute_thunk;
-    std::function<void(int, int)> move_relative_thunk;
+    std::function<void(wl_fixed_t, wl_fixed_t)> move_absolute_thunk;
+    std::function<void(wl_fixed_t, wl_fixed_t)> move_relative_thunk;
     std::function<void(int)> button_down_thunk;
     std::function<void(int)> button_up_thunk;
     std::function<void()> destroy_thunk;
