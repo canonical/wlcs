@@ -314,7 +314,7 @@ public:
     template<typename Callable>
     auto register_op(Callable handler)
     {
-        return std::move(handler);
+        return handler;
     }
 };
 }

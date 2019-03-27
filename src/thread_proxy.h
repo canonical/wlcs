@@ -134,8 +134,6 @@ std::array<int, 2> setup_socketpair()
     return socket_fds;
 }
 
-namespace
-{
 constexpr ssize_t arguments_size()
 {
     return 0;
@@ -184,7 +182,6 @@ template<typename... Args>
 constexpr bool all_args_are_trivially_copyable(std::tuple<Args...> const*)
 {
     return conjunction<std::is_trivially_copyable<Args>...>::value;
-}
 }
 
 /*
@@ -299,7 +296,7 @@ private:
                 typename callable_traits<typename std::decay<Callable>::type>::return_type,
                 void>::value,
             int> = 0>
-    auto make_recv_functor(Callable&& handler, std::tuple<Args...> const*)
+    auto make_recv_functor(Callable handler, std::tuple<Args...> const*)
     {
         return
             [this, handler = std::move(handler)](void* data)
@@ -324,7 +321,7 @@ private:
             !std::is_same<
                 typename callable_traits<typename std::decay<Callable>::type>::return_type,
                 void>::value, int> = 0>
-    auto make_recv_functor(Callable&& handler, std::tuple<Args...> const*)
+    auto make_recv_functor(Callable handler, std::tuple<Args...> const*)
     {
         return
             [this, handler = std::move(handler)](void* data)
