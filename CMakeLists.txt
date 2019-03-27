@@ -134,6 +134,7 @@ set(
   src/xfail_supporting_test_listener.h
   src/xfail_supporting_test_listener.cpp
   src/termcolor.hpp
+  src/thread_proxy.h
 
   ${PROTOCOL_SOURCES}
 
