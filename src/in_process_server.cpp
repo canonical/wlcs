@@ -219,7 +219,7 @@ std::shared_ptr<std::unordered_map<char const*, uint32_t> const> extract_support
         return {};
     }
 
-    auto const descriptor = server->get_descriptor();
+    auto const descriptor = server->get_descriptor(server);
     auto extensions = std::make_shared<std::unordered_map<char const*, uint32_t>>();
 
     for (auto i = 0u; i < descriptor->num_extensions; ++i)
