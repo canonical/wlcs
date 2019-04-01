@@ -65,7 +65,7 @@ struct WlcsDisplayServer
     WlcsTouch* (*create_touch)(WlcsDisplayServer* server);
 
     /* Added in version 2 */
-    WlcsIntegrationDescriptor const* (*get_descriptor)();
+    WlcsIntegrationDescriptor const* (*get_descriptor)(WlcsDisplayServer const* server);
 };
 
 #define WLCS_SERVER_INTEGRATION_VERSION 1
