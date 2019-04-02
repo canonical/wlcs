@@ -49,6 +49,7 @@ endif ()
 
 find_package(GtestGmock)
 pkg_check_modules(WAYLAND_CLIENT REQUIRED wayland-client)
+pkg_check_modules(WAYLAND_SERVER REQUIRED wayland-server)
 
 include_directories(include)
 include_directories(${GMOCK_INCLUDE_DIR} ${GTEST_INCLUDE_DIR})
@@ -133,6 +134,7 @@ set(
   src/xfail_supporting_test_listener.h
   src/xfail_supporting_test_listener.cpp
   src/termcolor.hpp
+  src/thread_proxy.h
 
   ${PROTOCOL_SOURCES}
 
@@ -199,6 +201,7 @@ foreach(TARGET IN LISTS EXECUTABLE_TARGETS)
     ${TARGET}
 
     ${WAYLAND_CLIENT_LDFLAGS} ${WAYLAND_CLIENT_LIBRARIES}
+    ${WAYLAND_SERVER_LDFLAGS} ${WAYLAND_CLIENT_LIBRARIES}
     dl
 
     ${GMOCK_LIBRARY}

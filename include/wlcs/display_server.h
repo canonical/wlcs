@@ -27,6 +27,7 @@ extern "C" {
 
 typedef struct wl_surface wl_surface;
 typedef struct wl_display wl_display;
+typedef struct wl_event_loop wl_event_loop;
 
 typedef struct WlcsPointer WlcsPointer;
 typedef struct WlcsTouch WlcsTouch;
@@ -66,6 +67,23 @@ struct WlcsDisplayServer
 
     /* Added in version 2 */
     WlcsIntegrationDescriptor const* (*get_descriptor)(WlcsDisplayServer const* server);
+
+    /* Added in version 3 */
+    /**
+     * Start the display server's event loop, blocking the calling thread.
+     *
+     * When started in this way WLCS will proxy all requests to this mainloop.
+     * All calls to WLCS interfaces will be dispatched from the
+     * wlcs_event_dispatcher loop, so implementations are required to drive
+     * this loop from their own.
+     *
+     * \note    This is an optional interface. An implementation must provide at
+     *          least one of {start, start_on_this_thread}, but does not need to
+     *          provide both. If both are provided, start is preferred.
+
+     * \param wlcs_event_dispatcher
+     */
+    void (*start_on_this_thread)(WlcsDisplayServer* server, wl_event_loop* wlcs_event_dispatcher);
 };
 
 #define WLCS_SERVER_INTEGRATION_VERSION 1

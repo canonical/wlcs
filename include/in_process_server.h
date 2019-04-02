@@ -58,7 +58,11 @@ public:
 
 private:
     friend class Server;
-    explicit Pointer(std::shared_ptr<WlcsPointer> const& raw_device);
+    template<typename Proxy>
+    Pointer(
+        WlcsPointer* raw_device,
+        std::shared_ptr<Proxy> const& proxy,
+        std::shared_ptr<void const> const& keep_dso_loaded);
 
     class Impl;
     std::unique_ptr<Impl> impl;
@@ -76,7 +80,11 @@ public:
 
 private:
     friend class Server;
-    Touch(WlcsTouch* raw_device);
+    template<typename Proxy>
+    Touch(
+        WlcsTouch* raw_device,
+        std::shared_ptr<Proxy> const& proxy,
+        std::shared_ptr<void const> const& keep_dso_loaded);
 
     class Impl;
     std::unique_ptr<Impl> impl;
