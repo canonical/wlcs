@@ -42,6 +42,7 @@ env:
   - SYSTEM=ubuntu-16.04 VARIANT=gcc
   - SYSTEM=ubuntu-18.04 VARIANT=gcc
   - SYSTEM=ubuntu-18.10 VARIANT=gcc
+  - SYSTEM=ubuntu-19.04 VARIANT=gcc
   - SYSTEM=ubuntu-devel VARIANT=gcc
   - SYSTEM=ubuntu-devel VARIANT=clang
   - SYSTEM=fedora-29 VARIANT=gcc
@@ -78,6 +79,8 @@ jobs:
     env: RELEASE=18.04
   - <<: *ppa-upload
     env: RELEASE=18.10
+  - <<: *ppa-upload
+    env: RELEASE=19.04
   - <<: *ppa-upload
     env: RELEASE=devel
 
