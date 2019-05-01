@@ -177,6 +177,16 @@ private:
     std::unique_ptr<Impl> impl;
 };
 
+struct OutputState
+{
+    wl_output *output;
+    int width = -1, height = -1;
+    int scale = -1;
+    bool geometry_set = false;
+    bool mode_set = false;
+    bool scale_set = false;
+};
+
 class Client
 {
 public:
@@ -200,6 +210,9 @@ public:
     Surface create_xdg_shell_v6_surface(int width, int height);
     Surface create_xdg_shell_stable_surface(int width, int height);
     Surface create_visible_surface(int width, int height);
+
+    size_t output_count() const;
+    OutputState output_state(size_t index) const;
 
     wl_shell* shell() const;
     zxdg_shell_v6* xdg_shell_v6() const;

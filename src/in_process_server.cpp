@@ -652,6 +652,8 @@ public:
         if (data_device_manager) wl_data_device_manager_destroy(data_device_manager);
         if (xdg_shell_v6) zxdg_shell_v6_destroy(xdg_shell_v6);
         if (xdg_shell_stable) xdg_wm_base_destroy(xdg_shell_stable);
+        for (auto const& output: outputs)
+            wl_output_destroy(output->current.output);
         for (auto callback: destruction_callbacks)
             callback();
         destruction_callbacks.clear();
@@ -912,6 +914,89 @@ public:
         }
     }
 
+    struct Output
+    {
+        OutputState current;
+        OutputState pending;
+
+        Output(struct wl_output* output)
+        {
+            current.output = output;
+            pending.output = output;
+        }
+
+        static void geometry_thunk(
+            void* ctx,
+            struct wl_output */*wl_output*/,
+            int32_t /*x*/,
+            int32_t /*y*/,
+            int32_t /*physical_width*/,
+            int32_t /*physical_height*/,
+            int32_t /*subpixel*/,
+            const char */*make*/,
+            const char */*model*/,
+            int32_t /*transform*/)
+        {
+            auto me = static_cast<Output*>(ctx);
+            me->pending.geometry_set = true;
+        }
+
+        static void mode_thunk(
+            void* ctx,
+            struct wl_output */*wl_output*/,
+            uint32_t /*flags*/,
+            int32_t width,
+            int32_t height,
+            int32_t /*refresh*/)
+        {
+            auto me = static_cast<Output*>(ctx);
+            me->pending.width = width;
+            me->pending.height = height;
+            me->pending.mode_set = true;
+        }
+
+        static void done_thunk(void* ctx, struct wl_output */*wl_output*/)
+        {
+            auto me = static_cast<Output*>(ctx);
+
+            if (me->pending.geometry_set)
+            {
+                me->current.geometry_set = true;
+            }
+
+            if (me->pending.mode_set)
+            {
+                me->current.width = me->pending.width;
+                me->current.height = me->pending.height;
+                me->current.mode_set = true;
+            }
+
+            if (me->pending.scale_set)
+            {
+                me->current.scale = me->pending.scale;
+                me->current.scale_set = true;
+            }
+
+            me->pending = OutputState{};
+        }
+
+        static void scale_thunk(void* ctx, struct wl_output */*wl_output*/, int32_t factor)
+        {
+            auto me = static_cast<Output*>(ctx);
+            me->pending.scale = factor;
+            me->pending.scale_set = true;
+        }
+
+        static constexpr wl_output_listener listener = {
+            &Impl::Output::geometry_thunk,
+            &Impl::Output::mode_thunk,
+            &Impl::Output::done_thunk,
+            &Impl::Output::scale_thunk,
+        };
+    };
+
+    std::vector<std::unique_ptr<Output>> outputs;
+
 private:
     static void pointer_enter(
         void* ctx,
@@ -1166,6 +1251,17 @@ private:
             me->data_device_manager = static_cast<struct wl_data_device_manager*>(
                 wl_registry_bind(registry, id, &wl_data_device_manager_interface, version));
         }
+        else if ("wl_output"s == interface)
+        {
+            auto wl_output = static_cast<struct wl_output*>(
+                wl_registry_bind(registry, id, &wl_output_interface, version));
+            auto output = std::make_unique<Output>(wl_output);
+            wl_output_add_listener(wl_output, &Output::listener, output.get());
+            me->outputs.push_back(move(output));
+
+            // Ensure we receive the initial output events.
+            me->server_roundtrip();
+        }
         else if ("zxdg_shell_v6"s == interface)
         {
             me->xdg_shell_v6 = static_cast<struct zxdg_shell_v6*>(
@@ -1221,6 +1317,7 @@ private:
 constexpr wl_pointer_listener wlcs::Client::Impl::pointer_listener;
 constexpr wl_touch_listener wlcs::Client::Impl::touch_listener;
 constexpr wl_seat_listener wlcs::Client::Impl::seat_listener;
+constexpr wl_output_listener wlcs::Client::Impl::Output::listener;
 constexpr wl_registry_listener wlcs::Client::Impl::registry_listener;
 
 wlcs::Client::Client(Server& server)
@@ -1288,6 +1385,19 @@ wlcs::Surface wlcs::Client::create_xdg_shell_stable_surface(int width, int heigh
 wlcs::Surface wlcs::Client::create_visible_surface(int width, int height)
 {
     return impl->create_wl_shell_surface(*this, width, height);
+}
+
+size_t wlcs::Client::output_count() const
+{
+    return impl->outputs.size();
+}
+
+wlcs::OutputState wlcs::Client::output_state(size_t index) const
+{
+    if (index > output_count())
+        throw std::runtime_error("Invalid output index");
+
+    return impl->outputs[index]->current;
 }
 
 wl_shell* wlcs::Client::shell() const
