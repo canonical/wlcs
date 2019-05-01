@@ -142,6 +142,7 @@ set(
   tests/copy_cut_paste.cpp
   tests/test_surface_events.cpp
   tests/touches.cpp
+  tests/wl_output.cpp
   tests/surface_input_regions.cpp
   tests/frame_submission.cpp
   tests/subsurfaces.cpp
