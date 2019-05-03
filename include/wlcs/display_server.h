@@ -62,7 +62,7 @@ struct WlcsIntegrationDescriptor
     WlcsExtensionDescriptor const* supported_extensions;
 };
 
-#define WLCS_DISPLAY_SERVER_VERSION 2
+#define WLCS_DISPLAY_SERVER_VERSION 3
 typedef struct WlcsDisplayServer WlcsDisplayServer;
 struct WlcsDisplayServer
 {
