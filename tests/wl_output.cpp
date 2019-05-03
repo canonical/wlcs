@@ -32,12 +32,10 @@ TEST_F(WlOutputTest, wl_output_properties_set)
 {
     wlcs::Client client{the_server()};
 
-    ASSERT_THAT(client.output_count(), Eq(1u));
+    ASSERT_THAT(client.output_count(), Ge(1u));
     auto output = client.output_state(0);
 
     EXPECT_THAT(output.geometry_set, Eq(true));
     EXPECT_THAT(output.mode_set, Eq(true));
     EXPECT_THAT(output.scale_set, Eq(true));
-
-    EXPECT_THAT(output.scale, Eq(1));
 }
