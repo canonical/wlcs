@@ -24,6 +24,9 @@
 extern "C" {
 #endif
 
+/**
+ * Maximum version of WlcsPointer this header provides a definition for
+ */
 #define WLCS_POINTER_VERSION 1
 
 typedef struct WlcsPointer WlcsPointer;

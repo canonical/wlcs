@@ -24,6 +24,9 @@
 extern "C" {
 #endif
 
+/**
+ * Maximum version of WlcsTouch this header provides a definition for
+ */
 #define WLCS_TOUCH_VERSION 1
 
 typedef struct WlcsTouch WlcsTouch;
