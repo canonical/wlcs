@@ -32,6 +32,9 @@ typedef struct wl_event_loop wl_event_loop;
 typedef struct WlcsPointer WlcsPointer;
 typedef struct WlcsTouch WlcsTouch;
 
+/**
+ * Maximum version of WlcsIntegrationDescriptor this header provides a definition for
+ */
 #define WLCS_INTEGRATION_DESCRIPTOR_VERSION 1
 typedef struct WlcsExtensionDescriptor WlcsExtensionDescriptor;
 struct WlcsExtensionDescriptor
@@ -62,7 +65,10 @@ struct WlcsIntegrationDescriptor
     WlcsExtensionDescriptor const* supported_extensions;
 };
 
-#define WLCS_DISPLAY_SERVER_VERSION 2
+/**
+ * Maximum version of WlcsDisplayServer this header provides a definition for
+ */
+#define WLCS_DISPLAY_SERVER_VERSION 3
 typedef struct WlcsDisplayServer WlcsDisplayServer;
 struct WlcsDisplayServer
 {
@@ -152,6 +158,9 @@ struct WlcsDisplayServer
     void (*start_on_this_thread)(WlcsDisplayServer* server, wl_event_loop* wlcs_event_dispatcher);
 };
 
+/**
+ * Maximum version of WlcsServerIntegration this header provides a definition of
+ */
 #define WLCS_SERVER_INTEGRATION_VERSION 1
 typedef struct WlcsServerIntegration WlcsServerIntegration;
 struct WlcsServerIntegration
