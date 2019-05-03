@@ -35,7 +35,7 @@ TEST_F(WlOutputTest, wl_output_properties_set)
     ASSERT_THAT(client.output_count(), Ge(1u));
     auto output = client.output_state(0);
 
-    EXPECT_THAT(output.geometry_set, Eq(true));
-    EXPECT_THAT(output.mode_set, Eq(true));
-    EXPECT_THAT(output.scale_set, Eq(true));
+    EXPECT_THAT((bool)output.geometry_position, Eq(true));
+    EXPECT_THAT((bool)output.mode_size, Eq(true));
+    EXPECT_THAT((bool)output.scale, Eq(true));
 }

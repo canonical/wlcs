@@ -27,6 +27,7 @@
 
 #include <memory>
 #include <functional>
+#include <experimental/optional>
 #include <unordered_map>
 #include "shared_library.h"
 
@@ -179,12 +180,15 @@ private:
 
 struct OutputState
 {
-    wl_output *output;
-    int width = -1, height = -1;
-    int scale = -1;
-    bool geometry_set = false;
-    bool mode_set = false;
-    bool scale_set = false;
+    OutputState(wl_output* output)
+        : output{output}
+    {
+    }
+
+    wl_output* output;
+    std::experimental::optional<std::pair<int, int>> geometry_position;
+    std::experimental::optional<std::pair<int, int>> mode_size;
+    std::experimental::optional<int> scale;
 };
 
 class Client

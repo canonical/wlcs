@@ -920,16 +920,16 @@ public:
         OutputState pending;
 
         Output(struct wl_output* output)
+            : current{output},
+              pending{output}
         {
-            current.output = output;
-            pending.output = output;
         }
 
         static void geometry_thunk(
             void* ctx,
             struct wl_output */*wl_output*/,
-            int32_t /*x*/,
-            int32_t /*y*/,
+            int32_t x,
+            int32_t y,
             int32_t /*physical_width*/,
             int32_t /*physical_height*/,
             int32_t /*subpixel*/,
@@ -938,7 +938,7 @@ public:
             int32_t /*transform*/)
         {
             auto me = static_cast<Output*>(ctx);
-            me->pending.geometry_set = true;
+            me->pending.geometry_position = std::make_pair(x, y);
         }
 
         static void mode_thunk(
@@ -950,41 +950,27 @@ public:
             int32_t /*refresh*/)
         {
             auto me = static_cast<Output*>(ctx);
-            me->pending.width = width;
-            me->pending.height = height;
-            me->pending.mode_set = true;
+            me->pending.mode_size = std::make_pair(width, height);
         }
 
         static void done_thunk(void* ctx, struct wl_output */*wl_output*/)
         {
             auto me = static_cast<Output*>(ctx);
 
-            if (me->pending.geometry_set)
-            {
-                me->current.geometry_set = true;
-            }
-
-            if (me->pending.mode_set)
-            {
-                me->current.width = me->pending.width;
-                me->current.height = me->pending.height;
-                me->current.mode_set = true;
-            }
-
-            if (me->pending.scale_set)
-            {
+            if (me->pending.geometry_position)
+                me->current.geometry_position = me->pending.geometry_position;
+            if (me->pending.mode_size)
+                me->current.mode_size = me->pending.mode_size;
+            if (me->pending.scale)
                 me->current.scale = me->pending.scale;
-                me->current.scale_set = true;
-            }
 
-            me->pending = OutputState{};
+            me->pending = OutputState{me->current.output};
         }
 
         static void scale_thunk(void* ctx, struct wl_output */*wl_output*/, int32_t factor)
         {
             auto me = static_cast<Output*>(ctx);
             me->pending.scale = factor;
-            me->pending.scale_set = true;
         }
 
         static constexpr wl_output_listener listener = {
