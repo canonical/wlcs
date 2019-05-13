@@ -38,13 +38,14 @@ using namespace testing;
 int const window_width = 400, window_height = 500;
 int const popup_width = 60, popup_height = 40;
 
-class XdgPopupStableTestBase : public wlcs::StartedInProcessServer
+class XdgPopupStableManager
 {
 public:
     static int const window_x = 500, window_y = 500;
 
-    XdgPopupStableTestBase()
-        : client{the_server()},
+    XdgPopupStableManager(wlcs::InProcessServer* const in_process_server)
+        : the_server{in_process_server->the_server()},
+          client{the_server},
           surface{client},
           xdg_shell_surface{client, surface},
           toplevel{xdg_shell_surface},
@@ -55,7 +56,7 @@ public:
         surface.add_frame_callback([&surface_rendered](auto) { surface_rendered = true; });
         wl_surface_commit(surface);
         client.dispatch_until([&surface_rendered]() { return surface_rendered; });
-        the_server().move_surface_to(surface, window_x, window_y);
+        the_server.move_surface_to(surface, window_x, window_y);
     }
 
     void map_popup()
@@ -92,6 +93,8 @@ public:
                 return current_count > prev_count;
             });
     }
+
+    wlcs::Server& the_server;
 
     wlcs::Client client;
     wlcs::Surface surface;
@@ -140,41 +143,43 @@ std::ostream& operator<<(std::ostream& out, PopupStableTestParams const& param)
 }
 
 class XdgPopupStableTest:
-    public XdgPopupStableTestBase,
+    public wlcs::StartedInProcessServer,
     public testing::WithParamInterface<PopupStableTestParams>
 {
 };
 
 TEST_P(XdgPopupStableTest, positioner_places_popup_correctly)
 {
+    XdgPopupStableManager manager{this};
     auto const& param = GetParam();
 
     // size must always be set
-    xdg_positioner_set_size(positioner, param.popup_size.first, param.popup_size.second);
+    xdg_positioner_set_size(manager.positioner, param.popup_size.first, param.popup_size.second);
 
     // anchor rect must always be set
-    xdg_positioner_set_anchor_rect(positioner,
+    xdg_positioner_set_anchor_rect(manager.positioner,
                                    param.anchor_rect.first.first,
                                    param.anchor_rect.first.second,
                                    param.anchor_rect.second.first,
                                    param.anchor_rect.second.second);
 
     if (param.anchor)
-        xdg_positioner_set_anchor(positioner,  param.anchor.value());
+        xdg_positioner_set_anchor(manager.positioner,  param.anchor.value());
 
     if (param.gravity)
-        xdg_positioner_set_gravity(positioner, param.gravity.value());
+        xdg_positioner_set_gravity(manager.positioner, param.gravity.value());
 
     if (param.constraint_adjustment)
-        xdg_positioner_set_constraint_adjustment(positioner, param.constraint_adjustment.value());
+        xdg_positioner_set_constraint_adjustment(manager.positioner, param.constraint_adjustment.value());
 
     if (param.offset)
-        xdg_positioner_set_offset(positioner, param.offset.value().first, param.offset.value().second);
+        xdg_positioner_set_offset(manager.positioner, param.offset.value().first, param.offset.value().second);
 
-    map_popup();
+    manager.map_popup();
 
-    ASSERT_THAT(state, Ne(std::experimental::nullopt)) << "popup configure event not sent";
-    ASSERT_THAT(std::make_pair(state.value().x, state.value().y), Eq(param.expected_positon)) << "popup placed in incorrect position";
+    ASSERT_THAT(manager.state, Ne(std::experimental::nullopt)) << "popup configure event not sent";
+    ASSERT_THAT(std::make_pair(manager.state.value().x, manager.state.value().y), Eq(param.expected_positon))
+        << "popup placed in incorrect position";
 }
 
 INSTANTIATE_TEST_CASE_P(
