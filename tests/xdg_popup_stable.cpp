@@ -38,30 +38,82 @@ using namespace testing;
 int const window_width = 400, window_height = 500;
 int const popup_width = 60, popup_height = 40;
 
-class XdgPopupStableManager
+
+class XdgPopupManagerBase
 {
 public:
     static int const window_x = 500, window_y = 500;
 
-    XdgPopupStableManager(wlcs::InProcessServer* const in_process_server)
+    XdgPopupManagerBase(wlcs::InProcessServer* const in_process_server)
         : the_server{in_process_server->the_server()},
           client{the_server},
-          surface{client},
-          xdg_shell_surface{client, surface},
-          toplevel{xdg_shell_surface},
-          positioner{client}
+          surface{client}
+    {
+        surface.add_frame_callback([this](auto) { surface_rendered = true; });
+    }
+
+    virtual ~XdgPopupManagerBase() = default;
+
+    void wait_for_frame_to_render()
     {
         surface.attach_buffer(window_width, window_height);
-        bool surface_rendered{false};
-        surface.add_frame_callback([&surface_rendered](auto) { surface_rendered = true; });
+        surface_rendered = false;
         wl_surface_commit(surface);
-        client.dispatch_until([&surface_rendered]() { return surface_rendered; });
+        client.dispatch_until([this]() { return surface_rendered; });
         the_server.move_surface_to(surface, window_x, window_y);
     }
 
     void map_popup()
     {
         popup_surface.emplace(client);
+        setup_popup();
+        wl_surface_commit(popup_surface.value());
+        dispatch_until_popup_configure();
+        popup_surface.value().attach_buffer(popup_width, popup_height);
+        bool surface_rendered{false};
+        popup_surface.value().add_frame_callback([&surface_rendered](auto) { surface_rendered = true; });
+        wl_surface_commit(popup_surface.value());
+        client.dispatch_until([&surface_rendered]() { return surface_rendered; });
+    }
+
+    virtual void dispatch_until_popup_configure() = 0;
+
+protected:
+    virtual void setup_popup() = 0;
+
+    wlcs::Server& the_server;
+
+    wlcs::Client client;
+    wlcs::Surface surface;
+    std::experimental::optional<wlcs::Surface> popup_surface;
+    bool surface_rendered{true};
+};
+
+class XdgPopupStableManager : public XdgPopupManagerBase
+{
+public:
+    static int const window_x = 500, window_y = 500;
+
+    XdgPopupStableManager(wlcs::InProcessServer* const in_process_server)
+        : XdgPopupManagerBase{in_process_server},
+          xdg_shell_surface{client, surface},
+          toplevel{xdg_shell_surface},
+          positioner{client}
+    {
+        wait_for_frame_to_render();
+    }
+
+    void dispatch_until_popup_configure() override
+    {
+        client.dispatch_until(
+            [prev_count = popup_surface_configure_count, &current_count = popup_surface_configure_count]()
+            {
+                return current_count > prev_count;
+            });
+    }
+
+    void setup_popup() override
+    {
         popup_xdg_surface.emplace(client, popup_surface.value());
         popup.emplace(popup_xdg_surface.value(), xdg_shell_surface, positioner);
 
@@ -75,34 +127,12 @@ public:
             {
                 state = wlcs::XdgPopupStable::State{x, y, width, height};
             });
-
-        wl_surface_commit(popup_surface.value());
-        dispatch_until_popup_configure();
-        popup_surface.value().attach_buffer(popup_width, popup_height);
-        bool surface_rendered{false};
-        popup_surface.value().add_frame_callback([&surface_rendered](auto) { surface_rendered = true; });
-        wl_surface_commit(popup_surface.value());
-        client.dispatch_until([&surface_rendered]() { return surface_rendered; });
     }
 
-    void dispatch_until_popup_configure()
-    {
-        client.dispatch_until(
-            [prev_count = popup_surface_configure_count, &current_count = popup_surface_configure_count]()
-            {
-                return current_count > prev_count;
-            });
-    }
-
-    wlcs::Server& the_server;
-
-    wlcs::Client client;
-    wlcs::Surface surface;
     wlcs::XdgSurfaceStable xdg_shell_surface;
     wlcs::XdgToplevelStable toplevel;
 
     wlcs::XdgPositionerStable positioner;
-    std::experimental::optional<wlcs::Surface> popup_surface;
     std::experimental::optional<wlcs::XdgSurfaceStable> popup_xdg_surface;
     std::experimental::optional<wlcs::XdgPopupStable> popup;
 
