@@ -119,13 +119,9 @@ struct PopupStableTestParams
 
     PopupStableTestParams& with_size(int x, int y) { popup_size = {x, y}; return *this; }
     PopupStableTestParams& with_anchor_rect(int x, int y, int w, int h) { anchor_rect = {{x, y}, {w, h}}; return *this; }
-    PopupStableTestParams& with_anchor(int value) { anchor = {static_cast<xdg_positioner_anchor>(value)}; return *this; }
-    PopupStableTestParams& with_gravity(int value) { gravity = {static_cast<xdg_positioner_gravity>(value)}; return *this; }
-    PopupStableTestParams& with_constraint_adjustment(int value)
-    {
-        constraint_adjustment = {static_cast<xdg_positioner_constraint_adjustment>(value)};
-        return *this;
-    }
+    PopupStableTestParams& with_anchor(xdg_positioner_anchor value) { anchor = {value}; return *this; }
+    PopupStableTestParams& with_gravity(xdg_positioner_gravity value) { gravity = {value}; return *this; }
+    PopupStableTestParams& with_constraint_adjustment(xdg_positioner_constraint_adjustment value) { constraint_adjustment = {value}; return *this; }
     PopupStableTestParams& with_offset(int x, int y) { offset = {{x, y}}; return *this; }
 
     std::string name;
