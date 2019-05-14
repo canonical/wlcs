@@ -100,6 +100,48 @@ uint32_t constraint_adjustment_stable_to_v6(xdg_positioner_constraint_adjustment
     return ca; // the two enums have the same values
 }
 
+struct PositionerParams
+{
+    PositionerParams()
+        : popup_size{popup_width, popup_height},
+          anchor_rect{{0, 0}, {window_width, window_height}}
+    {
+    }
+
+    auto with_size(int x, int y) -> PositionerParams& { popup_size = {x, y}; return *this; }
+    auto with_anchor_rect(int x, int y, int w, int h) -> PositionerParams& { anchor_rect = {{x, y}, {w, h}}; return *this; }
+    auto with_anchor(xdg_positioner_anchor value) -> PositionerParams& { anchor_stable = {value}; return *this; }
+    auto with_gravity(xdg_positioner_gravity value) -> PositionerParams& { gravity_stable = {value}; return *this; }
+    auto with_constraint_adjustment(xdg_positioner_constraint_adjustment value) -> PositionerParams& { constraint_adjustment_stable = {value}; return *this; }
+    auto with_offset(int x, int y) -> PositionerParams& { offset = {{x, y}}; return *this; }
+
+    std::pair<int, int> popup_size; // will default to XdgPopupStableTestBase::popup_(width|height) if nullopt
+    std::pair<std::pair<int, int>, std::pair<int, int>> anchor_rect; // will default to the full window rect
+    std::experimental::optional<xdg_positioner_anchor> anchor_stable;
+    std::experimental::optional<xdg_positioner_gravity> gravity_stable;
+    std::experimental::optional<xdg_positioner_constraint_adjustment> constraint_adjustment_stable;
+    std::experimental::optional<std::pair<int, int>> offset;
+};
+
+struct PositionerTestParams
+{
+    PositionerTestParams(std::string name, int expected_x, int expected_y, PositionerParams const& positioner)
+        : name{name},
+          expected_positon{expected_x, expected_y},
+          positioner{positioner}
+    {
+    }
+
+    std::string name;
+    std::pair<int, int> expected_positon;
+    PositionerParams positioner;
+};
+
+std::ostream& operator<<(std::ostream& out, PositionerTestParams const& param)
+{
+    return out << param.name;
+}
+
 class XdgPopupManagerBase
 {
 public:
@@ -124,10 +166,10 @@ public:
         the_server.move_surface_to(surface, window_x, window_y);
     }
 
-    void map_popup()
+    void map_popup(PositionerParams const& params)
     {
         popup_surface.emplace(client);
-        setup_popup();
+        setup_popup(params);
         wl_surface_commit(popup_surface.value());
         dispatch_until_popup_configure();
         popup_surface.value().attach_buffer(popup_width, popup_height);
@@ -137,10 +179,12 @@ public:
         client.dispatch_until([&surface_rendered]() { return surface_rendered; });
     }
 
+    virtual auto popup_position() const -> std::experimental::optional<std::pair<int, int>> = 0;
+
     virtual void dispatch_until_popup_configure() = 0;
 
 protected:
-    virtual void setup_popup() = 0;
+    virtual void setup_popup(PositionerParams const& params) = 0;
 
     wlcs::Server& the_server;
 
@@ -158,8 +202,7 @@ public:
     XdgPopupStableManager(wlcs::InProcessServer* const in_process_server)
         : XdgPopupManagerBase{in_process_server},
           xdg_shell_surface{client, surface},
-          toplevel{xdg_shell_surface},
-          positioner{client}
+          toplevel{xdg_shell_surface}
     {
         wait_for_frame_to_render();
     }
@@ -173,8 +216,34 @@ public:
             });
     }
 
-    void setup_popup() override
+    void setup_popup(PositionerParams const& param) override
     {
+        wlcs::XdgPositionerStable positioner{client};
+
+        // size must always be set
+        xdg_positioner_set_size(positioner, param.popup_size.first, param.popup_size.second);
+
+        // anchor rect must always be set
+        xdg_positioner_set_anchor_rect(
+            positioner,
+            param.anchor_rect.first.first,
+            param.anchor_rect.first.second,
+            param.anchor_rect.second.first,
+            param.anchor_rect.second.second);
+
+        if (param.anchor_stable)
+            xdg_positioner_set_anchor(positioner,  param.anchor_stable.value());
+
+        if (param.gravity_stable)
+            xdg_positioner_set_gravity(positioner, param.gravity_stable.value());
+
+        if (param.constraint_adjustment_stable)
+            xdg_positioner_set_constraint_adjustment(positioner, param.constraint_adjustment_stable.value());
+
+        if (param.offset)
+            xdg_positioner_set_offset(positioner, param.offset.value().first, param.offset.value().second);
+
+
         popup_xdg_surface.emplace(client, popup_surface.value());
         popup.emplace(popup_xdg_surface.value(), xdg_shell_surface, positioner);
 
@@ -190,10 +259,14 @@ public:
             });
     }
 
+    auto popup_position() const -> std::experimental::optional<std::pair<int, int>> override
+    {
+        return std::make_pair(state.value().x, state.value().y);
+    }
+
     wlcs::XdgSurfaceStable xdg_shell_surface;
     wlcs::XdgToplevelStable toplevel;
 
-    wlcs::XdgPositionerStable positioner;
     std::experimental::optional<wlcs::XdgSurfaceStable> popup_xdg_surface;
     std::experimental::optional<wlcs::XdgPopupStable> popup;
 
@@ -209,8 +282,7 @@ public:
     XdgPopupV6Manager(wlcs::InProcessServer* const in_process_server)
         : XdgPopupManagerBase{in_process_server},
           xdg_shell_surface{client, surface},
-          toplevel{xdg_shell_surface},
-          positioner{client}
+          toplevel{xdg_shell_surface}
     {
         wait_for_frame_to_render();
     }
@@ -224,8 +296,46 @@ public:
             });
     }
 
-    void setup_popup() override
+    void setup_popup(PositionerParams const& param) override
     {
+        wlcs::XdgPositionerV6 positioner{client};
+
+        // size must always be set
+        zxdg_positioner_v6_set_size(positioner, param.popup_size.first, param.popup_size.second);
+
+        // anchor rect must always be set
+        zxdg_positioner_v6_set_anchor_rect(
+            positioner,
+            param.anchor_rect.first.first,
+            param.anchor_rect.first.second,
+            param.anchor_rect.second.first,
+            param.anchor_rect.second.second);
+
+        if (param.anchor_stable)
+        {
+            uint32_t v6_anchor = anchor_stable_to_v6(param.anchor_stable.value());
+            zxdg_positioner_v6_set_anchor(positioner, v6_anchor);
+        }
+
+        if (param.gravity_stable)
+        {
+            uint32_t v6_gravity = gravity_stable_to_v6(param.gravity_stable.value());
+            zxdg_positioner_v6_set_gravity(positioner, v6_gravity);
+        }
+
+        if (param.constraint_adjustment_stable)
+        {
+            uint32_t v6_constraint_adjustment =
+                constraint_adjustment_stable_to_v6(param.constraint_adjustment_stable.value());
+            zxdg_positioner_v6_set_constraint_adjustment(positioner, v6_constraint_adjustment);
+        }
+
+        if (param.offset)
+        {
+            zxdg_positioner_v6_set_offset(positioner, param.offset.value().first, param.offset.value().second);
+        }
+
+
         popup_xdg_surface.emplace(client, popup_surface.value());
         popup.emplace(popup_xdg_surface.value(), xdg_shell_surface, positioner);
 
@@ -241,10 +351,14 @@ public:
             });
     }
 
+    auto popup_position() const -> std::experimental::optional<std::pair<int, int>> override
+    {
+        return std::make_pair(state.value().x, state.value().y);
+    }
+
     wlcs::XdgSurfaceV6 xdg_shell_surface;
     wlcs::XdgToplevelV6 toplevel;
 
-    wlcs::XdgPositionerV6 positioner;
     std::experimental::optional<wlcs::XdgSurfaceV6> popup_xdg_surface;
     std::experimental::optional<wlcs::XdgPopupV6> popup;
 
@@ -252,42 +366,11 @@ public:
     std::experimental::optional<wlcs::XdgPopupV6::State> state;
 };
 
-struct PopupStableTestParams
-{
-    PopupStableTestParams(std::string name, int expected_x, int expected_y)
-        : name{name},
-          expected_positon{expected_x, expected_y},
-          popup_size{popup_width, popup_height},
-          anchor_rect{{0, 0}, {window_width, window_height}}
-    {
-    }
-
-    PopupStableTestParams& with_size(int x, int y) { popup_size = {x, y}; return *this; }
-    PopupStableTestParams& with_anchor_rect(int x, int y, int w, int h) { anchor_rect = {{x, y}, {w, h}}; return *this; }
-    PopupStableTestParams& with_anchor(xdg_positioner_anchor value) { anchor_stable = {value}; return *this; }
-    PopupStableTestParams& with_gravity(xdg_positioner_gravity value) { gravity_stable = {value}; return *this; }
-    PopupStableTestParams& with_constraint_adjustment(xdg_positioner_constraint_adjustment value) { constraint_adjustment_stable = {value}; return *this; }
-    PopupStableTestParams& with_offset(int x, int y) { offset = {{x, y}}; return *this; }
-
-    std::string name;
-    std::pair<int, int> expected_positon;
-    std::pair<int, int> popup_size; // will default to XdgPopupStableTestBase::popup_(width|height) if nullopt
-    std::pair<std::pair<int, int>, std::pair<int, int>> anchor_rect; // will default to the full window rect
-    std::experimental::optional<xdg_positioner_anchor> anchor_stable;
-    std::experimental::optional<xdg_positioner_gravity> gravity_stable;
-    std::experimental::optional<xdg_positioner_constraint_adjustment> constraint_adjustment_stable;
-    std::experimental::optional<std::pair<int, int>> offset;
-};
-
-std::ostream& operator<<(std::ostream& out, PopupStableTestParams const& param)
-{
-    return out << param.name;
-}
 }
 
 class XdgPopupTest:
     public wlcs::StartedInProcessServer,
-    public testing::WithParamInterface<PopupStableTestParams>
+    public testing::WithParamInterface<PositionerTestParams>
 {
 };
 
@@ -296,32 +379,10 @@ TEST_P(XdgPopupTest, positioner_places_popup_correctly_stable)
     XdgPopupStableManager manager{this};
     auto const& param = GetParam();
 
-    // size must always be set
-    xdg_positioner_set_size(manager.positioner, param.popup_size.first, param.popup_size.second);
-
-    // anchor rect must always be set
-    xdg_positioner_set_anchor_rect(manager.positioner,
-                                   param.anchor_rect.first.first,
-                                   param.anchor_rect.first.second,
-                                   param.anchor_rect.second.first,
-                                   param.anchor_rect.second.second);
-
-    if (param.anchor_stable)
-        xdg_positioner_set_anchor(manager.positioner,  param.anchor_stable.value());
-
-    if (param.gravity_stable)
-        xdg_positioner_set_gravity(manager.positioner, param.gravity_stable.value());
-
-    if (param.constraint_adjustment_stable)
-        xdg_positioner_set_constraint_adjustment(manager.positioner, param.constraint_adjustment_stable.value());
-
-    if (param.offset)
-        xdg_positioner_set_offset(manager.positioner, param.offset.value().first, param.offset.value().second);
-
-    manager.map_popup();
+    manager.map_popup(param.positioner);
 
     ASSERT_THAT(manager.state, Ne(std::experimental::nullopt)) << "popup configure event not sent";
-    ASSERT_THAT(std::make_pair(manager.state.value().x, manager.state.value().y), Eq(param.expected_positon))
+    ASSERT_THAT(manager.popup_position(), Eq(std::experimental::make_optional(param.expected_positon)))
         << "popup placed in incorrect position";
 }
 
@@ -330,41 +391,10 @@ TEST_P(XdgPopupTest, positioner_places_popup_correctly_v6)
     XdgPopupV6Manager manager{this};
     auto const& param = GetParam();
 
-    // size must always be set
-    zxdg_positioner_v6_set_size(manager.positioner, param.popup_size.first, param.popup_size.second);
-
-    // anchor rect must always be set
-    zxdg_positioner_v6_set_anchor_rect(manager.positioner,
-                                       param.anchor_rect.first.first,
-                                       param.anchor_rect.first.second,
-                                       param.anchor_rect.second.first,
-                                       param.anchor_rect.second.second);
-
-    if (param.anchor_stable)
-    {
-        uint32_t v6_anchor = anchor_stable_to_v6(param.anchor_stable.value());
-        zxdg_positioner_v6_set_anchor(manager.positioner, v6_anchor);
-    }
-
-    if (param.gravity_stable)
-    {
-        uint32_t v6_gravity = gravity_stable_to_v6(param.gravity_stable.value());
-        zxdg_positioner_v6_set_gravity(manager.positioner, v6_gravity);
-    }
-
-    if (param.constraint_adjustment_stable)
-    {
-        uint32_t v6_constraint_adjustment = constraint_adjustment_stable_to_v6(param.constraint_adjustment_stable.value());
-        zxdg_positioner_v6_set_constraint_adjustment(manager.positioner, v6_constraint_adjustment);
-    }
-
-    if (param.offset)
-        zxdg_positioner_v6_set_offset(manager.positioner, param.offset.value().first, param.offset.value().second);
-
-    manager.map_popup();
+    manager.map_popup(param.positioner);
 
     ASSERT_THAT(manager.state, Ne(std::experimental::nullopt)) << "popup configure event not sent";
-    ASSERT_THAT(std::make_pair(manager.state.value().x, manager.state.value().y), Eq(param.expected_positon))
+    ASSERT_THAT(manager.popup_position(), Eq(std::experimental::make_optional(param.expected_positon)))
         << "popup placed in incorrect position";
 }
 
@@ -372,99 +402,99 @@ INSTANTIATE_TEST_CASE_P(
     Default,
     XdgPopupTest,
     testing::Values(
-        PopupStableTestParams{"default values", (window_width - popup_width) / 2, (window_height - popup_height) / 2}
+        PositionerTestParams{"default values", (window_width - popup_width) / 2, (window_height - popup_height) / 2, PositionerParams()}
     ));
 
 INSTANTIATE_TEST_CASE_P(
     Anchor,
     XdgPopupTest,
     testing::Values(
-        PopupStableTestParams{"anchor left", -popup_width / 2, (window_height - popup_height) / 2}
-            .with_anchor(XDG_POSITIONER_ANCHOR_LEFT),
+        PositionerTestParams{"anchor left", -popup_width / 2, (window_height - popup_height) / 2,
+            PositionerParams().with_anchor(XDG_POSITIONER_ANCHOR_LEFT)},
 
-        PopupStableTestParams{"anchor right", window_width - popup_width / 2, (window_height - popup_height) / 2}
-            .with_anchor(XDG_POSITIONER_ANCHOR_RIGHT),
+        PositionerTestParams{"anchor right", window_width - popup_width / 2, (window_height - popup_height) / 2,
+            PositionerParams().with_anchor(XDG_POSITIONER_ANCHOR_RIGHT)},
 
-        PopupStableTestParams{"anchor top", (window_width - popup_width) / 2, -popup_height / 2}
-            .with_anchor(XDG_POSITIONER_ANCHOR_TOP),
+        PositionerTestParams{"anchor top", (window_width - popup_width) / 2, -popup_height / 2,
+            PositionerParams().with_anchor(XDG_POSITIONER_ANCHOR_TOP)},
 
-        PopupStableTestParams{"anchor bottom", (window_width - popup_width) / 2, window_height - popup_height / 2}
-            .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM),
+        PositionerTestParams{"anchor bottom", (window_width - popup_width) / 2, window_height - popup_height / 2,
+            PositionerParams().with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM)},
 
-        PopupStableTestParams{"anchor top left", -popup_width / 2, -popup_height / 2}
-            .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT),
+        PositionerTestParams{"anchor top left", -popup_width / 2, -popup_height / 2,
+            PositionerParams().with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)},
 
-        PopupStableTestParams{"anchor top right", window_width - popup_width / 2, -popup_height / 2}
-            .with_anchor(XDG_POSITIONER_ANCHOR_TOP_RIGHT),
+        PositionerTestParams{"anchor top right", window_width - popup_width / 2, -popup_height / 2,
+            PositionerParams().with_anchor(XDG_POSITIONER_ANCHOR_TOP_RIGHT)},
 
-        PopupStableTestParams{"anchor bottom left", -popup_width / 2, window_height - popup_height / 2}
-            .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM_LEFT),
+        PositionerTestParams{"anchor bottom left", -popup_width / 2, window_height - popup_height / 2,
+            PositionerParams().with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM_LEFT)},
 
-        PopupStableTestParams{"anchor bottom right", window_width - popup_width / 2, window_height - popup_height / 2}
-            .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM_RIGHT)
+        PositionerTestParams{"anchor bottom right", window_width - popup_width / 2, window_height - popup_height / 2,
+            PositionerParams().with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM_RIGHT)}
     ));
 
 INSTANTIATE_TEST_CASE_P(
     Gravity,
     XdgPopupTest,
     testing::Values(
-        PopupStableTestParams{"gravity none", (window_width - popup_width) / 2, (window_height - popup_height) / 2}
-            .with_gravity(XDG_POSITIONER_GRAVITY_NONE),
+        PositionerTestParams{"gravity none", (window_width - popup_width) / 2, (window_height - popup_height) / 2,
+            PositionerParams().with_gravity(XDG_POSITIONER_GRAVITY_NONE)},
 
-        PopupStableTestParams{"gravity left", window_width / 2 - popup_width, (window_height - popup_height) / 2}
-            .with_gravity(XDG_POSITIONER_GRAVITY_LEFT),
+        PositionerTestParams{"gravity left", window_width / 2 - popup_width, (window_height - popup_height) / 2,
+            PositionerParams().with_gravity(XDG_POSITIONER_GRAVITY_LEFT)},
 
-        PopupStableTestParams{"gravity right", window_width / 2, (window_height - popup_height) / 2}
-            .with_gravity(XDG_POSITIONER_GRAVITY_RIGHT),
+        PositionerTestParams{"gravity right", window_width / 2, (window_height - popup_height) / 2,
+            PositionerParams().with_gravity(XDG_POSITIONER_GRAVITY_RIGHT)},
 
-        PopupStableTestParams{"gravity top", (window_width - popup_width) / 2, window_height / 2 - popup_height}
-            .with_gravity(XDG_POSITIONER_GRAVITY_TOP),
+        PositionerTestParams{"gravity top", (window_width - popup_width) / 2, window_height / 2 - popup_height,
+            PositionerParams().with_gravity(XDG_POSITIONER_GRAVITY_TOP)},
 
-        PopupStableTestParams{"gravity bottom", (window_width - popup_width) / 2, window_height / 2}
-            .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM),
+        PositionerTestParams{"gravity bottom", (window_width - popup_width) / 2, window_height / 2,
+            PositionerParams().with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM)},
 
-        PopupStableTestParams{"gravity top left", window_width / 2 - popup_width, window_height / 2 - popup_height}
-            .with_gravity(XDG_POSITIONER_GRAVITY_TOP_LEFT),
+        PositionerTestParams{"gravity top left", window_width / 2 - popup_width, window_height / 2 - popup_height,
+            PositionerParams().with_gravity(XDG_POSITIONER_GRAVITY_TOP_LEFT)},
 
-        PopupStableTestParams{"gravity top right", window_width / 2, window_height / 2 - popup_height}
-            .with_gravity(XDG_POSITIONER_GRAVITY_TOP_RIGHT),
+        PositionerTestParams{"gravity top right", window_width / 2, window_height / 2 - popup_height,
+            PositionerParams().with_gravity(XDG_POSITIONER_GRAVITY_TOP_RIGHT)},
 
-        PopupStableTestParams{"gravity bottom left", window_width / 2 - popup_width, window_height / 2}
-            .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_LEFT),
+        PositionerTestParams{"gravity bottom left", window_width / 2 - popup_width, window_height / 2,
+            PositionerParams().with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_LEFT)},
 
-        PopupStableTestParams{"gravity bottom right", window_width / 2, window_height / 2}
-            .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT)
+        PositionerTestParams{"gravity bottom right", window_width / 2, window_height / 2,
+            PositionerParams().with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT)}
     ));
 
 INSTANTIATE_TEST_CASE_P(
     AnchorRect,
     XdgPopupTest,
     testing::Values(
-        PopupStableTestParams{"explicit default anchor rect", (window_width - popup_width) / 2, (window_height - popup_height) / 2}
-            .with_anchor_rect(0, 0, window_width, window_height),
+        PositionerTestParams{"explicit defaultPositionerParams anchor rect", (window_width - popup_width) / 2, (window_height - popup_height) / 2,
+            PositionerParams().with_anchor_rect(0, 0, window_width, window_height)},
 
-        PopupStableTestParams{"upper left anchor rect", (window_width - 40 - popup_width) / 2, (window_height - 30 - popup_height) / 2}
-            .with_anchor_rect(0, 0, window_width - 40, window_height - 30),
+        PositionerTestParams{"upper left anchor rect", (window_width - 40 - popup_width) / 2, (window_height - 30 - popup_height) / 2,
+            PositionerParams().with_anchor_rect(0, 0, window_width - 40, window_height - 30)},
 
-        PopupStableTestParams{"upper right anchor rect", (window_width + 40 - popup_width) / 2, (window_height - 30 - popup_height) / 2}
-            .with_anchor_rect(40, 0, window_width - 40, window_height - 30),
+        PositionerTestParams{"upper right anchor rect", (window_width + 40 - popup_width) / 2, (window_height - 30 - popup_height) / 2,
+            PositionerParams().with_anchor_rect(40, 0, window_width - 40, window_height - 30)},
 
-        PopupStableTestParams{"lower left anchor rect", (window_width - 40 - popup_width) / 2, (window_height + 30 - popup_height) / 2}
-            .with_anchor_rect(0, 30, window_width - 40, window_height - 30),
+        PositionerTestParams{"lower left anchor rect", (window_width - 40 - popup_width) / 2, (window_height + 30 - popup_height) / 2,
+            PositionerParams().with_anchor_rect(0, 30, window_width - 40, window_height - 30)},
 
-        PopupStableTestParams{"lower right anchor rect", (window_width + 40 - popup_width) / 2, (window_height + 30 - popup_height) / 2}
-            .with_anchor_rect(40, 30, window_width - 40, window_height - 30),
+        PositionerTestParams{"lower right anchor rect", (window_width + 40 - popup_width) / 2, (window_height + 30 - popup_height) / 2,
+            PositionerParams().with_anchor_rect(40, 30, window_width - 40, window_height - 30)},
 
-        PopupStableTestParams{"offset anchor rect", (window_width - 40 - popup_width) / 2, (window_height - 80 - popup_height) / 2}
-            .with_anchor_rect(20, 20, window_width - 80, window_height - 120)
+        PositionerTestParams{"offset anchor rect", (window_width - 40 - popup_width) / 2, (window_height - 80 - popup_height) / 2,
+            PositionerParams().with_anchor_rect(20, 20, window_width - 80, window_height - 120)}
     ));
 
 INSTANTIATE_TEST_CASE_P(
     ZeroSizeAnchorRect, // only allowed in XDG shell stable, not unstable v6
     XdgPopupTest,
     testing::Values(
-        PopupStableTestParams{"centered zero size anchor rect", (window_width - popup_width) / 2, (window_height - popup_height) / 2}
-            .with_anchor_rect(window_width / 2, window_height / 2, 0, 0)
+        PositionerTestParams{"centered zero size anchor rect", (window_width - popup_width) / 2, (window_height - popup_height) / 2,
+            PositionerParams().with_anchor_rect(window_width / 2, window_height / 2, 0, 0)}
     ));
 
 // TODO: test that positioner is always overlapping or adjacent to parent
