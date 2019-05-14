@@ -179,18 +179,26 @@ public:
         client.dispatch_until([&surface_rendered]() { return surface_rendered; });
     }
 
+    void unmap_popup()
+    {
+        clear_popup();
+        popup_surface = std::experimental::nullopt;
+    }
+
     virtual auto popup_position() const -> std::experimental::optional<std::pair<int, int>> = 0;
 
     virtual void dispatch_until_popup_configure() = 0;
-
-protected:
-    virtual void setup_popup(PositionerParams const& params) = 0;
 
     wlcs::Server& the_server;
 
     wlcs::Client client;
     wlcs::Surface surface;
     std::experimental::optional<wlcs::Surface> popup_surface;
+
+protected:
+    virtual void setup_popup(PositionerParams const& params) = 0;
+    virtual void clear_popup() = 0;
+
     bool surface_rendered{true};
 };
 
@@ -257,6 +265,12 @@ public:
             {
                 state = wlcs::XdgPopupStable::State{x, y, width, height};
             });
+    }
+
+    void clear_popup() override
+    {
+        popup = std::experimental::nullopt;
+        popup_xdg_surface = std::experimental::nullopt;
     }
 
     auto popup_position() const -> std::experimental::optional<std::pair<int, int>> override
@@ -351,6 +365,12 @@ public:
             });
     }
 
+    void clear_popup() override
+    {
+        popup = std::experimental::nullopt;
+        popup_xdg_surface = std::experimental::nullopt;
+    }
+
     auto popup_position() const -> std::experimental::optional<std::pair<int, int>> override
     {
         return std::make_pair(state.value().x, state.value().y);
@@ -376,26 +396,34 @@ class XdgPopupPositionerTest:
 
 TEST_P(XdgPopupPositionerTest, xdg_shell_stable_popup_placed_correctly)
 {
-    XdgPopupStableManager manager{this};
+    auto manager = std::make_unique<XdgPopupStableManager>(this);
     auto const& param = GetParam();
 
-    manager.map_popup(param.positioner);
+    manager->map_popup(param.positioner);
 
-    ASSERT_THAT(manager.state, Ne(std::experimental::nullopt)) << "popup configure event not sent";
-    ASSERT_THAT(manager.popup_position(), Eq(std::experimental::make_optional(param.expected_positon)))
-        << "popup placed in incorrect position";
+    ASSERT_THAT(
+        manager->popup_position(),
+        Ne(std::experimental::nullopt)) << "popup configure event not sent";
+
+    ASSERT_THAT(
+        manager->popup_position(),
+        Eq(std::experimental::make_optional(param.expected_positon))) << "popup placed in incorrect position";
 }
 
 TEST_P(XdgPopupPositionerTest, xdg_shell_unstable_v6_popup_placed_correctly)
 {
-    XdgPopupV6Manager manager{this};
+    auto manager = std::make_unique<XdgPopupV6Manager>(this);
     auto const& param = GetParam();
 
-    manager.map_popup(param.positioner);
+    manager->map_popup(param.positioner);
 
-    ASSERT_THAT(manager.state, Ne(std::experimental::nullopt)) << "popup configure event not sent";
-    ASSERT_THAT(manager.popup_position(), Eq(std::experimental::make_optional(param.expected_positon)))
-        << "popup placed in incorrect position";
+    ASSERT_THAT(
+        manager->popup_position(),
+        Ne(std::experimental::nullopt)) << "popup configure event not sent";
+
+    ASSERT_THAT(
+        manager->popup_position(),
+        Eq(std::experimental::make_optional(param.expected_positon))) << "popup placed in incorrect position";
 }
 
 INSTANTIATE_TEST_CASE_P(
@@ -497,6 +525,87 @@ INSTANTIATE_TEST_CASE_P(
             PositionerParams().with_anchor_rect(window_width / 2, window_height / 2, 0, 0)}
     ));
 
+struct XdgPopupTestParam
+{
+    std::function<std::unique_ptr<XdgPopupManagerBase>(wlcs::InProcessServer* const)> build;
+};
+
+std::ostream& operator<<(std::ostream& out, XdgPopupTestParam const&) { return out; }
+
+class XdgPopupTest:
+    public wlcs::StartedInProcessServer,
+    public testing::WithParamInterface<XdgPopupTestParam>
+{
+};
+
+TEST_P(XdgPopupTest, pointer_focus_goes_to_popup)
+{
+    auto const& param = GetParam();
+    auto manager_ptr = param.build(this);
+    auto& manager = *manager_ptr;
+    auto pointer = the_server().create_pointer();
+    pointer.move_to(manager.window_x + 1, manager.window_y + 1);
+    manager.client.roundtrip();
+
+    EXPECT_THAT(manager.client.focused_window(), Eq((wl_surface*)manager.surface));
+
+    auto positioner = PositionerParams{}
+        .with_size(30, 30)
+        .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
+        .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
+    manager.map_popup(positioner);
+    manager.client.roundtrip();
+
+    pointer.move_to(manager.window_x + 2, manager.window_y + 1);
+    manager.client.roundtrip();
+
+    EXPECT_THAT(manager.client.focused_window(), Eq((wl_surface*)manager.popup_surface.value()));
+}
+
+TEST_P(XdgPopupTest, popup_gives_up_pointer_focus_when_gone)
+{
+    auto const& param = GetParam();
+    auto manager_ptr = param.build(this);
+    auto& manager = *manager_ptr;
+    auto pointer = the_server().create_pointer();
+
+    auto positioner = PositionerParams{}
+        .with_size(30, 30)
+        .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
+        .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
+    manager.map_popup(positioner);
+    manager.client.roundtrip();
+
+    pointer.move_to(manager.window_x + 2, manager.window_y + 1);
+    manager.client.roundtrip();
+
+    EXPECT_THAT(manager.client.focused_window(), Eq((wl_surface*)manager.popup_surface.value()));
+
+    manager.unmap_popup();
+    manager.client.roundtrip();
+    pointer.move_to(manager.window_x + 3, manager.window_y + 1);
+    manager.client.roundtrip();
+
+    EXPECT_THAT(manager.client.focused_window(), Eq((wl_surface*)manager.surface));
+}
+
+INSTANTIATE_TEST_CASE_P(
+    XdgPopupStable,
+    XdgPopupTest,
+    testing::Values(XdgPopupTestParam{
+        [](wlcs::InProcessServer* const server)
+        {
+            return std::make_unique<XdgPopupStableManager>(server);
+        }}));
+
+INSTANTIATE_TEST_CASE_P(
+    XdgPopupUnstableV6,
+    XdgPopupTest,
+    testing::Values(XdgPopupTestParam{
+        [](wlcs::InProcessServer* const server)
+        {
+            return std::make_unique<XdgPopupV6Manager>(server);
+        }}));
 // TODO: test that positioner is always overlapping or adjacent to parent
 // TODO: test that positioner is copied immediately after use
 // TODO: test that error is raised when incomplete positioner is used (positioner without size and anchor rect set)
