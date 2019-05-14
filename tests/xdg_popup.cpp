@@ -368,13 +368,13 @@ public:
 
 }
 
-class XdgPopupTest:
+class XdgPopupPositionerTest:
     public wlcs::StartedInProcessServer,
     public testing::WithParamInterface<PositionerTestParams>
 {
 };
 
-TEST_P(XdgPopupTest, positioner_places_popup_correctly_stable)
+TEST_P(XdgPopupPositionerTest, xdg_shell_stable_popup_placed_correctly)
 {
     XdgPopupStableManager manager{this};
     auto const& param = GetParam();
@@ -386,7 +386,7 @@ TEST_P(XdgPopupTest, positioner_places_popup_correctly_stable)
         << "popup placed in incorrect position";
 }
 
-TEST_P(XdgPopupTest, positioner_places_popup_correctly_v6)
+TEST_P(XdgPopupPositionerTest, xdg_shell_unstable_v6_popup_placed_correctly)
 {
     XdgPopupV6Manager manager{this};
     auto const& param = GetParam();
@@ -400,14 +400,14 @@ TEST_P(XdgPopupTest, positioner_places_popup_correctly_v6)
 
 INSTANTIATE_TEST_CASE_P(
     Default,
-    XdgPopupTest,
+    XdgPopupPositionerTest,
     testing::Values(
         PositionerTestParams{"default values", (window_width - popup_width) / 2, (window_height - popup_height) / 2, PositionerParams()}
     ));
 
 INSTANTIATE_TEST_CASE_P(
     Anchor,
-    XdgPopupTest,
+    XdgPopupPositionerTest,
     testing::Values(
         PositionerTestParams{"anchor left", -popup_width / 2, (window_height - popup_height) / 2,
             PositionerParams().with_anchor(XDG_POSITIONER_ANCHOR_LEFT)},
@@ -436,7 +436,7 @@ INSTANTIATE_TEST_CASE_P(
 
 INSTANTIATE_TEST_CASE_P(
     Gravity,
-    XdgPopupTest,
+    XdgPopupPositionerTest,
     testing::Values(
         PositionerTestParams{"gravity none", (window_width - popup_width) / 2, (window_height - popup_height) / 2,
             PositionerParams().with_gravity(XDG_POSITIONER_GRAVITY_NONE)},
@@ -468,7 +468,7 @@ INSTANTIATE_TEST_CASE_P(
 
 INSTANTIATE_TEST_CASE_P(
     AnchorRect,
-    XdgPopupTest,
+    XdgPopupPositionerTest,
     testing::Values(
         PositionerTestParams{"explicit defaultPositionerParams anchor rect", (window_width - popup_width) / 2, (window_height - popup_height) / 2,
             PositionerParams().with_anchor_rect(0, 0, window_width, window_height)},
@@ -491,7 +491,7 @@ INSTANTIATE_TEST_CASE_P(
 
 INSTANTIATE_TEST_CASE_P(
     ZeroSizeAnchorRect, // only allowed in XDG shell stable, not unstable v6
-    XdgPopupTest,
+    XdgPopupPositionerTest,
     testing::Values(
         PositionerTestParams{"centered zero size anchor rect", (window_width - popup_width) / 2, (window_height - popup_height) / 2,
             PositionerParams().with_anchor_rect(window_width / 2, window_height / 2, 0, 0)}
