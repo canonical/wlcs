@@ -517,14 +517,6 @@ INSTANTIATE_TEST_CASE_P(
             PositionerParams().with_anchor_rect(20, 20, window_width - 80, window_height - 120)}
     ));
 
-INSTANTIATE_TEST_CASE_P(
-    ZeroSizeAnchorRect, // only allowed in XDG shell stable, not unstable v6
-    XdgPopupPositionerTest,
-    testing::Values(
-        PositionerTestParams{"centered zero size anchor rect", (window_width - popup_width) / 2, (window_height - popup_height) / 2,
-            PositionerParams().with_anchor_rect(window_width / 2, window_height / 2, 0, 0)}
-    ));
-
 struct XdgPopupTestParam
 {
     std::function<std::unique_ptr<XdgPopupManagerBase>(wlcs::InProcessServer* const)> build;
@@ -541,52 +533,69 @@ class XdgPopupTest:
 TEST_P(XdgPopupTest, pointer_focus_goes_to_popup)
 {
     auto const& param = GetParam();
-    auto manager_ptr = param.build(this);
-    auto& manager = *manager_ptr;
+    auto manager = param.build(this);
     auto pointer = the_server().create_pointer();
-    pointer.move_to(manager.window_x + 1, manager.window_y + 1);
-    manager.client.roundtrip();
+    pointer.move_to(manager->window_x + 1, manager->window_y + 1);
+    manager->client.roundtrip();
 
-    EXPECT_THAT(manager.client.focused_window(), Eq((wl_surface*)manager.surface));
+    EXPECT_THAT(manager->client.focused_window(), Eq((wl_surface*)manager->surface));
 
     auto positioner = PositionerParams{}
         .with_size(30, 30)
         .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
         .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
-    manager.map_popup(positioner);
-    manager.client.roundtrip();
+    manager->map_popup(positioner);
+    manager->client.roundtrip();
 
-    pointer.move_to(manager.window_x + 2, manager.window_y + 1);
-    manager.client.roundtrip();
+    pointer.move_to(manager->window_x + 2, manager->window_y + 1);
+    manager->client.roundtrip();
 
-    EXPECT_THAT(manager.client.focused_window(), Eq((wl_surface*)manager.popup_surface.value()));
+    EXPECT_THAT(manager->client.focused_window(), Eq((wl_surface*)manager->popup_surface.value()));
 }
 
 TEST_P(XdgPopupTest, popup_gives_up_pointer_focus_when_gone)
 {
     auto const& param = GetParam();
-    auto manager_ptr = param.build(this);
-    auto& manager = *manager_ptr;
+    auto manager = param.build(this);
     auto pointer = the_server().create_pointer();
 
     auto positioner = PositionerParams{}
         .with_size(30, 30)
         .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
         .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
-    manager.map_popup(positioner);
-    manager.client.roundtrip();
+    manager->map_popup(positioner);
+    manager->client.roundtrip();
 
-    pointer.move_to(manager.window_x + 2, manager.window_y + 1);
-    manager.client.roundtrip();
+    pointer.move_to(manager->window_x + 2, manager->window_y + 1);
+    manager->client.roundtrip();
 
-    EXPECT_THAT(manager.client.focused_window(), Eq((wl_surface*)manager.popup_surface.value()));
+    EXPECT_THAT(manager->client.focused_window(), Eq((wl_surface*)manager->popup_surface.value()));
 
-    manager.unmap_popup();
-    manager.client.roundtrip();
-    pointer.move_to(manager.window_x + 3, manager.window_y + 1);
-    manager.client.roundtrip();
+    manager->unmap_popup();
+    manager->client.roundtrip();
+    pointer.move_to(manager->window_x + 3, manager->window_y + 1);
+    manager->client.roundtrip();
 
-    EXPECT_THAT(manager.client.focused_window(), Eq((wl_surface*)manager.surface));
+    EXPECT_THAT(manager->client.focused_window(), Eq((wl_surface*)manager->surface));
+}
+
+TEST_F(XdgPopupTest, zero_size_anchor_rect_stable)
+{
+    auto manager = std::make_unique<XdgPopupStableManager>(this);
+
+    auto positioner = PositionerParams{}
+        .with_anchor_rect(window_width / 2, window_height / 2, 0, 0);
+
+    manager->map_popup(positioner);
+    manager->client.roundtrip();
+
+    ASSERT_THAT(
+        manager->popup_position(),
+        Eq(std::experimental::make_optional(
+            std::make_pair(
+                (window_width - popup_width) / 2,
+                (window_height - popup_height) / 2)))) << "popup placed in incorrect position";
+
 }
 
 INSTANTIATE_TEST_CASE_P(
@@ -606,6 +615,7 @@ INSTANTIATE_TEST_CASE_P(
         {
             return std::make_unique<XdgPopupV6Manager>(server);
         }}));
+
 // TODO: test that positioner is always overlapping or adjacent to parent
 // TODO: test that positioner is copied immediately after use
 // TODO: test that error is raised when incomplete positioner is used (positioner without size and anchor rect set)
@@ -613,3 +623,4 @@ INSTANTIATE_TEST_CASE_P(
 // TODO: test that set_window_geometry affects anchor rect
 // TODO: test set_constraint_adjustment
 // TODO: test set_offset
+// TODO: test that a zero size anchor rect fails on v6
