@@ -145,6 +145,14 @@ std::ostream& operator<<(std::ostream& out, PositionerTestParams const& param)
 class XdgPopupManagerBase
 {
 public:
+    struct State
+    {
+        int x;
+        int y;
+        int width;
+        int height;
+    };
+
     static int const window_x = 500, window_y = 500;
 
     XdgPopupManagerBase(wlcs::InProcessServer* const in_process_server)
@@ -194,6 +202,8 @@ public:
     wlcs::Client client;
     wlcs::Surface surface;
     std::experimental::optional<wlcs::Surface> popup_surface;
+
+    std::experimental::optional<State> state;
 
 protected:
     virtual void setup_popup(PositionerParams const& params) = 0;
@@ -261,7 +271,7 @@ public:
 
         popup.value().add_configure_notification([this](int32_t x, int32_t y, int32_t width, int32_t height)
             {
-                state = wlcs::XdgPopupStable::State{x, y, width, height};
+                state = State{x, y, width, height};
             });
     }
 
@@ -283,7 +293,6 @@ public:
     std::experimental::optional<wlcs::XdgPopupStable> popup;
 
     int popup_surface_configure_count{0};
-    std::experimental::optional<wlcs::XdgPopupStable::State> state;
 };
 
 class XdgPopupV6Manager : public XdgPopupManagerBase
@@ -357,7 +366,7 @@ public:
 
         popup.value().add_configure_notification([this](int32_t x, int32_t y, int32_t width, int32_t height)
             {
-                state = wlcs::XdgPopupV6::State{x, y, width, height};
+                state = State{x, y, width, height};
             });
     }
 
@@ -379,7 +388,6 @@ public:
     std::experimental::optional<wlcs::XdgPopupV6> popup;
 
     int popup_surface_configure_count{0};
-    std::experimental::optional<wlcs::XdgPopupV6::State> state;
 };
 
 }
@@ -591,7 +599,24 @@ TEST_F(XdgPopupTest, zero_size_anchor_rect_stable)
             std::make_pair(
                 (window_width - popup_width) / 2,
                 (window_height - popup_height) / 2)))) << "popup placed in incorrect position";
+}
 
+// regression test for https://github.com/MirServer/mir/issues/836
+TEST_P(XdgPopupTest, popup_configure_is_valid)
+{
+    auto const& param = GetParam();
+    auto manager = param.build(this);
+
+    auto positioner = PositionerParams{}
+        .with_size(30, 30)
+        .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
+        .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
+    manager->map_popup(positioner);
+    manager->client.roundtrip();
+
+    ASSERT_THAT(manager->state, Ne(std::experimental::nullopt));
+    EXPECT_THAT(manager->state.value().width, Gt(0));
+    EXPECT_THAT(manager->state.value().height, Gt(0));
 }
 
 INSTANTIATE_TEST_CASE_P(
