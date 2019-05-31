@@ -164,14 +164,13 @@ TEST_F(XdgToplevelV6Test, touch_respects_window_geom_offset)
 
 // TODO: set_window_geometry window size (something will need to be added to wlcs)
 
-// interactive move is not currently implemented in the WLCS window manager
-TEST_F(XdgToplevelV6Test, DISABLED_interactive_move)
+TEST_F(XdgToplevelV6Test, interactive_move)
 {
-    int window_x = 20, window_y = 20;
+    int window_x = 100, window_y = 100;
     int window_width = 420, window_height = 390;
-    int start_x = window_x + window_width - 5, start_y = window_y + window_height / 2;
-    int dx = 60, dy = -10;
-    int end_x = window_x + dx + 12, end_y = window_y + dy + 18;
+    int start_x = window_x + 5, start_y = window_y + 5;
+    int dx = 60, dy = -40;
+    int end_x = window_x + dx + 20, end_y = window_y + dy + 20;
 
     wlcs::Client client{the_server()};
     wlcs::Surface surface{client};
@@ -205,6 +204,7 @@ TEST_F(XdgToplevelV6Test, DISABLED_interactive_move)
     client.roundtrip();
     pointer.move_to(start_x + dx, start_x + dy);
     pointer.left_button_up();
+    client.roundtrip();
 
     client.dispatch_until([&](){
             return !button_down;
