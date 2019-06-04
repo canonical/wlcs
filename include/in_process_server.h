@@ -27,6 +27,7 @@
 
 #include <memory>
 #include <functional>
+#include <experimental/optional>
 #include <unordered_map>
 #include "shared_library.h"
 
@@ -177,6 +178,19 @@ private:
     std::unique_ptr<Impl> impl;
 };
 
+struct OutputState
+{
+    OutputState(wl_output* output)
+        : output{output}
+    {
+    }
+
+    wl_output* output;
+    std::experimental::optional<std::pair<int, int>> geometry_position;
+    std::experimental::optional<std::pair<int, int>> mode_size;
+    std::experimental::optional<int> scale;
+};
+
 class Client
 {
 public:
@@ -200,6 +214,9 @@ public:
     Surface create_xdg_shell_v6_surface(int width, int height);
     Surface create_xdg_shell_stable_surface(int width, int height);
     Surface create_visible_surface(int width, int height);
+
+    size_t output_count() const;
+    OutputState output_state(size_t index) const;
 
     wl_shell* shell() const;
     zxdg_shell_v6* xdg_shell_v6() const;

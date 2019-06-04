@@ -13,7 +13,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Authored by: William Wold <williamwold@canonical.com>
+ * Authored by: William Wold <william.wold@canonical.com>
  */
 
 #include "helpers.h"
