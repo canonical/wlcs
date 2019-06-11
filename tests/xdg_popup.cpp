@@ -289,8 +289,6 @@ public:
 class XdgPopupV6Manager : public XdgPopupManagerBase
 {
 public:
-    static int const window_x = 500, window_y = 500;
-
     XdgPopupV6Manager(wlcs::InProcessServer* const in_process_server)
         : XdgPopupManagerBase{in_process_server},
           xdg_shell_surface{client, surface},
