@@ -205,8 +205,6 @@ protected:
 class XdgPopupStableManager : public XdgPopupManagerBase
 {
 public:
-    static int const window_x = 500, window_y = 500;
-
     XdgPopupStableManager(wlcs::InProcessServer* const in_process_server)
         : XdgPopupManagerBase{in_process_server},
           xdg_shell_surface{client, surface},
