@@ -1,5 +1,5 @@
 /*
- * Copyright © 2017 Canonical Ltd.
+ * Copyright © 2017-2019 Canonical Ltd.
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 3,
@@ -24,6 +24,7 @@
 #include "wlcs/touch.h"
 #include "xdg_shell_v6.h"
 #include "xdg_shell_stable.h"
+#include "generated/primary-selection-unstable-v1-client.h"
 #include "generated/wayland-client.h"
 #include "generated/xdg-shell-unstable-v6-client.h"
 #include "generated/xdg-shell-client.h"
@@ -649,6 +650,8 @@ public:
         if (seat) wl_seat_destroy(seat);
         if (pointer) wl_pointer_destroy(pointer);
         if (touch) wl_touch_destroy(touch);
+        if (primary_selection_device_manager)
+            zwp_primary_selection_device_manager_v1_destroy(primary_selection_device_manager);
         if (data_device_manager) wl_data_device_manager_destroy(data_device_manager);
         if (xdg_shell_v6) zxdg_shell_v6_destroy(xdg_shell_v6);
         if (xdg_shell_stable) xdg_wm_base_destroy(xdg_shell_stable);
@@ -683,6 +686,11 @@ public:
     struct wl_data_device_manager* wl_data_device_manager() const
     {
         return data_device_manager;
+    }
+
+    struct zwp_primary_selection_device_manager_v1* zwp_primary_selection_device_manager() const
+    {
+        return primary_selection_device_manager;
     }
 
     struct wl_seat* wl_seat() const
@@ -1237,6 +1245,11 @@ private:
             me->data_device_manager = static_cast<struct wl_data_device_manager*>(
                 wl_registry_bind(registry, id, &wl_data_device_manager_interface, version));
         }
+        else if ("zwp_primary_selection_device_manager_v1"s == interface)
+        {
+            me->primary_selection_device_manager = static_cast<struct zwp_primary_selection_device_manager_v1*>(
+                wl_registry_bind(registry, id, &zwp_primary_selection_device_manager_v1_interface, version));
+        }
         else if ("wl_output"s == interface)
         {
             auto wl_output = static_cast<struct wl_output*>(
@@ -1285,6 +1298,7 @@ private:
     struct zxdg_shell_v6* xdg_shell_v6 = nullptr;
     std::vector<std::function<void()>> destruction_callbacks;
     struct xdg_wm_base* xdg_shell_stable = nullptr;
+    struct zwp_primary_selection_device_manager_v1* primary_selection_device_manager = nullptr;
 
     struct SurfaceLocation
     {
@@ -1336,6 +1350,11 @@ wl_shm* wlcs::Client::shm() const
 struct wl_data_device_manager* wlcs::Client::data_device_manager() const
 {
     return impl->wl_data_device_manager();
+}
+
+struct zwp_primary_selection_device_manager_v1* wlcs::Client::primary_selection_device_manager() const
+{
+    return impl->zwp_primary_selection_device_manager();
 }
 
 wl_seat* wlcs::Client::seat() const
