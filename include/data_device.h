@@ -19,11 +19,11 @@
 #ifndef WLCS_DATA_DEVICE_H
 #define WLCS_DATA_DEVICE_H
 
+#include "active_listeners.h"
+
 #include <wayland-client.h>
 
 #include <memory>
-#include <mutex>
-#include <set>
 
 namespace wlcs
 {
@@ -46,32 +46,6 @@ private:
     static void deleter(struct wl_data_source* ds) { wl_data_source_destroy(ds); }
 
     std::shared_ptr<struct wl_data_source> self;
-};
-
-class ActiveListeners
-{
-public:
-    void add(void* listener)
-    {
-        std::lock_guard<decltype(mutex)> lock{mutex};
-        listeners.insert(listener);
-    }
-
-    void del(void* listener)
-    {
-        std::lock_guard<decltype(mutex)> lock{mutex};
-        listeners.erase(listener);
-    }
-
-    bool includes(void* listener) const
-    {
-        std::lock_guard<decltype(mutex)> lock{mutex};
-        return listeners.find(listener) != end(listeners);
-    }
-
-private:
-    std::mutex mutable mutex;
-    std::set<void*> listeners;
 };
 
 struct DataDeviceListener
