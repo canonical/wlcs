@@ -122,6 +122,7 @@ set(
   include/wlcs/touch.h
   include/helpers.h
   include/in_process_server.h
+  include/primary_selection.h
   include/xdg_shell_v6.h
   include/xdg_shell_stable.h
 
@@ -131,6 +132,7 @@ set(
   src/xdg_shell_v6.cpp
   src/xdg_shell_stable.cpp
   src/main.cpp
+  src/primary_selection.cpp
   src/shared_library.cpp
   src/xfail_supporting_test_listener.h
   src/xfail_supporting_test_listener.cpp

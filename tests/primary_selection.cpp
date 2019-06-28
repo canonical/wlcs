@@ -16,213 +16,7 @@
  * Authored by: Alan Griffiths <alan@octopull.co.uk>
  */
 
-#include "generated/primary-selection-unstable-v1-client.h"
-
-#include "active_listeners.h"
-
-#include <memory>
-#include <mutex>
-#include <set>
-
-namespace wlcs
-{
-class PrimarySelectionSource
-{
-public:
-    using WrappedType = zwp_primary_selection_source_v1;
-    
-    PrimarySelectionSource() = default;
-
-    explicit PrimarySelectionSource(zwp_primary_selection_device_manager_v1* manager) :
-        self{zwp_primary_selection_device_manager_v1_create_source(manager), deleter} {}
-
-    operator WrappedType*() const { return self.get(); }
-
-    void reset() { self.reset(); }
-
-    void reset(WrappedType* source) { self.reset(source, deleter); }
-
-    friend void zwp_primary_selection_source_v1_destroy(PrimarySelectionSource const&) = delete;
-
-private:
-    static void deleter(WrappedType* source) { zwp_primary_selection_source_v1_destroy(source); }
-
-    std::shared_ptr<WrappedType> self;
-};
-
-
-class PrimarySelectionDevice
-{
-public:
-    using WrappedType = zwp_primary_selection_device_v1;
-
-    PrimarySelectionDevice() = default;
-
-    PrimarySelectionDevice(zwp_primary_selection_device_manager_v1* manager, wl_seat* seat) :
-        self{zwp_primary_selection_device_manager_v1_get_device(manager, seat), deleter} {}
-
-    operator WrappedType*() const { return self.get(); }
-
-    void reset() { self.reset(); }
-
-    void reset(WrappedType* device) { self.reset(device, deleter); }
-
-    friend void zwp_primary_selection_device_v1_destroy(PrimarySelectionDevice const&) = delete;
-
-private:
-    static void deleter(WrappedType* device) { zwp_primary_selection_device_v1_destroy(device); }
-
-    std::shared_ptr<WrappedType> self;
-};
-
-struct PrimarySelectionDeviceListener
-{
-    PrimarySelectionDeviceListener(zwp_primary_selection_device_v1* device)
-    {
-        active_listeners.add(this);
-        zwp_primary_selection_device_v1_add_listener(device, &thunks, this);
-    }
-
-    virtual ~PrimarySelectionDeviceListener() { active_listeners.del(this); }
-
-    PrimarySelectionDeviceListener(PrimarySelectionDeviceListener const&) = delete;
-    PrimarySelectionDeviceListener& operator=(PrimarySelectionDeviceListener const&) = delete;
-
-    virtual void data_offer(zwp_primary_selection_device_v1* device, zwp_primary_selection_offer_v1* offer);
-
-    virtual void selection(zwp_primary_selection_device_v1* device, zwp_primary_selection_offer_v1* offer);
-
-private:
-    static void data_offer(void* data, zwp_primary_selection_device_v1* device, zwp_primary_selection_offer_v1* offer);
-
-    static void selection(void* data, zwp_primary_selection_device_v1* device, zwp_primary_selection_offer_v1* offer);
-
-    static ActiveListeners active_listeners;
-    constexpr static zwp_primary_selection_device_v1_listener thunks =
-        {
-            &data_offer,
-            &selection
-        };
-};
-
-struct PrimarySelectionOfferListener
-{
-    PrimarySelectionOfferListener() { active_listeners.add(this); }
-    virtual ~PrimarySelectionOfferListener() { active_listeners.del(this); }
-
-    PrimarySelectionOfferListener(PrimarySelectionOfferListener const&) = delete;
-    PrimarySelectionOfferListener& operator=(PrimarySelectionOfferListener const&) = delete;
-
-    void listen_to(zwp_primary_selection_offer_v1* offer)
-    {
-        zwp_primary_selection_offer_v1_add_listener(offer, &thunks, this);
-    }
-
-    virtual void offer(zwp_primary_selection_offer_v1* offer, const char* mime_type);
-
-private:
-    static void offer(void* data, zwp_primary_selection_offer_v1* offer, const char* mime_type);
-
-    static ActiveListeners active_listeners;
-    constexpr static zwp_primary_selection_offer_v1_listener thunks = { &offer, };
-};
-
-struct PrimarySelectionSourceListener
-{
-    explicit PrimarySelectionSourceListener(PrimarySelectionSource const& source)
-    {
-        active_listeners.add(this);
-        zwp_primary_selection_source_v1_add_listener(source, &thunks, this);
-    }
-
-    virtual ~PrimarySelectionSourceListener() { active_listeners.del(this); }
-
-    PrimarySelectionSourceListener(PrimarySelectionSourceListener const&) = delete;
-    PrimarySelectionSourceListener& operator=(PrimarySelectionSourceListener const&) = delete;
-
-    virtual void send(zwp_primary_selection_source_v1* source, const char* mime_type, int32_t fd);
-    virtual void cancelled(zwp_primary_selection_source_v1* source);
-
-private:
-    static void send(void* data, zwp_primary_selection_source_v1* source, const char* mime_type, int32_t fd);
-    static void cancelled(void* data, zwp_primary_selection_source_v1* source);
-
-    static ActiveListeners active_listeners;
-    constexpr static zwp_primary_selection_source_v1_listener thunks = { &send, &cancelled };
-};
-}
-
-#include <unistd.h>
-
-wlcs::ActiveListeners wlcs::PrimarySelectionDeviceListener::active_listeners;
-constexpr zwp_primary_selection_device_v1_listener wlcs::PrimarySelectionDeviceListener::thunks;
-
-wlcs::ActiveListeners wlcs::PrimarySelectionOfferListener::active_listeners;
-constexpr zwp_primary_selection_offer_v1_listener wlcs::PrimarySelectionOfferListener::thunks;
-
-wlcs::ActiveListeners wlcs::PrimarySelectionSourceListener::active_listeners;
-constexpr zwp_primary_selection_source_v1_listener wlcs::PrimarySelectionSourceListener::thunks;
-
-
-void wlcs::PrimarySelectionDeviceListener::data_offer(
-    void* data,
-    zwp_primary_selection_device_v1* device,
-    zwp_primary_selection_offer_v1* offer)
-{
-    if (active_listeners.includes(data))
-        static_cast<PrimarySelectionDeviceListener*>(data)->data_offer(device, offer);
-}
-
-void wlcs::PrimarySelectionDeviceListener::data_offer(zwp_primary_selection_device_v1*, zwp_primary_selection_offer_v1*)
-{
-}
-
-void wlcs::PrimarySelectionDeviceListener::selection(zwp_primary_selection_device_v1*, zwp_primary_selection_offer_v1*)
-{
-}
-
-void wlcs::PrimarySelectionDeviceListener::selection(
-    void* data,
-    zwp_primary_selection_device_v1* device,
-    zwp_primary_selection_offer_v1* offer)
-{
-    if (active_listeners.includes(data))
-        static_cast<PrimarySelectionDeviceListener*>(data)->selection(device, offer);
-}
-
-void wlcs::PrimarySelectionOfferListener::offer(zwp_primary_selection_offer_v1*, const char*)
-{
-}
-
-void wlcs::PrimarySelectionOfferListener::offer(
-    void* data, zwp_primary_selection_offer_v1* offer, const char* mime_type)
-{
-    if (active_listeners.includes(data))
-        static_cast<PrimarySelectionOfferListener*>(data)->offer(offer, mime_type);
-}
-
-void wlcs::PrimarySelectionSourceListener::send(zwp_primary_selection_source_v1*, const char*, int32_t fd)
-{
-    close(fd);
-}
-
-void wlcs::PrimarySelectionSourceListener::cancelled(zwp_primary_selection_source_v1*)
-{
-}
-
-void wlcs::PrimarySelectionSourceListener::send(
-    void* data, zwp_primary_selection_source_v1* source, const char* mime_type, int32_t fd)
-{
-    if (active_listeners.includes(data))
-        static_cast<PrimarySelectionSourceListener*>(data)->send(source, mime_type, fd);
-}
-
-void wlcs::PrimarySelectionSourceListener::cancelled(void* data, zwp_primary_selection_source_v1* source)
-{
-    if (active_listeners.includes(data))
-        static_cast<PrimarySelectionSourceListener*>(data)->cancelled(source);
-}
-
+#include "primary_selection.h"
 
 #include "in_process_server.h"
 
@@ -234,8 +28,6 @@ using namespace testing;
 
 namespace
 {
-auto const any_width = 100;
-auto const any_height = 100;
 auto const any_mime_type = "AnyMimeType";
 
 struct SourceApp : Client
@@ -267,8 +59,18 @@ struct SinkApp : Client
     PrimarySelectionDevice device{primary_selection_device_manager(), seat()};
 };
 
+struct PrimarySelectionCheck : Client
+{
+    explicit PrimarySelectionCheck(Server& server) : Client{server}
+    {
+        wl_interface interface;
+        acquire_interface("zwp_primary_selection_device_manager_v1", &interface, 1);
+    }
+};
+
 struct PrimarySelection : StartedInProcessServer
 {
+    PrimarySelectionCheck must_be_first{the_server()};
     SourceApp   source_app{the_server()};
     SinkApp     sink_app{the_server()};
 
@@ -381,7 +183,6 @@ TEST_F(PrimarySelection, sink_can_request)
     zwp_primary_selection_offer_v1_receive(device_listener.selected, any_mime_type, pipe.source);
     sink_app.roundtrip();
 }
-
 
 TEST_F(PrimarySelection, source_sees_request)
 {
