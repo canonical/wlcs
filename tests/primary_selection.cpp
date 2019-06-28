@@ -59,12 +59,21 @@ struct SinkApp : Client
     PrimarySelectionDevice device{primary_selection_device_manager(), seat()};
 };
 
-struct PrimarySelectionCheck : Client
+struct PrimarySelectionCheck
 {
-    explicit PrimarySelectionCheck(Server& server) : Client{server}
+    explicit PrimarySelectionCheck(Server& server)
     {
-        wl_interface interface;
-        acquire_interface("zwp_primary_selection_device_manager_v1", &interface, 1);
+        bool supported = false;
+
+        // Do we really have to iterate over the keys and compare strings? Issue #107
+        for (auto& extension : *server.supported_extensions())
+        {
+            if (strcmp("zwp_primary_selection_device_manager_v1", extension.first) == 0)
+                supported = true;
+        }
+
+        if (!supported)
+            throw ExtensionExpectedlyNotSupported("zwp_primary_selection_device_manager_v1", 1);
     }
 };
 
