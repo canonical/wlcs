@@ -126,14 +126,6 @@ private:
 class XdgPopupV6
 {
 public:
-    struct State
-    {
-        int x;
-        int y;
-        int width;
-        int height;
-    };
-
     XdgPopupV6(XdgSurfaceV6& shell_surface_, XdgSurfaceV6& parent, XdgPositionerV6& positioner);
     XdgPopupV6(XdgToplevelV6 const&) = delete;
     XdgPopupV6& operator=(XdgToplevelV6 const&) = delete;

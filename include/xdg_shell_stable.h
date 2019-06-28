@@ -126,14 +126,6 @@ private:
 class XdgPopupStable
 {
 public:
-    struct State
-    {
-        int x;
-        int y;
-        int width;
-        int height;
-    };
-
     XdgPopupStable(XdgSurfaceStable& shell_surface_, XdgSurfaceStable& parent, XdgPositionerStable& positioner);
     XdgPopupStable(XdgToplevelStable const&) = delete;
     XdgPopupStable& operator=(XdgToplevelStable const&) = delete;
