@@ -241,6 +241,6 @@ TEST_F(PrimarySelection, source_can_supply_request)
     source_app.roundtrip();
 
     char buffer[128];
-    EXPECT_THAT(read(pipe.sink, buffer, sizeof buffer), Eq(sizeof any_mime_data));
+    EXPECT_THAT(read(pipe.sink, buffer, sizeof buffer), Eq(ssize_t(sizeof any_mime_data)));
     EXPECT_THAT(buffer, StrEq(any_mime_data));
 }
