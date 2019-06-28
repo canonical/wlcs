@@ -113,10 +113,34 @@ private:
         };
 };
 
-}
+struct PrimarySelectionOfferListener
+{
+    PrimarySelectionOfferListener() { active_listeners.add(this); }
+    virtual ~PrimarySelectionOfferListener() { active_listeners.del(this); }
+
+    PrimarySelectionOfferListener(PrimarySelectionOfferListener const&) = delete;
+    PrimarySelectionOfferListener& operator=(PrimarySelectionOfferListener const&) = delete;
+
+    void listen_to(zwp_primary_selection_offer_v1* primary_selection_offer)
+    {
+        zwp_primary_selection_offer_v1_add_listener(primary_selection_offer, &thunks, this);
+    }
+
+    virtual void offer(zwp_primary_selection_offer_v1* primary_selection_offer, const char* mime_type);
+
+private:
+    static void offer(void* data, zwp_primary_selection_offer_v1* primary_selection_offer, const char* mime_type);
+
+    static ActiveListeners active_listeners;
+    constexpr static zwp_primary_selection_offer_v1_listener thunks = { &offer, };
+};
 
 wlcs::ActiveListeners wlcs::PrimarySelectionDeviceListener::active_listeners;
-zwp_primary_selection_device_v1_listener const wlcs::PrimarySelectionDeviceListener::thunks;
+constexpr zwp_primary_selection_device_v1_listener wlcs::PrimarySelectionDeviceListener::thunks;
+
+wlcs::ActiveListeners wlcs::PrimarySelectionOfferListener::active_listeners;
+constexpr zwp_primary_selection_offer_v1_listener wlcs::PrimarySelectionOfferListener::thunks;
+
 
 void wlcs::PrimarySelectionDeviceListener::data_offer(
     void* data,
@@ -144,6 +168,19 @@ void wlcs::PrimarySelectionDeviceListener::selection(
     if (active_listeners.includes(data))
         static_cast<PrimarySelectionDeviceListener*>(data)->selection(zwp_primary_selection_device_v1, id);
 }
+
+void wlcs::PrimarySelectionOfferListener::offer(zwp_primary_selection_offer_v1*, const char*)
+{
+}
+
+void wlcs::PrimarySelectionOfferListener::offer(
+    void* data, zwp_primary_selection_offer_v1* primary_selection_offer, const char* mime_type)
+{
+    if (active_listeners.includes(data))
+        static_cast<PrimarySelectionOfferListener*>(data)->offer(primary_selection_offer, mime_type);
+}
+}
+
 
 #include "in_process_server.h"
 
@@ -217,24 +254,35 @@ struct MockPrimarySelectionDeviceListener : PrimarySelectionDeviceListener
         struct zwp_primary_selection_offer_v1* id));
 };
 
+struct MockPrimarySelectionOfferListener : PrimarySelectionOfferListener
+{
+    using PrimarySelectionOfferListener::PrimarySelectionOfferListener;
+
+    MOCK_METHOD2(offer, void(zwp_primary_selection_offer_v1* primary_selection_offer, const char* mime_type));
+};
 }
 
 TEST_F(PrimarySelection, source_can_offer)
 {
-    source_app.set_selection();
     source_app.offer(any_mime_type);
+    source_app.set_selection();
 }
-
 
 TEST_F(PrimarySelection, sink_can_listen)
 {
-    MockPrimarySelectionDeviceListener listener{sink_app.sink_data};
-    InSequence seq;
-    EXPECT_CALL(listener, data_offer(_, _));
-    EXPECT_CALL(listener, selection(_, _));
+    MockPrimarySelectionDeviceListener  device_listener{sink_app.sink_data};
+    MockPrimarySelectionOfferListener   offer_listener;
 
-    source_app.set_selection();
+    InSequence seq;
+    EXPECT_CALL(device_listener, data_offer(_, _))
+        .WillOnce(Invoke([&](auto*, auto* id) { offer_listener.listen_to(id); }));
+
+    EXPECT_CALL(offer_listener, offer(_, StrEq(any_mime_type)));
+
+    EXPECT_CALL(device_listener, selection(_, _));
+
     source_app.offer(any_mime_type);
+    source_app.set_selection();
 
     sink_app.roundtrip();
 }
