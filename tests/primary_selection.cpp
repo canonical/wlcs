@@ -75,10 +75,10 @@ private:
 
 struct PrimarySelectionDeviceListener
 {
-    PrimarySelectionDeviceListener(struct zwp_primary_selection_device_v1* data_device)
+    PrimarySelectionDeviceListener(struct zwp_primary_selection_device_v1* device)
     {
         active_listeners.add(this);
-        zwp_primary_selection_device_v1_add_listener(data_device, &thunks, this);
+        zwp_primary_selection_device_v1_add_listener(device, &thunks, this);
     }
 
     virtual ~PrimarySelectionDeviceListener() { active_listeners.del(this); }
@@ -87,23 +87,23 @@ struct PrimarySelectionDeviceListener
     PrimarySelectionDeviceListener& operator=(PrimarySelectionDeviceListener const&) = delete;
 
     virtual void data_offer(
-        struct zwp_primary_selection_device_v1* zwp_primary_selection_device_v1,
-        struct zwp_primary_selection_offer_v1* id);
+        struct zwp_primary_selection_device_v1* device,
+        struct zwp_primary_selection_offer_v1* offer);
 
     virtual void selection(
-        struct zwp_primary_selection_device_v1* zwp_primary_selection_device_v1,
-        struct zwp_primary_selection_offer_v1* id);
+        struct zwp_primary_selection_device_v1* device,
+        struct zwp_primary_selection_offer_v1* offer);
 
 private:
     static void data_offer(
         void* data,
-        struct zwp_primary_selection_device_v1* zwp_primary_selection_device_v1,
-        struct zwp_primary_selection_offer_v1* id);
+        struct zwp_primary_selection_device_v1* device,
+        struct zwp_primary_selection_offer_v1* offer);
 
     static void selection(
         void* data,
-        struct zwp_primary_selection_device_v1* zwp_primary_selection_device_v1,
-        struct zwp_primary_selection_offer_v1* id);
+        struct zwp_primary_selection_device_v1* device,
+        struct zwp_primary_selection_offer_v1* offer);
 
     static ActiveListeners active_listeners;
     constexpr static zwp_primary_selection_device_v1_listener thunks =
@@ -144,11 +144,11 @@ constexpr zwp_primary_selection_offer_v1_listener wlcs::PrimarySelectionOfferLis
 
 void wlcs::PrimarySelectionDeviceListener::data_offer(
     void* data,
-    struct zwp_primary_selection_device_v1* offer,
-    struct zwp_primary_selection_offer_v1* id)
+    struct zwp_primary_selection_device_v1* device,
+    struct zwp_primary_selection_offer_v1* offer)
 {
     if (active_listeners.includes(data))
-        static_cast<PrimarySelectionDeviceListener*>(data)->data_offer(offer, id);
+        static_cast<PrimarySelectionDeviceListener*>(data)->data_offer(device, offer);
 }
 
 void wlcs::PrimarySelectionDeviceListener::data_offer(
@@ -162,11 +162,11 @@ void wlcs::PrimarySelectionDeviceListener::selection(
 }
 
 void wlcs::PrimarySelectionDeviceListener::selection(
-    void* data, struct zwp_primary_selection_device_v1* zwp_primary_selection_device_v1,
-    struct zwp_primary_selection_offer_v1* id)
+    void* data, struct zwp_primary_selection_device_v1* device,
+    struct zwp_primary_selection_offer_v1* offer)
 {
     if (active_listeners.includes(data))
-        static_cast<PrimarySelectionDeviceListener*>(data)->selection(zwp_primary_selection_device_v1, id);
+        static_cast<PrimarySelectionDeviceListener*>(data)->selection(device, offer);
 }
 
 void wlcs::PrimarySelectionOfferListener::offer(zwp_primary_selection_offer_v1*, const char*)
@@ -185,6 +185,7 @@ void wlcs::PrimarySelectionOfferListener::offer(
 #include "in_process_server.h"
 
 #include <gmock/gmock.h>
+#include <sys/socket.h>
 
 using namespace wlcs;
 using namespace testing;
@@ -260,6 +261,33 @@ struct MockPrimarySelectionOfferListener : PrimarySelectionOfferListener
 
     MOCK_METHOD2(offer, void(zwp_primary_selection_offer_v1* primary_selection_offer, const char* mime_type));
 };
+
+struct StubPrimarySelectionDeviceListener : PrimarySelectionDeviceListener
+{
+    StubPrimarySelectionDeviceListener(
+        zwp_primary_selection_device_v1* device,
+        PrimarySelectionOfferListener& offer_listener) :
+        PrimarySelectionDeviceListener{device},
+        offer_listener{offer_listener}
+    {
+    }
+
+    void data_offer(zwp_primary_selection_device_v1* device, zwp_primary_selection_offer_v1* offer) override
+    {
+        offer_listener.listen_to(offer);
+        PrimarySelectionDeviceListener::data_offer(device, offer);
+    }
+
+    void selection(zwp_primary_selection_device_v1* device, zwp_primary_selection_offer_v1* offer) override
+    {
+        selected = offer;
+        PrimarySelectionDeviceListener::selection(device, offer);
+    }
+
+    PrimarySelectionOfferListener& offer_listener;
+    zwp_primary_selection_offer_v1* selected = nullptr;
+};
+
 }
 
 TEST_F(PrimarySelection, source_can_offer)
@@ -285,4 +313,23 @@ TEST_F(PrimarySelection, sink_can_listen)
     source_app.set_selection();
 
     sink_app.roundtrip();
+}
+
+TEST_F(PrimarySelection, sink_can_request)
+{
+    PrimarySelectionOfferListener   offer_listener;
+    StubPrimarySelectionDeviceListener  device_listener{sink_app.sink_data, offer_listener};
+    source_app.offer(any_mime_type);
+    source_app.set_selection();
+    sink_app.roundtrip();
+    ASSERT_THAT(device_listener.selected, NotNull());
+
+    enum { source, sink, fd_count };
+    int data_fd[fd_count];
+
+    socketpair(AF_LOCAL, SOCK_STREAM, 0, data_fd);
+
+    zwp_primary_selection_offer_v1_receive(device_listener.selected, any_mime_type, data_fd[source]);
+
+    for (auto fd : data_fd) close(fd);
 }
