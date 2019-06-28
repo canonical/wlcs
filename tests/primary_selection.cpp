@@ -28,7 +28,8 @@ using namespace testing;
 
 namespace
 {
-auto const any_mime_type = "AnyMimeType";
+char const any_mime_type[] = "AnyMimeType";
+char const any_mime_data[] = "AnyMimeData";
 
 struct SourceApp : Client
 {
@@ -141,6 +142,17 @@ struct StubPrimarySelectionDeviceListener : PrimarySelectionDeviceListener
     zwp_primary_selection_offer_v1* selected = nullptr;
 };
 
+struct StubPrimarySelectionSourceListener : PrimarySelectionSourceListener
+{
+    using PrimarySelectionSourceListener::PrimarySelectionSourceListener;
+
+    void send(zwp_primary_selection_source_v1*, const char*, int32_t fd)
+    {
+        write(fd, any_mime_data, sizeof any_mime_data);
+        close(fd);
+    }
+};
+
 struct Pipe
 {
     int source;
@@ -211,4 +223,24 @@ TEST_F(PrimarySelection, source_sees_request)
     zwp_primary_selection_offer_v1_receive(device_listener.selected, any_mime_type, pipe.source);
     sink_app.roundtrip();
     source_app.roundtrip();
+}
+
+TEST_F(PrimarySelection, source_can_supply_request)
+{
+    StubPrimarySelectionSourceListener source_listener{source_app.source};
+    PrimarySelectionOfferListener   offer_listener;
+    StubPrimarySelectionDeviceListener  device_listener{sink_app.device, offer_listener};
+    source_app.offer(any_mime_type);
+    source_app.set_selection();
+    sink_app.roundtrip();
+    ASSERT_THAT(device_listener.selected, NotNull());
+
+    Pipe pipe;
+    zwp_primary_selection_offer_v1_receive(device_listener.selected, any_mime_type, pipe.source);
+    sink_app.roundtrip();
+    source_app.roundtrip();
+
+    char buffer[128];
+    EXPECT_THAT(read(pipe.sink, buffer, sizeof buffer), Eq(sizeof any_mime_data));
+    EXPECT_THAT(buffer, StrEq(any_mime_data));
 }
