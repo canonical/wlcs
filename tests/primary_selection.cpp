@@ -29,22 +29,23 @@ namespace wlcs
 class PrimarySelectionSource
 {
 public:
-    using WrappedType = struct zwp_primary_selection_source_v1;
+    using WrappedType = zwp_primary_selection_source_v1;
     
     PrimarySelectionSource() = default;
 
-    explicit PrimarySelectionSource(WrappedType* ds) : self{ds, deleter} {}
+    explicit PrimarySelectionSource(zwp_primary_selection_device_manager_v1* manager) :
+        self{zwp_primary_selection_device_manager_v1_create_source(manager), deleter} {}
 
     operator WrappedType*() const { return self.get(); }
 
     void reset() { self.reset(); }
 
-    void reset(WrappedType* ds) { self.reset(ds, deleter); }
+    void reset(WrappedType* source) { self.reset(source, deleter); }
 
     friend void zwp_primary_selection_source_v1_destroy(PrimarySelectionSource const&) = delete;
 
 private:
-    static void deleter(WrappedType* ds) { zwp_primary_selection_source_v1_destroy(ds); }
+    static void deleter(WrappedType* source) { zwp_primary_selection_source_v1_destroy(source); }
 
     std::shared_ptr<WrappedType> self;
 };
@@ -53,29 +54,30 @@ private:
 class PrimarySelectionDevice
 {
 public:
-    using WrappedType = struct zwp_primary_selection_device_v1;
+    using WrappedType = zwp_primary_selection_device_v1;
 
     PrimarySelectionDevice() = default;
 
-    explicit PrimarySelectionDevice(WrappedType* ds) : self{ds, deleter} {}
+    PrimarySelectionDevice(zwp_primary_selection_device_manager_v1* manager, wl_seat* seat) :
+        self{zwp_primary_selection_device_manager_v1_get_device(manager, seat), deleter} {}
 
     operator WrappedType*() const { return self.get(); }
 
     void reset() { self.reset(); }
 
-    void reset(WrappedType* ds) { self.reset(ds, deleter); }
+    void reset(WrappedType* device) { self.reset(device, deleter); }
 
     friend void zwp_primary_selection_device_v1_destroy(PrimarySelectionDevice const&) = delete;
 
 private:
-    static void deleter(WrappedType* ds) { zwp_primary_selection_device_v1_destroy(ds); }
+    static void deleter(WrappedType* device) { zwp_primary_selection_device_v1_destroy(device); }
 
     std::shared_ptr<WrappedType> self;
 };
 
 struct PrimarySelectionDeviceListener
 {
-    PrimarySelectionDeviceListener(struct zwp_primary_selection_device_v1* device)
+    PrimarySelectionDeviceListener(zwp_primary_selection_device_v1* device)
     {
         active_listeners.add(this);
         zwp_primary_selection_device_v1_add_listener(device, &thunks, this);
@@ -86,24 +88,14 @@ struct PrimarySelectionDeviceListener
     PrimarySelectionDeviceListener(PrimarySelectionDeviceListener const&) = delete;
     PrimarySelectionDeviceListener& operator=(PrimarySelectionDeviceListener const&) = delete;
 
-    virtual void data_offer(
-        struct zwp_primary_selection_device_v1* device,
-        struct zwp_primary_selection_offer_v1* offer);
+    virtual void data_offer(zwp_primary_selection_device_v1* device, zwp_primary_selection_offer_v1* offer);
 
-    virtual void selection(
-        struct zwp_primary_selection_device_v1* device,
-        struct zwp_primary_selection_offer_v1* offer);
+    virtual void selection(zwp_primary_selection_device_v1* device, zwp_primary_selection_offer_v1* offer);
 
 private:
-    static void data_offer(
-        void* data,
-        struct zwp_primary_selection_device_v1* device,
-        struct zwp_primary_selection_offer_v1* offer);
+    static void data_offer(void* data, zwp_primary_selection_device_v1* device, zwp_primary_selection_offer_v1* offer);
 
-    static void selection(
-        void* data,
-        struct zwp_primary_selection_device_v1* device,
-        struct zwp_primary_selection_offer_v1* offer);
+    static void selection(void* data, zwp_primary_selection_device_v1* device, zwp_primary_selection_offer_v1* offer);
 
     static ActiveListeners active_listeners;
     constexpr static zwp_primary_selection_device_v1_listener thunks =
@@ -121,15 +113,15 @@ struct PrimarySelectionOfferListener
     PrimarySelectionOfferListener(PrimarySelectionOfferListener const&) = delete;
     PrimarySelectionOfferListener& operator=(PrimarySelectionOfferListener const&) = delete;
 
-    void listen_to(zwp_primary_selection_offer_v1* primary_selection_offer)
+    void listen_to(zwp_primary_selection_offer_v1* offer)
     {
-        zwp_primary_selection_offer_v1_add_listener(primary_selection_offer, &thunks, this);
+        zwp_primary_selection_offer_v1_add_listener(offer, &thunks, this);
     }
 
-    virtual void offer(zwp_primary_selection_offer_v1* primary_selection_offer, const char* mime_type);
+    virtual void offer(zwp_primary_selection_offer_v1* offer, const char* mime_type);
 
 private:
-    static void offer(void* data, zwp_primary_selection_offer_v1* primary_selection_offer, const char* mime_type);
+    static void offer(void* data, zwp_primary_selection_offer_v1* offer, const char* mime_type);
 
     static ActiveListeners active_listeners;
     constexpr static zwp_primary_selection_offer_v1_listener thunks = { &offer, };
@@ -144,26 +136,25 @@ constexpr zwp_primary_selection_offer_v1_listener wlcs::PrimarySelectionOfferLis
 
 void wlcs::PrimarySelectionDeviceListener::data_offer(
     void* data,
-    struct zwp_primary_selection_device_v1* device,
-    struct zwp_primary_selection_offer_v1* offer)
+    zwp_primary_selection_device_v1* device,
+    zwp_primary_selection_offer_v1* offer)
 {
     if (active_listeners.includes(data))
         static_cast<PrimarySelectionDeviceListener*>(data)->data_offer(device, offer);
 }
 
-void wlcs::PrimarySelectionDeviceListener::data_offer(
-    struct zwp_primary_selection_device_v1*, struct zwp_primary_selection_offer_v1*)
+void wlcs::PrimarySelectionDeviceListener::data_offer(zwp_primary_selection_device_v1*, zwp_primary_selection_offer_v1*)
+{
+}
+
+void wlcs::PrimarySelectionDeviceListener::selection(zwp_primary_selection_device_v1*, zwp_primary_selection_offer_v1*)
 {
 }
 
 void wlcs::PrimarySelectionDeviceListener::selection(
-    struct zwp_primary_selection_device_v1*, struct zwp_primary_selection_offer_v1*)
-{
-}
-
-void wlcs::PrimarySelectionDeviceListener::selection(
-    void* data, struct zwp_primary_selection_device_v1* device,
-    struct zwp_primary_selection_offer_v1* offer)
+    void* data,
+    zwp_primary_selection_device_v1* device,
+    zwp_primary_selection_offer_v1* offer)
 {
     if (active_listeners.includes(data))
         static_cast<PrimarySelectionDeviceListener*>(data)->selection(device, offer);
@@ -174,10 +165,10 @@ void wlcs::PrimarySelectionOfferListener::offer(zwp_primary_selection_offer_v1*,
 }
 
 void wlcs::PrimarySelectionOfferListener::offer(
-    void* data, zwp_primary_selection_offer_v1* primary_selection_offer, const char* mime_type)
+    void* data, zwp_primary_selection_offer_v1* offer, const char* mime_type)
 {
     if (active_listeners.includes(data))
-        static_cast<PrimarySelectionOfferListener*>(data)->offer(primary_selection_offer, mime_type);
+        static_cast<PrimarySelectionOfferListener*>(data)->offer(offer, mime_type);
 }
 }
 
@@ -202,8 +193,8 @@ struct SourceApp : Client
     explicit SourceApp(Server& server) : Client{server} {}
 
     Surface const surface{create_visible_surface(any_width, any_height)};
-    PrimarySelectionSource source{zwp_primary_selection_device_manager_v1_create_source(primary_selection_device_manager())};
-    PrimarySelectionDevice device{zwp_primary_selection_device_manager_v1_get_device(primary_selection_device_manager(), seat())};
+    PrimarySelectionSource source{primary_selection_device_manager()};
+    PrimarySelectionDevice device{primary_selection_device_manager(), seat()};
 
     void set_selection()
     {
@@ -223,12 +214,7 @@ struct SinkApp : Client
     // Can't use "using Client::Client;" because Xenial
     explicit SinkApp(Server& server) : Client{server} {}
 
-    PrimarySelectionDevice sink_data{zwp_primary_selection_device_manager_v1_get_device(primary_selection_device_manager(), seat())};
-
-    Surface create_surface_with_focus()
-    {
-        return Surface{create_visible_surface(any_width, any_height)};
-    }
+    PrimarySelectionDevice device{primary_selection_device_manager(), seat()};
 };
 
 struct PrimarySelection : StartedInProcessServer
@@ -248,18 +234,15 @@ struct MockPrimarySelectionDeviceListener : PrimarySelectionDeviceListener
 {
     using PrimarySelectionDeviceListener::PrimarySelectionDeviceListener;
 
-    MOCK_METHOD2(data_offer, void(struct zwp_primary_selection_device_v1* zwp_primary_selection_device_v1,
-        struct zwp_primary_selection_offer_v1* id));
-
-    MOCK_METHOD2(selection, void(struct zwp_primary_selection_device_v1* zwp_primary_selection_device_v1,
-        struct zwp_primary_selection_offer_v1* id));
+    MOCK_METHOD2(data_offer, void(zwp_primary_selection_device_v1* device, zwp_primary_selection_offer_v1* offer));
+    MOCK_METHOD2(selection, void(zwp_primary_selection_device_v1* device, zwp_primary_selection_offer_v1* offer));
 };
 
 struct MockPrimarySelectionOfferListener : PrimarySelectionOfferListener
 {
     using PrimarySelectionOfferListener::PrimarySelectionOfferListener;
 
-    MOCK_METHOD2(offer, void(zwp_primary_selection_offer_v1* primary_selection_offer, const char* mime_type));
+    MOCK_METHOD2(offer, void(zwp_primary_selection_offer_v1* offer, const char* mime_type));
 };
 
 struct StubPrimarySelectionDeviceListener : PrimarySelectionDeviceListener
@@ -298,7 +281,7 @@ TEST_F(PrimarySelection, source_can_offer)
 
 TEST_F(PrimarySelection, sink_can_listen)
 {
-    MockPrimarySelectionDeviceListener  device_listener{sink_app.sink_data};
+    MockPrimarySelectionDeviceListener  device_listener{sink_app.device};
     MockPrimarySelectionOfferListener   offer_listener;
 
     InSequence seq;
@@ -318,7 +301,7 @@ TEST_F(PrimarySelection, sink_can_listen)
 TEST_F(PrimarySelection, sink_can_request)
 {
     PrimarySelectionOfferListener   offer_listener;
-    StubPrimarySelectionDeviceListener  device_listener{sink_app.sink_data, offer_listener};
+    StubPrimarySelectionDeviceListener  device_listener{sink_app.device, offer_listener};
     source_app.offer(any_mime_type);
     source_app.set_selection();
     sink_app.roundtrip();
