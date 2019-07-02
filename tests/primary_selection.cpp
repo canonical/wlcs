@@ -148,7 +148,7 @@ struct StubPrimarySelectionSourceListener : PrimarySelectionSourceListener
 
     void send(zwp_primary_selection_source_v1*, const char*, int32_t fd)
     {
-        write(fd, any_mime_data, sizeof any_mime_data);
+        ASSERT_THAT(write(fd, any_mime_data, sizeof any_mime_data), Eq(sizeof any_mime_data));
         close(fd);
     }
 };
