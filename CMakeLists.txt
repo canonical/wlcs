@@ -105,6 +105,7 @@ macro(GENERATE_PROTOCOL PROTOCOL_NAME)
   list(APPEND PROTOCOL_SOURCES ${OUTPUT_PATH_C} ${OUTPUT_PATH_CLIENT_H})
 endmacro()
 
+GENERATE_PROTOCOL(primary-selection-unstable-v1)
 GENERATE_PROTOCOL(wayland)
 GENERATE_PROTOCOL(xdg-shell-unstable-v6)
 GENERATE_PROTOCOL(xdg-shell)
@@ -121,6 +122,7 @@ set(
   include/wlcs/touch.h
   include/helpers.h
   include/in_process_server.h
+  include/primary_selection.h
   include/xdg_shell_v6.h
   include/xdg_shell_stable.h
 
@@ -130,6 +132,7 @@ set(
   src/xdg_shell_v6.cpp
   src/xdg_shell_stable.cpp
   src/main.cpp
+  src/primary_selection.cpp
   src/shared_library.cpp
   src/xfail_supporting_test_listener.h
   src/xfail_supporting_test_listener.cpp
@@ -145,6 +148,7 @@ set(
   tests/wl_output.cpp
   tests/surface_input_regions.cpp
   tests/frame_submission.cpp
+  tests/primary_selection.cpp
   tests/subsurfaces.cpp
   tests/xdg_surface_v6.cpp
   tests/xdg_toplevel_v6.cpp
