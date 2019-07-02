@@ -60,27 +60,9 @@ struct SinkApp : Client
     PrimarySelectionDevice device{primary_selection_device_manager(), seat()};
 };
 
-struct PrimarySelectionCheck
-{
-    explicit PrimarySelectionCheck(Server& server)
-    {
-        bool supported = false;
-
-        // Do we really have to iterate over the keys and compare strings? Issue #107
-        for (auto& extension : *server.supported_extensions())
-        {
-            if (strcmp("zwp_primary_selection_device_manager_v1", extension.first) == 0)
-                supported = true;
-        }
-
-        if (!supported)
-            throw ExtensionExpectedlyNotSupported("zwp_primary_selection_device_manager_v1", 1);
-    }
-};
-
 struct PrimarySelection : StartedInProcessServer
 {
-    PrimarySelectionCheck must_be_first{the_server()};
+    CheckInterfaceExpected must_be_first{the_server(), zwp_primary_selection_device_manager_v1_interface};
     SourceApp   source_app{the_server()};
     SinkApp     sink_app{the_server()};
 
