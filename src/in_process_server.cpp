@@ -292,7 +292,7 @@ void wlcs::Touch::up()
 
 namespace
 {
-std::shared_ptr<std::unordered_map<char const*, uint32_t> const> extract_supported_extensions(WlcsDisplayServer* server)
+std::shared_ptr<std::unordered_map<std::string, uint32_t> const> extract_supported_extensions(WlcsDisplayServer* server)
 {
     if (server->version < 2)
     {
@@ -300,7 +300,7 @@ std::shared_ptr<std::unordered_map<char const*, uint32_t> const> extract_support
     }
 
     auto const descriptor = server->get_descriptor(server);
-    auto extensions = std::make_shared<std::unordered_map<char const*, uint32_t>>();
+    auto extensions = std::make_shared<std::unordered_map<std::string, uint32_t>>();
 
     for (auto i = 0u; i < descriptor->num_extensions; ++i)
     {
@@ -422,7 +422,7 @@ public:
         return server.get();
     }
 
-    std::shared_ptr<std::unordered_map<char const*, uint32_t> const> supported_extensions() const
+    std::shared_ptr<const std::unordered_map<std::string, uint32_t>> supported_extensions() const
     {
         return supported_extensions_;
     }
@@ -480,7 +480,7 @@ private:
     std::unique_ptr<WlcsDisplayServer, void(*)(WlcsDisplayServer*)> const server;
     std::experimental::optional<ThreadContext> thread_context;
     std::shared_ptr<WlcsServerIntegration const> const hooks;
-    std::shared_ptr<std::unordered_map<char const*, uint32_t> const> const supported_extensions_;
+    std::shared_ptr<std::unordered_map<std::string, uint32_t> const> const supported_extensions_;
 
     template<typename Proxy>
     void initialise_thunks(std::shared_ptr<Proxy> proxy)
@@ -547,7 +547,7 @@ void wlcs::Server::stop()
     impl->stop();
 }
 
-std::shared_ptr<std::unordered_map<char const*, uint32_t> const> wlcs::Server::supported_extensions()
+std::shared_ptr<const std::unordered_map<std::string, uint32_t>> wlcs::Server::supported_extensions()
 {
     return impl->supported_extensions();
 }
@@ -1283,7 +1283,7 @@ private:
         &global_removed
     };
 
-    std::shared_ptr<std::unordered_map<char const*, uint32_t> const> const supported_extensions;
+    std::shared_ptr<std::unordered_map<std::string, uint32_t> const> const supported_extensions;
 
     struct wl_display* display;
     struct wl_registry* registry = nullptr;
@@ -1738,4 +1738,9 @@ wlcs::ShmBuffer::operator wl_buffer*() const
 void wlcs::ShmBuffer::add_release_listener(std::function<bool()> const &on_release)
 {
     impl->add_release_listener(on_release);
+}
+
+wlcs::CheckInterfaceExpected::CheckInterfaceExpected(Server& server, wl_interface const& interface) : Client{server}
+{
+    acquire_interface(interface.name, &interface, interface.version);
 }

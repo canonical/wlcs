@@ -113,7 +113,7 @@ public:
     void start();
     void stop();
 
-    std::shared_ptr<std::unordered_map<char const*, uint32_t> const> supported_extensions();
+    std::shared_ptr<const std::unordered_map<std::string, uint32_t>> supported_extensions();
 private:
     class Impl;
     std::unique_ptr<Impl> const impl;
@@ -315,6 +315,13 @@ public:
 
     void SetUp() override {}
     void TearDown() override {}
+};
+
+// Check the server expects to support an interface
+class CheckInterfaceExpected : private Client
+{
+public:
+    CheckInterfaceExpected(Server& server, wl_interface const& interface);
 };
 
 }
