@@ -150,3 +150,23 @@ TEST_F(SelfTest, acquiring_unsupported_extension_version_is_xfail)
 
     FAIL() << "We should have (x)failed at acquiring the interface";
 }
+
+TEST_F(SelfTest, dispatch_until_times_out_on_failure)
+{
+    Client client{the_server()};
+
+    // Ensure that there's some events happening on the Wayland socket
+    auto dummy = client.create_visible_surface(300, 300);
+    dummy.attach_buffer(300, 300);
+    wl_surface_commit(dummy);
+
+    try
+    {
+        client.dispatch_until([]() { return false; });
+    }
+    catch (wlcs::Timeout const&)
+    {
+        return;
+    }
+    FAIL() << "Dispatch did not raise a wlcs::Timeout exception";
+}

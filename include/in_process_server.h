@@ -294,6 +294,12 @@ public:
     ExtensionExpectedlyNotSupported(char const* extension, uint32_t version);
 };
 
+class Timeout : public std::runtime_error
+{
+public:
+    explicit Timeout(char const* message);
+};
+
 class InProcessServer : public testing::Test
 {
 public:
