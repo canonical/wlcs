@@ -162,10 +162,31 @@ TEST_F(SelfTest, dispatch_until_times_out_on_failure)
 
     try
     {
-        client.dispatch_until([]() { return false; });
+        client.dispatch_until([]() { return false; }, std::chrono::seconds{1});
     }
     catch (wlcs::Timeout const&)
     {
+        return;
+    }
+    FAIL() << "Dispatch did not raise a wlcs::Timeout exception";
+}
+
+TEST_F(SelfTest, dispatch_until_times_out_at_the_right_time)
+{
+    Client client{the_server()};
+
+    auto const timeout = std::chrono::seconds{10};
+    auto const expected_end = std::chrono::steady_clock::now() + timeout;
+    try
+    {
+        client.dispatch_until([]() { return false; }, timeout);
+    }
+    catch (wlcs::Timeout const&)
+    {
+        auto const skew = std::chrono::steady_clock::now() - expected_end;
+        EXPECT_THAT(
+            abs(std::chrono::duration_cast<std::chrono::seconds>(skew).count()),
+            Le(5) );
         return;
     }
     FAIL() << "Dispatch did not raise a wlcs::Timeout exception";

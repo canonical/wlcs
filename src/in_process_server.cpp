@@ -40,6 +40,7 @@
 #include <chrono>
 #include <poll.h>
 
+using namespace std::literals::chrono_literals;
 
 class ShimNotImplemented : public std::logic_error
 {
@@ -738,7 +739,7 @@ public:
         bool surface_rendered{false};
         surface.add_frame_callback([&surface_rendered](auto) { surface_rendered = true; });
         wl_surface_commit(surface);
-        dispatch_until([&surface_rendered]() { return surface_rendered; });
+        dispatch_until([&surface_rendered]() { return surface_rendered; }, 10s);
         return surface;
     }
 
@@ -762,7 +763,7 @@ public:
         bool surface_rendered{false};
         surface.add_frame_callback([&surface_rendered](auto) { surface_rendered = true; });
         wl_surface_commit(surface);
-        dispatch_until([&surface_rendered]() { return surface_rendered; });
+        dispatch_until([&surface_rendered]() { return surface_rendered; }, 10s);
         return surface;
     }
 
@@ -786,7 +787,7 @@ public:
         bool surface_rendered{false};
         surface.add_frame_callback([&surface_rendered](auto) { surface_rendered = true; });
         wl_surface_commit(surface);
-        dispatch_until([&surface_rendered]() { return surface_rendered; });
+        dispatch_until([&surface_rendered]() { return surface_rendered; }, 10s);
         return surface;
     }
 
@@ -909,11 +910,10 @@ public:
         return result.bound_interface;
     }
 
-    void dispatch_until(std::function<bool()> const& predicate)
+    void dispatch_until(
+        std::function<bool()> const& predicate, std::chrono::seconds timeout)
     {
-        using namespace std::literals::chrono_literals;
-
-        auto const timeout = std::chrono::steady_clock::now() + 10s;
+        auto const end_time = std::chrono::steady_clock::now() + timeout;
         while (!predicate())
         {
             while (wl_display_prepare_read(display) != 0)
@@ -923,7 +923,7 @@ public:
             }
             wl_display_flush(display);
 
-            auto const maximum_wait = timeout - std::chrono::steady_clock::now();
+            auto const maximum_wait = end_time - std::chrono::steady_clock::now();
             if (maximum_wait.count() < 0)
             {
                 BOOST_THROW_EXCEPTION((Timeout{"Timeout waiting for condition"}));
@@ -1511,9 +1511,9 @@ void wlcs::Client::add_pointer_button_notification(PointerButtonNotifier const& 
     impl->add_pointer_button_notification(on_button);
 }
 
-void wlcs::Client::dispatch_until(std::function<bool()> const& predicate)
+void wlcs::Client::dispatch_until(std::function<bool()> const& predicate, std::chrono::seconds timeout)
 {
-    impl->dispatch_until(predicate);
+    impl->dispatch_until(predicate, timeout);
 }
 
 void wlcs::Client::roundtrip()

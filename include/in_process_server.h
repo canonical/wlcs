@@ -30,6 +30,8 @@
 #include <functional>
 #include <experimental/optional>
 #include <unordered_map>
+#include <chrono>
+
 #include "shared_library.h"
 
 #include <wayland-client.h>
@@ -243,7 +245,10 @@ public:
 
     void* acquire_interface(std::string const& name, wl_interface const* interface, uint32_t version);
 
-    void dispatch_until(std::function<bool()> const& predicate);
+    void dispatch_until(
+        std::function<bool()> const& predicate,
+        std::chrono::seconds timeout = std::chrono::seconds{10});
+
     void roundtrip();
 private:
     class Impl;
