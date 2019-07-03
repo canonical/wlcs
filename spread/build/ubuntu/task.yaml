@@ -22,8 +22,9 @@ execute: |
     # Check that we build…
     cd $SPREAD_PATH
     cd $(mktemp --directory)
-    cmake $SPREAD_PATH
+    cmake -DCMAKE_C_FLAGS="-D_FORTIFY_SOURCE=2" -DCMAKE_CXX_FLAGS="-D_FORTIFY_SOURCE=2" $SPREAD_PATH
     make -j$(nproc)
 
     # …and check that the Mir tests pass
     ./wlcs /usr/lib/$(dpkg-architecture -qDEB_HOST_MULTIARCH)/mir/miral_wlcs_integration.so
+
