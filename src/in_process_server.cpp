@@ -37,7 +37,10 @@
 #include <algorithm>
 #include <experimental/optional>
 #include <unordered_map>
+#include <chrono>
+#include <poll.h>
 
+using namespace std::literals::chrono_literals;
 
 class ShimNotImplemented : public std::logic_error
 {
@@ -61,6 +64,11 @@ wlcs::ExtensionExpectedlyNotSupported::ExtensionExpectedlyNotSupported(char cons
     auto const skip_reason =
         std::string{"Missing extension: "} + extension + " v" + std::to_string(version);
     ::testing::Test::RecordProperty("wlcs-skip-test", skip_reason);
+}
+
+wlcs::Timeout::Timeout(char const* message)
+    : std::runtime_error(message)
+{
 }
 
 class wlcs::Pointer::Impl
@@ -731,7 +739,7 @@ public:
         bool surface_rendered{false};
         surface.add_frame_callback([&surface_rendered](auto) { surface_rendered = true; });
         wl_surface_commit(surface);
-        dispatch_until([&surface_rendered]() { return surface_rendered; });
+        dispatch_until([&surface_rendered]() { return surface_rendered; }, 10s);
         return surface;
     }
 
@@ -755,7 +763,7 @@ public:
         bool surface_rendered{false};
         surface.add_frame_callback([&surface_rendered](auto) { surface_rendered = true; });
         wl_surface_commit(surface);
-        dispatch_until([&surface_rendered]() { return surface_rendered; });
+        dispatch_until([&surface_rendered]() { return surface_rendered; }, 10s);
         return surface;
     }
 
@@ -779,7 +787,7 @@ public:
         bool surface_rendered{false};
         surface.add_frame_callback([&surface_rendered](auto) { surface_rendered = true; });
         wl_surface_commit(surface);
-        dispatch_until([&surface_rendered]() { return surface_rendered; });
+        dispatch_until([&surface_rendered]() { return surface_rendered; }, 10s);
         return surface;
     }
 
@@ -902,12 +910,55 @@ public:
         return result.bound_interface;
     }
 
-    void dispatch_until(std::function<bool()> const& predicate)
+    void dispatch_until(
+        std::function<bool()> const& predicate, std::chrono::seconds timeout)
     {
-        // TODO: Drive this with epoll on the fd and have a timerfd for timeout
+        auto const end_time = std::chrono::steady_clock::now() + timeout;
         while (!predicate())
         {
-            if (wl_display_dispatch(display) < 0)
+            while (wl_display_prepare_read(display) != 0)
+            {
+                if (wl_display_dispatch_pending(display) < 0)
+                    throw_wayland_error(display);
+            }
+            wl_display_flush(display);
+
+            auto const maximum_wait = end_time - std::chrono::steady_clock::now();
+            if (maximum_wait.count() < 0)
+            {
+                BOOST_THROW_EXCEPTION((Timeout{"Timeout waiting for condition"}));
+            }
+
+            auto const maximum_wait_ms =
+                std::chrono::duration_cast<std::chrono::milliseconds>(maximum_wait);
+            pollfd fd{
+                wl_display_get_fd(display),
+                POLLIN | POLLERR,
+                0
+            };
+
+            auto const poll_result = poll(&fd, 1, maximum_wait_ms.count());
+            if (poll_result < 0)
+            {
+                wl_display_cancel_read(display);
+                BOOST_THROW_EXCEPTION((std::system_error{
+                    errno,
+                    std::system_category(),
+                    "Failed to wait for Wayland event"}));
+            }
+
+            if (poll_result == 0)
+            {
+                wl_display_cancel_read(display);
+                BOOST_THROW_EXCEPTION((Timeout{"Timeout waiting for condition"}));
+            }
+
+            if (wl_display_read_events(display) < 0)
+            {
+                throw_wayland_error(display);
+            }
+
+            if (wl_display_dispatch_pending(display) < 0)
             {
                 throw_wayland_error(display);
             }
@@ -1460,9 +1511,9 @@ void wlcs::Client::add_pointer_button_notification(PointerButtonNotifier const& 
     impl->add_pointer_button_notification(on_button);
 }
 
-void wlcs::Client::dispatch_until(std::function<bool()> const& predicate)
+void wlcs::Client::dispatch_until(std::function<bool()> const& predicate, std::chrono::seconds timeout)
 {
-    impl->dispatch_until(predicate);
+    impl->dispatch_until(predicate, timeout);
 }
 
 void wlcs::Client::roundtrip()

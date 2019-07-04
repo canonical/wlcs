@@ -150,3 +150,44 @@ TEST_F(SelfTest, acquiring_unsupported_extension_version_is_xfail)
 
     FAIL() << "We should have (x)failed at acquiring the interface";
 }
+
+TEST_F(SelfTest, dispatch_until_times_out_on_failure)
+{
+    Client client{the_server()};
+
+    // Ensure that there's some events happening on the Wayland socket
+    auto dummy = client.create_visible_surface(300, 300);
+    dummy.attach_buffer(300, 300);
+    wl_surface_commit(dummy);
+
+    try
+    {
+        client.dispatch_until([]() { return false; }, std::chrono::seconds{1});
+    }
+    catch (wlcs::Timeout const&)
+    {
+        return;
+    }
+    FAIL() << "Dispatch did not raise a wlcs::Timeout exception";
+}
+
+TEST_F(SelfTest, dispatch_until_times_out_at_the_right_time)
+{
+    using namespace std::literals::chrono_literals;
+
+    Client client{the_server()};
+
+    auto const timeout = 5s;
+    auto const expected_end = std::chrono::steady_clock::now() + timeout;
+    try
+    {
+        client.dispatch_until([]() { return false; }, timeout);
+    }
+    catch (wlcs::Timeout const&)
+    {
+        EXPECT_THAT(std::chrono::steady_clock::now(), Gt(expected_end));
+        EXPECT_THAT(std::chrono::steady_clock::now(), Lt(expected_end + 5s));
+        return;
+    }
+    FAIL() << "Dispatch did not raise a wlcs::Timeout exception";
+}
