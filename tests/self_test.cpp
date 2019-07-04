@@ -173,9 +173,11 @@ TEST_F(SelfTest, dispatch_until_times_out_on_failure)
 
 TEST_F(SelfTest, dispatch_until_times_out_at_the_right_time)
 {
+    using namespace std::literals::chrono_literals;
+
     Client client{the_server()};
 
-    auto const timeout = std::chrono::seconds{10};
+    auto const timeout = 5s;
     auto const expected_end = std::chrono::steady_clock::now() + timeout;
     try
     {
@@ -183,10 +185,8 @@ TEST_F(SelfTest, dispatch_until_times_out_at_the_right_time)
     }
     catch (wlcs::Timeout const&)
     {
-        auto const skew = std::chrono::steady_clock::now() - expected_end;
-        EXPECT_THAT(
-            abs(std::chrono::duration_cast<std::chrono::seconds>(skew).count()),
-            Le(5) );
+        EXPECT_THAT(std::chrono::steady_clock::now(), Gt(expected_end));
+        EXPECT_THAT(std::chrono::steady_clock::now(), Lt(expected_end + 5s));
         return;
     }
     FAIL() << "Dispatch did not raise a wlcs::Timeout exception";
