@@ -135,6 +135,7 @@ set(
   src/in_process_server.cpp
   src/xdg_shell_v6.cpp
   src/xdg_shell_stable.cpp
+  src/layer_shell_v1.cpp
   src/main.cpp
   src/primary_selection.cpp
   src/shared_library.cpp
