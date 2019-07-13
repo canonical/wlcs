@@ -47,11 +47,13 @@ if (HAVE_W_GNU_VARIADIC_MACROS)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=gnu-zero-variadic-macro-arguments")
 endif ()
 
+find_package(Boost)
 find_package(GtestGmock)
 pkg_check_modules(WAYLAND_CLIENT REQUIRED wayland-client)
 pkg_check_modules(WAYLAND_SERVER REQUIRED wayland-server)
 
 include_directories(include)
+include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${GMOCK_INCLUDE_DIR} ${GTEST_INCLUDE_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
