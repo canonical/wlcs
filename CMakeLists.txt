@@ -51,6 +51,7 @@ find_package(Boost)
 find_package(GtestGmock)
 pkg_check_modules(WAYLAND_CLIENT REQUIRED wayland-client)
 pkg_check_modules(WAYLAND_SERVER REQUIRED wayland-server)
+pkg_check_modules(WAYLAND_SCANNER REQUIRED wayland-scanner)
 
 include_directories(include)
 include_directories(${Boost_INCLUDE_DIRS})
