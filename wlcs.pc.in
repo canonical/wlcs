@@ -1,9 +1,9 @@
 prefix=@CMAKE_INSTALL_PREFIX@
 exec_prefix=${prefix}/@CMAKE_INSTALL_BINDIR@
-libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
+libexecdir=${prefix}/@CMAKE_INSTALL_LIBEXECDIR@
 includedir=${prefix}/include
 
-test_runner=${libdir}/wlcs/wlcs
+test_runner=${libexecdir}/wlcs/wlcs
 
 Name: wlcs
 Description: Wayland Conformance Suite test harness
