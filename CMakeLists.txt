@@ -160,6 +160,7 @@ set(
   tests/xdg_surface_stable.cpp
   tests/xdg_toplevel_stable.cpp
   tests/xdg_popup.cpp
+  tests/wlr_layer_shell_v1.cpp
   tests/self_test.cpp
 )
 
