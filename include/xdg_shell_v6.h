@@ -127,8 +127,8 @@ class XdgPopupV6
 {
 public:
     XdgPopupV6(XdgSurfaceV6& shell_surface_, XdgSurfaceV6& parent, XdgPositionerV6& positioner);
-    XdgPopupV6(XdgToplevelV6 const&) = delete;
-    XdgPopupV6& operator=(XdgToplevelV6 const&) = delete;
+    XdgPopupV6(XdgPopupV6 const&) = delete;
+    XdgPopupV6& operator=(XdgPopupV6 const&) = delete;
     ~XdgPopupV6();
 
     void add_configure_notification(std::function<void(int32_t, int32_t, int32_t, int32_t)> notification)

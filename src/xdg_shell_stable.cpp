@@ -92,9 +92,15 @@ wlcs::XdgPositionerStable::~XdgPositionerStable()
     xdg_positioner_destroy(positioner);
 }
 
-wlcs::XdgPopupStable::XdgPopupStable(XdgSurfaceStable& shell_surface_, XdgSurfaceStable& parent, XdgPositionerStable& positioner)
+wlcs::XdgPopupStable::XdgPopupStable(
+    XdgSurfaceStable& shell_surface_,
+    std::experimental::optional<XdgSurfaceStable*> parent,
+    XdgPositionerStable& positioner)
     : shell_surface{&shell_surface_},
-      popup{xdg_surface_get_popup(*shell_surface, parent, positioner)}
+      popup{xdg_surface_get_popup(
+          *shell_surface,
+          parent ? *parent.value() : (xdg_surface*)nullptr,
+          positioner)}
 {
     static struct xdg_popup_listener const listener = {configure_thunk, popup_done_thunk};
     xdg_popup_add_listener(popup, &listener, this);

@@ -261,7 +261,8 @@ public:
 
 
         popup_xdg_surface.emplace(client, popup_surface.value());
-        popup.emplace(popup_xdg_surface.value(), xdg_shell_surface, positioner);
+
+        popup.emplace(popup_xdg_surface.value(), &xdg_shell_surface, positioner);
 
         popup_xdg_surface.value().add_configure_notification([&](uint32_t serial)
             {
