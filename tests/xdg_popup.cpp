@@ -29,6 +29,7 @@
 #include "in_process_server.h"
 #include "xdg_shell_stable.h"
 #include "xdg_shell_v6.h"
+#include "layer_shell_v1.h"
 
 #include <gmock/gmock.h>
 
@@ -391,6 +392,88 @@ public:
     int popup_surface_configure_count{0};
 };
 
+class LayerV1PopupManager : public XdgPopupManagerBase
+{
+public:
+    LayerV1PopupManager(wlcs::InProcessServer* const in_process_server)
+        : XdgPopupManagerBase{in_process_server},
+          layer_surface{client, surface}
+    {
+        wait_for_frame_to_render();
+    }
+
+    void dispatch_until_popup_configure() override
+    {
+        client.dispatch_until(
+            [prev_count = popup_surface_configure_count, &current_count = popup_surface_configure_count]()
+            {
+                return current_count > prev_count;
+            });
+    }
+
+    void setup_popup(PositionerParams const& param) override
+    {
+        wlcs::XdgPositionerStable positioner{client};
+
+        // size must always be set
+        xdg_positioner_set_size(positioner, param.popup_size.first, param.popup_size.second);
+
+        // anchor rect must always be set
+        xdg_positioner_set_anchor_rect(
+            positioner,
+            param.anchor_rect.first.first,
+            param.anchor_rect.first.second,
+            param.anchor_rect.second.first,
+            param.anchor_rect.second.second);
+
+        if (param.anchor_stable)
+            xdg_positioner_set_anchor(positioner,  param.anchor_stable.value());
+
+        if (param.gravity_stable)
+            xdg_positioner_set_gravity(positioner, param.gravity_stable.value());
+
+        if (param.constraint_adjustment_stable)
+            xdg_positioner_set_constraint_adjustment(positioner, param.constraint_adjustment_stable.value());
+
+        if (param.offset)
+            xdg_positioner_set_offset(positioner, param.offset.value().first, param.offset.value().second);
+
+
+        popup_xdg_surface.emplace(client, popup_surface.value());
+        popup.emplace(popup_xdg_surface.value(), std::experimental::nullopt, positioner);
+        zwlr_layer_surface_v1_get_popup(layer_surface, popup.value());
+
+        popup_xdg_surface.value().add_configure_notification([&](uint32_t serial)
+            {
+                xdg_surface_ack_configure(popup_xdg_surface.value(), serial);
+                popup_surface_configure_count++;
+            });
+
+        popup.value().add_configure_notification([this](int32_t x, int32_t y, int32_t width, int32_t height)
+            {
+                state = State{x, y, width, height};
+            });
+    }
+
+    void clear_popup() override
+    {
+        popup = std::experimental::nullopt;
+        popup_xdg_surface = std::experimental::nullopt;
+    }
+
+    auto popup_position() const -> std::experimental::optional<std::pair<int, int>> override
+    {
+        return std::make_pair(state.value().x, state.value().y);
+    }
+
+    wlcs::LayerSurfaceV1 layer_surface;
+
+    std::experimental::optional<wlcs::XdgSurfaceStable> popup_xdg_surface;
+    std::experimental::optional<wlcs::XdgPopupStable> popup;
+
+    int popup_surface_configure_count{0};
+};
+
 }
 
 class XdgPopupPositionerTest:
@@ -418,6 +501,22 @@ TEST_P(XdgPopupPositionerTest, xdg_shell_stable_popup_placed_correctly)
 TEST_P(XdgPopupPositionerTest, xdg_shell_unstable_v6_popup_placed_correctly)
 {
     auto manager = std::make_unique<XdgPopupV6Manager>(this);
+    auto const& param = GetParam();
+
+    manager->map_popup(param.positioner);
+
+    ASSERT_THAT(
+        manager->popup_position(),
+        Ne(std::experimental::nullopt)) << "popup configure event not sent";
+
+    ASSERT_THAT(
+        manager->popup_position(),
+        Eq(std::experimental::make_optional(param.expected_positon))) << "popup placed in incorrect position";
+}
+
+TEST_P(XdgPopupPositionerTest, layer_shell_popup_placed_correctly)
+{
+    auto manager = std::make_unique<LayerV1PopupManager>(this);
     auto const& param = GetParam();
 
     manager->map_popup(param.positioner);
@@ -636,6 +735,15 @@ INSTANTIATE_TEST_CASE_P(
         [](wlcs::InProcessServer* const server)
         {
             return std::make_unique<XdgPopupV6Manager>(server);
+        }}));
+
+INSTANTIATE_TEST_CASE_P(
+    LayerShellPopup,
+    XdgPopupTest,
+    testing::Values(XdgPopupTestParam{
+        [](wlcs::InProcessServer* const server)
+        {
+            return std::make_unique<LayerV1PopupManager>(server);
         }}));
 
 // TODO: test that positioner is always overlapping or adjacent to parent
