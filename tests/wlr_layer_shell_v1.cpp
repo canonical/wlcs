@@ -19,6 +19,7 @@
 #include "helpers.h"
 #include "in_process_server.h"
 #include "layer_shell_v1.h"
+#include "xdg_shell_stable.h"
 
 #include <gmock/gmock.h>
 
@@ -91,8 +92,10 @@ public:
         return std::make_pair(output_state.geometry_position.value(), size);
     }
 
-    auto last_width() const -> int { return layer_surface.last_width(); }
-    auto last_height() const -> int { return layer_surface.last_height(); }
+    auto configured_size() const -> Vec2
+    {
+        return std::make_pair(layer_surface.last_width(), layer_surface.last_height());
+    }
 
     wlcs::Client client;
     wlcs::Surface surface;
@@ -178,6 +181,26 @@ struct LayerAnchor
         return std::make_pair(configure_width, configure_height);
     }
 
+    // Will always either return 0, or a single enum value
+    auto attached_edge() const -> zwlr_layer_surface_v1_anchor
+    {
+        if (top == bottom)
+        {
+            if (left && !right)
+                return ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT;
+            else if (right && !left)
+                return ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
+        }
+        else if (left == right)
+        {
+            if (top && !bottom)
+                return ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP;
+            else if (bottom && !top)
+                return ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM;
+        }
+        return (zwlr_layer_surface_v1_anchor)0;
+    }
+
     bool const left, right, top, bottom;
 };
 
@@ -198,7 +221,7 @@ std::ostream& operator<<(std::ostream& os, const LayerAnchor& anchor)
     for (auto i = 0u; i < strs.size(); i++)
     {
         if (i > 0)
-            os << " & ";
+            os << " | ";
         os << strs[i];
     }
     os << "}";
@@ -221,8 +244,7 @@ TEST_F(LayerSurfaceTest, can_open_layer_surface)
 TEST_F(LayerSurfaceTest, by_default_gets_configured_without_size)
 {
     commit_and_wait_for_configure();
-    ASSERT_THAT(last_width(), Eq(0));
-    ASSERT_THAT(last_height(), Eq(0));
+    ASSERT_THAT(configured_size(), Eq(std::make_pair(0, 0)));
 }
 
 TEST_F(LayerSurfaceTest, when_anchored_to_all_edges_gets_configured_with_output_size)
@@ -230,8 +252,7 @@ TEST_F(LayerSurfaceTest, when_anchored_to_all_edges_gets_configured_with_output_
     zwlr_layer_surface_v1_set_anchor(layer_surface, LayerAnchor(true, true, true, true));
     commit_and_wait_for_configure();
     auto const size = output_rect().second;
-    ASSERT_THAT(last_width(), Eq(size.first));
-    ASSERT_THAT(last_height(), Eq(size.second));
+    ASSERT_THAT(configured_size(), Eq(size));
 }
 
 TEST_F(LayerSurfaceTest, gets_configured_after_anchor_change)
@@ -239,8 +260,8 @@ TEST_F(LayerSurfaceTest, gets_configured_after_anchor_change)
     commit_and_wait_for_configure();
     zwlr_layer_surface_v1_set_anchor(layer_surface, LayerAnchor(true, true, true, true));
     commit_and_wait_for_configure();
-    ASSERT_THAT(last_width(), Gt(0));
-    ASSERT_THAT(last_height(), Gt(0));
+    ASSERT_THAT(configured_size().first, Gt(0));
+    ASSERT_THAT(configured_size().second, Gt(0));
 }
 
 TEST_P(LayerSurfaceAnchorTest, is_initially_positioned_correctly_for_anchor)
@@ -251,8 +272,14 @@ TEST_P(LayerSurfaceAnchorTest, is_initially_positioned_correctly_for_anchor)
     auto const output = output_rect();
 
     auto configure_size = anchor.configure_size(output);
-    EXPECT_THAT(last_width(), Eq(configure_size.first));
-    EXPECT_THAT(last_height(), Eq(configure_size.second));
+    if (configure_size.first)
+    {
+        EXPECT_THAT(configured_size().first, Eq(configure_size.first));
+    }
+    if (configure_size.second)
+    {
+        EXPECT_THAT(configured_size().second, Eq(configure_size.second));
+    }
 
     auto rect = anchor.placement_rect(output);
     attach_visible_buffer(rect.second);
@@ -272,12 +299,96 @@ TEST_P(LayerSurfaceAnchorTest, is_positioned_correctly_when_anchor_changed)
     client.roundtrip(); // Sometimes we get a configure, sometimes we don't
 
     auto configure_size = anchor.configure_size(output);
-    EXPECT_THAT(last_width(), Eq(configure_size.first));
-    EXPECT_THAT(last_height(), Eq(configure_size.second));
+    if (configure_size.first)
+    {
+        EXPECT_THAT(configured_size().first, Eq(configure_size.first));
+    }
+    if (configure_size.second)
+    {
+        EXPECT_THAT(configured_size().second, Eq(configure_size.second));
+    }
 
     auto new_rect = anchor.placement_rect(output);
     attach_visible_buffer(new_rect.second);
     expect_surface_is_at_position(new_rect.first);
+}
+
+TEST_P(LayerSurfaceAnchorTest, maximized_xdg_toplevel_is_shrunk_for_exclusive_zone)
+{
+    int const exclusive_zone = 25;
+    int width = 0, height = 0;
+    wlcs::Surface other_surface{client};
+    wlcs::XdgSurfaceStable xdg_surface{client, other_surface};
+    wlcs::XdgToplevelStable toplevel{xdg_surface};
+    toplevel.add_configure_notification([&](int32_t w, int32_t h, wl_array* /*states*/)
+        {
+            if (w != width || h != height)
+            {
+                width = w;
+                height = h;
+                if (w == 0)
+                    w = 100;
+                if (h == 0)
+                    h = 150;
+                other_surface.attach_buffer(w, h);
+                xdg_surface_set_window_geometry(xdg_surface, 0, 0, w, h);
+            }
+        });
+    xdg_surface.add_configure_notification([&](uint32_t serial)
+        {
+            xdg_surface_ack_configure(xdg_surface, serial);
+            wl_surface_commit(other_surface);
+        });
+    xdg_toplevel_set_maximized(toplevel);
+    wl_surface_commit(other_surface);
+    client.dispatch_until([&](){ return width > 0; });
+
+    int const initial_width = width;
+    int const initial_height = height;
+
+    ASSERT_THAT(initial_width, Gt(0)) << "Can't test as shell did not configure XDG surface with a size";
+    ASSERT_THAT(initial_height, Gt(0)) << "Can't test as shell did not configure XDG surface with a size";
+
+    auto const anchor = GetParam();
+    zwlr_layer_surface_v1_set_anchor(layer_surface, anchor);
+    zwlr_layer_surface_v1_set_exclusive_zone(layer_surface, exclusive_zone);
+    commit_and_wait_for_configure();
+    auto layer_size = configured_size();
+    if (layer_size.first == 0)
+        layer_size.first = default_width;
+    if (layer_size.second == 0)
+        layer_size.second = default_height;
+    attach_visible_buffer(layer_size);
+
+    int const new_width = width;
+    int const new_height = height;
+
+    int expected_width = initial_width;
+    int expected_height = initial_height;
+
+    switch (anchor.attached_edge())
+    {
+    case ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT:
+        expected_width -= exclusive_zone;
+        break;
+
+    case ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT:
+        expected_width -= exclusive_zone;
+        break;
+
+    case ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP:
+        expected_height -= exclusive_zone;
+        break;
+
+    case ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM:
+        expected_height -= exclusive_zone;
+        break;
+
+    default: ;
+    }
+
+    EXPECT_THAT(new_width, Eq(expected_width));
+    EXPECT_THAT(new_height, Eq(expected_height));
 }
 
 INSTANTIATE_TEST_CASE_P(
