@@ -658,6 +658,8 @@ public:
         if (seat) wl_seat_destroy(seat);
         if (pointer) wl_pointer_destroy(pointer);
         if (touch) wl_touch_destroy(touch);
+        if (gtk_primary_selection_device_manager_)
+            gtk_primary_selection_device_manager_destroy(gtk_primary_selection_device_manager_);
         if (primary_selection_device_manager)
             zwp_primary_selection_device_manager_v1_destroy(primary_selection_device_manager);
         if (data_device_manager) wl_data_device_manager_destroy(data_device_manager);
@@ -699,6 +701,11 @@ public:
     struct zwp_primary_selection_device_manager_v1* zwp_primary_selection_device_manager() const
     {
         return primary_selection_device_manager;
+    }
+
+    struct gtk_primary_selection_device_manager* gtk_primary_selection_device_manager() const
+    {
+        return gtk_primary_selection_device_manager_;
     }
 
     struct wl_seat* wl_seat() const
@@ -1301,6 +1308,11 @@ private:
             me->primary_selection_device_manager = static_cast<struct zwp_primary_selection_device_manager_v1*>(
                 wl_registry_bind(registry, id, &zwp_primary_selection_device_manager_v1_interface, version));
         }
+        else if ("gtk_primary_selection_device_manager"s == interface)
+        {
+            me->gtk_primary_selection_device_manager_ = static_cast<struct gtk_primary_selection_device_manager*>(
+                    wl_registry_bind(registry, id, &gtk_primary_selection_device_manager_interface, version));
+        }
         else if ("wl_output"s == interface)
         {
             auto wl_output = static_cast<struct wl_output*>(
@@ -1350,6 +1362,7 @@ private:
     std::vector<std::function<void()>> destruction_callbacks;
     struct xdg_wm_base* xdg_shell_stable = nullptr;
     struct zwp_primary_selection_device_manager_v1* primary_selection_device_manager = nullptr;
+    struct gtk_primary_selection_device_manager* gtk_primary_selection_device_manager_ = nullptr;
 
     struct SurfaceLocation
     {
@@ -1406,6 +1419,11 @@ struct wl_data_device_manager* wlcs::Client::data_device_manager() const
 struct zwp_primary_selection_device_manager_v1* wlcs::Client::primary_selection_device_manager() const
 {
     return impl->zwp_primary_selection_device_manager();
+}
+
+struct gtk_primary_selection_device_manager* wlcs::Client::gtk_primary_selection_device_manager() const
+{
+    return impl->gtk_primary_selection_device_manager();
 }
 
 wl_seat* wlcs::Client::seat() const

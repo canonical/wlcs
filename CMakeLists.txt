@@ -108,6 +108,7 @@ macro(GENERATE_PROTOCOL PROTOCOL_NAME)
   list(APPEND PROTOCOL_SOURCES ${OUTPUT_PATH_C} ${OUTPUT_PATH_CLIENT_H})
 endmacro()
 
+GENERATE_PROTOCOL(gtk-primary-selection)
 GENERATE_PROTOCOL(primary-selection-unstable-v1)
 GENERATE_PROTOCOL(wayland)
 GENERATE_PROTOCOL(xdg-shell-unstable-v6)
@@ -130,6 +131,7 @@ set(
   include/xdg_shell_stable.h
 
   src/data_device.cpp
+  src/gtk_primary_selection.cpp
   src/helpers.cpp
   src/in_process_server.cpp
   src/xdg_shell_v6.cpp
@@ -146,6 +148,7 @@ set(
 
   tests/test_bad_buffer.cpp
   tests/copy_cut_paste.cpp
+  tests/gtk_primary_selection.cpp
   tests/test_surface_events.cpp
   tests/touches.cpp
   tests/wl_output.cpp
