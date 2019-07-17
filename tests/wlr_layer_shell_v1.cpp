@@ -225,6 +225,79 @@ class LayerSurfaceAnchorTest:
 {
 };
 
+struct LayerLayerParams
+{
+    std::experimental::optional<zwlr_layer_shell_v1_layer> below;
+    std::experimental::optional<zwlr_layer_shell_v1_layer> above;
+};
+
+std::ostream& operator<<(std::ostream& os, const LayerLayerParams& layer)
+{
+    os << "layers:";
+    for (auto i : {layer.below, layer.above})
+    {
+        os << " ";
+        os << "Layer{";
+        if (i)
+        {
+            switch (i.value())
+            {
+            case ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND:
+                os << "background";
+                break;
+            case ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM:
+                os << "background";
+                break;
+            case ZWLR_LAYER_SHELL_V1_LAYER_TOP:
+                os << "background";
+                break;
+            case ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY:
+                os << "background";
+                break;
+            default:
+                os << "INVALID(" << i.value() << ")";
+            }
+        }
+        else
+        {
+            os << "none";
+        }
+    }
+    return os;
+}
+
+class LayerSurfaceLayerTest:
+    public wlcs::StartedInProcessServer,
+    public testing::WithParamInterface<LayerLayerParams>
+{
+public:
+    struct SurfaceOnLayer
+    {
+        SurfaceOnLayer(
+            wlcs::Client& client,
+            std::experimental::optional<zwlr_layer_shell_v1_layer> layer)
+            : surface{layer ? wlcs::Surface{client} : client.create_visible_surface(width, height)}
+        {
+            if (layer)
+            {
+                layer_surface.emplace(client, surface, layer.value());
+                surface.attach_visible_buffer(width, height);
+            }
+        }
+
+        wlcs::Surface surface;
+        std::experimental::optional<wlcs::LayerSurfaceV1> layer_surface;
+    };
+
+    LayerSurfaceLayerTest()
+        : client(the_server())
+    {
+    }
+
+    static const int width{200}, height{100};
+    wlcs::Client client;
+};
+
 }
 
 TEST_F(LayerSurfaceTest, can_open_layer_surface)
@@ -386,3 +459,77 @@ INSTANTIATE_TEST_CASE_P(
     Anchor,
     LayerSurfaceAnchorTest,
     testing::ValuesIn(LayerAnchor::get_all()));
+
+TEST_P(LayerSurfaceLayerTest, surface_on_lower_layer_is_initially_placed_below)
+{
+    auto param = GetParam();
+
+    SurfaceOnLayer above{client, param.above};
+    SurfaceOnLayer below{client, param.below};
+
+    the_server().move_surface_to(above.surface, 100, 0);
+    the_server().move_surface_to(below.surface, 0, 0);
+
+    auto pointer = the_server().create_pointer();
+    pointer.move_to(1, 1);
+    client.roundtrip();
+
+    ASSERT_THAT(client.focused_window(), Eq((wl_surface*)below.surface))
+        << "Test could not run because below surface was not detected when above surface was not in the way";
+
+    the_server().move_surface_to(above.surface, 0, 0);
+    the_server().move_surface_to(below.surface, 0, 0);
+
+    pointer.move_to(2, 3);
+    client.roundtrip();
+
+    ASSERT_THAT(client.focused_window(), Ne((wl_surface*)below.surface))
+        << "Wrong wurface was on top";
+    ASSERT_THAT(client.focused_window(), Eq((wl_surface*)above.surface))
+        << "Correct surface was not on top";
+}
+
+TEST_P(LayerSurfaceLayerTest, below_surface_can_not_be_raised_with_click)
+{
+    auto param = GetParam();
+
+    SurfaceOnLayer above{client, param.above};
+    SurfaceOnLayer below{client, param.below};
+
+    the_server().move_surface_to(above.surface, width / 2, 0);
+    the_server().move_surface_to(below.surface, 0, 0);
+
+    auto pointer = the_server().create_pointer();
+    pointer.move_to(1, 1);
+    client.roundtrip();
+
+    ASSERT_THAT(client.focused_window(), Eq((wl_surface*)below.surface))
+        << "Test could not run because below surface was not detected and clicked on";
+
+    pointer.left_button_down();
+    client.roundtrip();
+    pointer.left_button_up();
+    client.roundtrip();
+    pointer.move_to(width / 2 + 2, 1);
+    client.roundtrip();
+
+    ASSERT_THAT(client.focused_window(), Ne((wl_surface*)below.surface))
+        << "Wrong wurface was on top";
+    ASSERT_THAT(client.focused_window(), Eq((wl_surface*)above.surface))
+        << "Correct surface was not on top";
+}
+
+INSTANTIATE_TEST_CASE_P(
+    Layer,
+    LayerSurfaceLayerTest,
+    testing::Values(
+        LayerLayerParams{ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND, ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM},
+        LayerLayerParams{ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM, ZWLR_LAYER_SHELL_V1_LAYER_TOP},
+        LayerLayerParams{ZWLR_LAYER_SHELL_V1_LAYER_TOP, ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY},
+        LayerLayerParams{ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND, ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY},
+        LayerLayerParams{ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM, ZWLR_LAYER_SHELL_V1_LAYER_TOP},
+        LayerLayerParams{ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND, std::experimental::nullopt},
+        LayerLayerParams{ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM, std::experimental::nullopt},
+        LayerLayerParams{std::experimental::nullopt, ZWLR_LAYER_SHELL_V1_LAYER_TOP},
+        LayerLayerParams{std::experimental::nullopt, ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY}
+    ));
