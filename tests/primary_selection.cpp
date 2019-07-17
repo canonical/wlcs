@@ -54,8 +54,7 @@ struct SourceApp : Client
 
 struct SinkApp : Client
 {
-    // Can't use "using Client::Client;" because Xenial
-    explicit SinkApp(Server& server) : Client{server} {}
+    explicit SinkApp(Server& server) : Client{server} { roundtrip(); }
 
     PrimarySelectionDevice device{primary_selection_device_manager(), seat()};
 };
