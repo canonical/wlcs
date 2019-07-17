@@ -56,15 +56,6 @@ public:
         layer_surface.dispatch_until_configure();
     }
 
-    void attach_visible_buffer(Vec2 size)
-    {
-        surface.attach_buffer(size.first, size.second);
-        bool surface_rendered{false};
-        surface.add_frame_callback([&surface_rendered](auto) { surface_rendered = true; });
-        wl_surface_commit(surface);
-        client.dispatch_until([&surface_rendered]() { return surface_rendered; });
-    }
-
     void expect_surface_is_at_position(std::pair<int, int> pos)
     {
         auto pointer = the_server().create_pointer();
@@ -282,7 +273,7 @@ TEST_P(LayerSurfaceAnchorTest, is_initially_positioned_correctly_for_anchor)
     }
 
     auto rect = anchor.placement_rect(output);
-    attach_visible_buffer(rect.second);
+    surface.attach_visible_buffer(rect.second.first, rect.second.second);
     expect_surface_is_at_position(rect.first);
 }
 
@@ -291,7 +282,7 @@ TEST_P(LayerSurfaceAnchorTest, is_positioned_correctly_when_anchor_changed)
     commit_and_wait_for_configure();
     auto const output = output_rect();
     auto initial_rect = LayerAnchor(false, false, false, false).placement_rect(output);
-    attach_visible_buffer(initial_rect.second);
+    surface.attach_visible_buffer(initial_rect.second.first, initial_rect.second.second);
 
     auto const anchor = GetParam();
     zwlr_layer_surface_v1_set_anchor(layer_surface, anchor);
@@ -309,7 +300,7 @@ TEST_P(LayerSurfaceAnchorTest, is_positioned_correctly_when_anchor_changed)
     }
 
     auto new_rect = anchor.placement_rect(output);
-    attach_visible_buffer(new_rect.second);
+    surface.attach_visible_buffer(new_rect.second.first, new_rect.second.second);
     expect_surface_is_at_position(new_rect.first);
 }
 
@@ -358,7 +349,7 @@ TEST_P(LayerSurfaceAnchorTest, maximized_xdg_toplevel_is_shrunk_for_exclusive_zo
         layer_size.first = default_width;
     if (layer_size.second == 0)
         layer_size.second = default_height;
-    attach_visible_buffer(layer_size);
+    surface.attach_visible_buffer(layer_size.first, layer_size.second);
 
     int const new_width = width;
     int const new_height = height;
