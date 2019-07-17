@@ -311,6 +311,23 @@ TEST_F(LayerSurfaceTest, by_default_gets_configured_without_size)
     ASSERT_THAT(configured_size(), Eq(std::make_pair(0, 0)));
 }
 
+TEST_F(LayerSurfaceTest, gets_configured_with_supplied_size_when_set)
+{
+    int width = 123, height = 546;
+    zwlr_layer_surface_v1_set_size(layer_surface, width, height);
+    commit_and_wait_for_configure();
+    ASSERT_THAT(configured_size(), Eq(std::make_pair(width, height)));
+}
+
+TEST_F(LayerSurfaceTest, gets_configured_with_supplied_size_even_when_anchored_to_edges)
+{
+    int width = 321, height = 218;
+    zwlr_layer_surface_v1_set_anchor(layer_surface, LayerAnchor(true, true, true, true));
+    zwlr_layer_surface_v1_set_size(layer_surface, width, height);
+    commit_and_wait_for_configure();
+    ASSERT_THAT(configured_size(), Eq(std::make_pair(width, height)));
+}
+
 TEST_F(LayerSurfaceTest, when_anchored_to_all_edges_gets_configured_with_output_size)
 {
     zwlr_layer_surface_v1_set_anchor(layer_surface, LayerAnchor(true, true, true, true));
@@ -533,3 +550,7 @@ INSTANTIATE_TEST_CASE_P(
         LayerLayerParams{std::experimental::nullopt, ZWLR_LAYER_SHELL_V1_LAYER_TOP},
         LayerLayerParams{std::experimental::nullopt, ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY}
     ));
+
+// TODO: test it gets put on a specified output
+// TODO: test margin
+// TODO: test keyboard interactivity
