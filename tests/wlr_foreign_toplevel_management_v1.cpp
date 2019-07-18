@@ -22,6 +22,7 @@
 #include "xdg_shell_stable.h"
 
 #include <gmock/gmock.h>
+#include <boost/throw_exception.hpp>
 
 using namespace testing;
 
@@ -49,9 +50,34 @@ public:
 
     auto toplevel() -> wlcs::ForeignToplevelHandle const&
     {
-        EXPECT_THAT(manager.toplevels().size(), Eq(1u));
-        EXPECT_THAT(manager.toplevels()[0]->is_dirty(), Eq(false));
+        if (manager.toplevels().empty())
+            BOOST_THROW_EXCEPTION(std::runtime_error("Manager does not know about any toplevels"));
+        if (manager.toplevels().size() > 1u)
+            BOOST_THROW_EXCEPTION(std::runtime_error(
+                "Manager knows about " + std::to_string(manager.toplevels().size()) + " toplevels"));
+        if (manager.toplevels()[0]->is_dirty())
+            BOOST_THROW_EXCEPTION(std::runtime_error("Toplevel has pending updates"));
         return *manager.toplevels()[0];
+    }
+
+    auto toplevel(std::string const& app_id) -> wlcs::ForeignToplevelHandle const&
+    {
+        std::experimental::optional<wlcs::ForeignToplevelHandle const*> match;
+        for (auto const& i : manager.toplevels())
+        {
+            if (i->app_id() == app_id)
+            {
+                if (match)
+                    BOOST_THROW_EXCEPTION(std::runtime_error("Multiple toplevels have the same app ID " + app_id));
+                else
+                    match = i.get();
+            }
+        }
+        if (!match)
+            BOOST_THROW_EXCEPTION(std::runtime_error("No toplevels have the app ID " + app_id));
+        if (match.value()->is_dirty())
+            BOOST_THROW_EXCEPTION(std::runtime_error("Toplevel has pending updates"));
+        return *match.value();
     }
 
     wlcs::Client client;
