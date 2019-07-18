@@ -50,7 +50,7 @@ public:
     auto toplevel() -> wlcs::ForeignToplevelHandle const&
     {
         EXPECT_THAT(manager.toplevels().size(), Eq(1u));
-        EXPECT_THAT(manager.toplevels()[0]->is_dirty(), IsFalse());
+        EXPECT_THAT(manager.toplevels()[0]->is_dirty(), Eq(false));
         return *manager.toplevels()[0];
     }
 
@@ -141,3 +141,114 @@ TEST_F(ForeignToplevelManagerTest, detects_toplevel_closed)
     client.roundtrip();
     ASSERT_THAT(manager.toplevels().size(), Eq(0u));
 }
+
+TEST_F(ForeignToplevelHandleTest, gets_title)
+{
+    std::string title = "Test Title @!\\-";
+
+    xdg_toplevel_set_title(xdg_toplevel, title.c_str());
+    surface.attach_visible_buffer(w, h);
+    client.roundtrip();
+
+    ASSERT_THAT((bool)toplevel().title(), Eq(true));
+    EXPECT_THAT(toplevel().title().value(), Eq(title));
+}
+
+TEST_F(ForeignToplevelHandleTest, title_gets_updated)
+{
+    std::string title_a = "Test Title @!\\-";
+    std::string title_b = "Title 2";
+
+    xdg_toplevel_set_title(xdg_toplevel, title_a.c_str());
+    surface.attach_visible_buffer(w, h);
+    client.roundtrip();
+
+    ASSERT_THAT((bool)toplevel().title(), Eq(true));
+    ASSERT_THAT(toplevel().title().value(), Eq(title_a));
+
+    xdg_toplevel_set_title(xdg_toplevel, title_b.c_str());
+    surface.attach_visible_buffer(w, h);
+    client.roundtrip();
+
+    ASSERT_THAT((bool)toplevel().title(), Eq(true));
+    EXPECT_THAT(toplevel().title().value(), Eq(title_b));
+}
+
+TEST_F(ForeignToplevelHandleTest, gets_app_id)
+{
+    std::string app_id = "fake.wlcs.app.id";
+
+    xdg_toplevel_set_app_id(xdg_toplevel, app_id.c_str());
+    surface.attach_visible_buffer(w, h);
+    client.roundtrip();
+
+    ASSERT_THAT((bool)toplevel().app_id(), Eq(true));
+    EXPECT_THAT(toplevel().app_id().value(), Eq(app_id));
+}
+
+TEST_F(ForeignToplevelHandleTest, gets_maximized)
+{
+    xdg_toplevel_set_maximized(xdg_toplevel);
+    surface.attach_visible_buffer(w, h);
+    client.roundtrip();
+
+    EXPECT_THAT(toplevel().maximized(), Eq(true));
+
+    xdg_toplevel_unset_maximized(xdg_toplevel);
+    surface.attach_visible_buffer(w, h);
+    client.roundtrip();
+
+    EXPECT_THAT(toplevel().maximized(), Eq(false));
+}
+
+TEST_F(ForeignToplevelHandleTest, gets_minimized)
+{
+    surface.attach_visible_buffer(w, h);
+    client.roundtrip();
+
+    EXPECT_THAT(toplevel().minimized(), Eq(false));
+
+    xdg_toplevel_set_minimized(xdg_toplevel);
+    surface.attach_visible_buffer(w, h);
+    client.roundtrip();
+
+    EXPECT_THAT(toplevel().maximized(), Eq(true));
+}
+
+TEST_F(ForeignToplevelHandleTest, gets_fullscreen)
+{
+    xdg_toplevel_set_fullscreen(xdg_toplevel, nullptr);
+    surface.attach_visible_buffer(w, h);
+    client.roundtrip();
+
+    EXPECT_THAT(toplevel().fullscreen(), Eq(true));
+
+    xdg_toplevel_unset_fullscreen(xdg_toplevel);
+    surface.attach_visible_buffer(w, h);
+    client.roundtrip();
+
+    EXPECT_THAT(toplevel().maximized(), Eq(false));
+}
+
+TEST_F(ForeignToplevelHandleTest, gets_activated)
+{
+    std::string app_id = "fake.wlcs.app.id";
+
+    xdg_toplevel_set_app_id(xdg_toplevel, app_id.c_str());
+    surface.attach_visible_buffer(w, h);
+    client.roundtrip();
+
+    EXPECT_THAT(toplevel().activated(), Eq(true));
+
+    wlcs::Surface other = client.create_visible_surface(w, h);
+    client.roundtrip();
+
+    ASSERT_THAT(manager.toplevels().size(), Eq(2u));
+    EXPECT_THAT(manager.toplevels()[0]->app_id(), Eq(app_id));
+    EXPECT_THAT(manager.toplevels()[0]->activated(), Eq(false));
+
+    EXPECT_THAT(manager.toplevels()[1]->activated(), Eq(true));
+}
+
+// TODO: test setting fullscreen/maximized/etc from the handle
+// TODO: test popup does not come up as toplevel
