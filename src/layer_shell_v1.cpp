@@ -1,5 +1,5 @@
 /*
- * Copyright © 2018 Canonical Ltd.
+ * Copyright © 2018-2019 Canonical Ltd.
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 3,
@@ -26,8 +26,6 @@ wlcs::LayerSurfaceV1::LayerSurfaceV1(
     const char *_namespace)
     : client{client}
 {
-    if (!client.layer_shell_v1())
-        throw std::runtime_error("Layer shell unstanble V1 not supported by compositor");
     layer_surface = zwlr_layer_shell_v1_get_layer_surface(
         client.layer_shell_v1(),
         surface,
@@ -42,8 +40,8 @@ wlcs::LayerSurfaceV1::LayerSurfaceV1(
             uint32_t height)
             {
                 auto self = static_cast<LayerSurfaceV1*>(data);
-                self->_last_width = (int)width;
-                self->_last_height = (int)height;
+                self->last_width_ = (int)width;
+                self->last_height_ = (int)height;
                 self->configure_count++;
                 (void)zwlr_layer_surface_v1;
                 (void)serial;

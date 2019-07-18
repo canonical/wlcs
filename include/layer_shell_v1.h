@@ -1,5 +1,5 @@
 /*
- * Copyright © 2019 Canonical Ltd.
+ * Copyright © 2018-2019 Canonical Ltd.
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 3,
@@ -52,14 +52,14 @@ public:
     operator zwlr_layer_surface_v1*() const { return layer_surface; }
 
     void dispatch_until_configure();
-    auto last_width() const -> int { return _last_width; }
-    auto last_height() const -> int { return _last_height; }
+    auto last_width() const -> int { return last_width_; }
+    auto last_height() const -> int { return last_height_; }
 
 private:
     zwlr_layer_surface_v1* layer_surface;
     wlcs::Client& client;
-    int _last_width = -1;
-    int _last_height = -1;
+    int last_width_ = -1;
+    int last_height_ = -1;
     int configure_count = 0;
 };
 

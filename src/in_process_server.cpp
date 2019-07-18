@@ -798,6 +798,8 @@ public:
 
     zwlr_layer_shell_v1* the_layer_shell_v1() const
     {
+        if (!layer_shell_v1)
+            throw std::runtime_error("zwlr_layer_shell_v1 not supported by compositor");
         return layer_shell_v1;
     }
 
