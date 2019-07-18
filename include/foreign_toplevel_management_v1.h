@@ -20,6 +20,7 @@
 #define WLCS_FOREIGN_TOPLEVEL_MANAGEMENT_V1_H
 
 #include "in_process_server.h"
+#include "wl_handle.h"
 #include "generated/wlr-foreign-toplevel-management-unstable-v1-client.h"
 
 namespace wlcs
@@ -53,7 +54,7 @@ private:
     // When we receive the .close event and need to delete ourselves
     void destroy();
 
-    zwlr_foreign_toplevel_handle_v1* const handle;
+    WlHandle<zwlr_foreign_toplevel_handle_v1> const handle;
     ForeignToplevelManager* const manager;
 
     bool dirty_{false};
