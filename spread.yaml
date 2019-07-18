@@ -7,7 +7,6 @@ backends:
         systems:
             - ubuntu-16.04
             - ubuntu-18.04
-            - ubuntu-18.10
             - ubuntu-19.04
             - ubuntu-devel:
                 image: ubuntu-daily:devel/amd64
