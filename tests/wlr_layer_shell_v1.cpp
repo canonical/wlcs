@@ -72,8 +72,8 @@ public:
         EXPECT_THAT(client.output_count(), Ge(1u)) << "There are no outputs to get a size from";
         EXPECT_THAT(client.output_count(), Eq(1u)) << "Unclear which output the layer shell surface will be placed on";
         auto output_state = client.output_state(0);
-        EXPECT_THAT(output_state.mode_size, IsTrue()) << "Output has no size";
-        EXPECT_THAT(output_state.geometry_position, IsTrue()) << "Output has no position";
+        EXPECT_THAT((bool)output_state.mode_size, Eq(true)) << "Output has no size";
+        EXPECT_THAT((bool)output_state.geometry_position, Eq(true)) << "Output has no position";
         auto size = output_state.mode_size.value();
         if (output_state.scale)
         {
