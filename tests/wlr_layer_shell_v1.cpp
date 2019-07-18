@@ -246,13 +246,13 @@ std::ostream& operator<<(std::ostream& os, const LayerLayerParams& layer)
                 os << "background";
                 break;
             case ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM:
-                os << "background";
+                os << "bottom";
                 break;
             case ZWLR_LAYER_SHELL_V1_LAYER_TOP:
-                os << "background";
+                os << "top";
                 break;
             case ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY:
-                os << "background";
+                os << "overlay";
                 break;
             default:
                 os << "INVALID(" << i.value() << ")";
