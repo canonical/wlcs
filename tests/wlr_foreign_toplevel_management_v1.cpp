@@ -259,22 +259,226 @@ TEST_F(ForeignToplevelHandleTest, gets_fullscreen)
 TEST_F(ForeignToplevelHandleTest, gets_activated)
 {
     std::string app_id = "fake.wlcs.app.id";
-
     xdg_toplevel_set_app_id(xdg_toplevel, app_id.c_str());
     surface.attach_visible_buffer(w, h);
     client.roundtrip();
 
     EXPECT_THAT(toplevel().activated(), Eq(true));
 
-    wlcs::Surface other = client.create_visible_surface(w, h);
+    std::string other_app_id = "other.app.id";
+    wlcs::Surface other{client};
+    wlcs::XdgSurfaceStable other_xdg{client, other};
+    wlcs::XdgToplevelStable other_toplevel{other_xdg};
+    xdg_toplevel_set_app_id(xdg_toplevel, other_app_id.c_str());
+    other.attach_visible_buffer(w, h);
     client.roundtrip();
 
-    ASSERT_THAT(manager.toplevels().size(), Eq(2u));
-    EXPECT_THAT(manager.toplevels()[0]->app_id(), Eq(app_id));
-    EXPECT_THAT(manager.toplevels()[0]->activated(), Eq(false));
-
-    EXPECT_THAT(manager.toplevels()[1]->activated(), Eq(true));
+    EXPECT_THAT(toplevel(app_id).activated(), Eq(false));
+    EXPECT_THAT(toplevel(other_app_id).activated(), Eq(true));
 }
 
-// TODO: test setting fullscreen/maximized/etc from the handle
+TEST_F(ForeignToplevelHandleTest, can_maximize_foreign)
+{
+    wlcs::XdgToplevelStable::State state{0, 0, nullptr};
+    xdg_toplevel.add_configure_notification(
+        [&state](int32_t width, int32_t height, struct wl_array *states)
+        {
+            state = wlcs::XdgToplevelStable::State{width, height, states};
+        });
+    xdg_toplevel_unset_maximized(xdg_toplevel);
+    surface.attach_visible_buffer(w, h);
+    client.roundtrip();
+
+    EXPECT_THAT(state.maximized, Eq(false));
+    EXPECT_THAT(toplevel().maximized(), Eq(false));
+
+    zwlr_foreign_toplevel_handle_v1_set_maximized(toplevel());
+    client.roundtrip();
+
+    EXPECT_THAT(state.maximized, Eq(true));
+    EXPECT_THAT(toplevel().maximized(), Eq(true));
+}
+
+TEST_F(ForeignToplevelHandleTest, can_unmaximize_foreign)
+{
+    wlcs::XdgToplevelStable::State state{0, 0, nullptr};
+    xdg_toplevel.add_configure_notification(
+        [&state](int32_t width, int32_t height, struct wl_array *states)
+        {
+            state = wlcs::XdgToplevelStable::State{width, height, states};
+        });
+    xdg_toplevel_set_maximized(xdg_toplevel);
+    surface.attach_visible_buffer(w, h);
+    client.roundtrip();
+
+    EXPECT_THAT(state.maximized, Eq(true));
+    EXPECT_THAT(toplevel().maximized(), Eq(true));
+
+    zwlr_foreign_toplevel_handle_v1_unset_maximized(toplevel());
+    client.roundtrip();
+
+    EXPECT_THAT(state.maximized, Eq(false));
+    EXPECT_THAT(toplevel().maximized(), Eq(false));
+}
+
+TEST_F(ForeignToplevelHandleTest, can_fullscreen_foreign)
+{
+    wlcs::XdgToplevelStable::State state{0, 0, nullptr};
+    xdg_toplevel.add_configure_notification(
+        [&state](int32_t width, int32_t height, struct wl_array *states)
+        {
+            state = wlcs::XdgToplevelStable::State{width, height, states};
+        });
+    surface.attach_visible_buffer(w, h);
+    client.roundtrip();
+
+    EXPECT_THAT(state.fullscreen, Eq(false));
+    EXPECT_THAT(toplevel().fullscreen(), Eq(false));
+
+    zwlr_foreign_toplevel_handle_v1_set_fullscreen(toplevel(), nullptr);
+    client.roundtrip();
+
+    EXPECT_THAT(state.fullscreen, Eq(true));
+    EXPECT_THAT(toplevel().fullscreen(), Eq(true));
+}
+
+TEST_F(ForeignToplevelHandleTest, can_unfullscreen_foreign)
+{
+    wlcs::XdgToplevelStable::State state{0, 0, nullptr};
+    xdg_toplevel.add_configure_notification(
+        [&state](int32_t width, int32_t height, struct wl_array *states)
+        {
+            state = wlcs::XdgToplevelStable::State{width, height, states};
+        });
+    xdg_toplevel_set_fullscreen(xdg_toplevel, nullptr);
+    surface.attach_visible_buffer(w, h);
+    client.roundtrip();
+
+    EXPECT_THAT(state.fullscreen, Eq(true));
+    EXPECT_THAT(toplevel().fullscreen(), Eq(true));
+
+    zwlr_foreign_toplevel_handle_v1_unset_fullscreen(toplevel());
+    client.roundtrip();
+
+    EXPECT_THAT(state.fullscreen, Eq(false));
+    EXPECT_THAT(toplevel().fullscreen(), Eq(false));
+}
+
+TEST_F(ForeignToplevelHandleTest, can_minimize_foreign)
+{
+    std::string app_id = "fake.wlcs.app.id";
+
+    wlcs::Surface below_surface{client.create_visible_surface(w, h)};
+    the_server().move_surface_to(below_surface, 0, 0);
+    client.roundtrip();
+
+    xdg_toplevel_set_app_id(xdg_toplevel, app_id.c_str());
+    surface.attach_visible_buffer(w, h);
+    the_server().move_surface_to(surface, 0, 0);
+    client.roundtrip();
+
+    auto pointer = the_server().create_pointer();
+    pointer.move_to(1, 1);
+    client.roundtrip();
+
+    EXPECT_THAT(toplevel(app_id).minimized(), Eq(false));
+    EXPECT_THAT(client.window_under_cursor(), Eq((wl_surface*)surface));
+
+    zwlr_foreign_toplevel_handle_v1_set_minimized(toplevel());
+    client.roundtrip();
+
+    pointer.move_to(2, 2);
+    client.roundtrip();
+
+    EXPECT_THAT(toplevel(app_id).minimized(), Eq(true));
+    EXPECT_THAT(client.window_under_cursor(), Eq((wl_surface*)below_surface));
+}
+
+TEST_F(ForeignToplevelHandleTest, can_unminimize_foreign)
+{
+    std::string app_id = "fake.wlcs.app.id";
+
+    wlcs::Surface below_surface{client.create_visible_surface(w, h)};
+    the_server().move_surface_to(below_surface, 0, 0);
+
+    xdg_toplevel_set_app_id(xdg_toplevel, app_id.c_str());
+    surface.attach_visible_buffer(w, h);
+    the_server().move_surface_to(surface, 0, 0);
+    client.roundtrip();
+
+    xdg_toplevel_set_minimized(xdg_toplevel);
+    client.roundtrip();
+
+    auto pointer = the_server().create_pointer();
+    pointer.move_to(1, 1);
+    client.roundtrip();
+
+    EXPECT_THAT(toplevel(app_id).minimized(), Eq(true));
+    EXPECT_THAT(client.window_under_cursor(), Eq((wl_surface*)below_surface));
+
+    zwlr_foreign_toplevel_handle_v1_unset_minimized(toplevel());
+    client.roundtrip();
+
+    pointer.move_to(2, 2);
+    client.roundtrip();
+
+    EXPECT_THAT(toplevel(app_id).minimized(), Eq(false));
+    EXPECT_THAT(client.window_under_cursor(), Eq((wl_surface*)surface));
+}
+
+TEST_F(ForeignToplevelHandleTest, can_activate_foreign)
+{
+    wlcs::XdgToplevelStable::State state{0, 0, nullptr};
+    xdg_toplevel.add_configure_notification(
+        [&state](int32_t width, int32_t height, struct wl_array *states)
+        {
+            state = wlcs::XdgToplevelStable::State{width, height, states};
+        });
+    std::string app_id = "fake.wlcs.app.id";
+    xdg_toplevel_set_app_id(xdg_toplevel, app_id.c_str());
+    surface.attach_visible_buffer(w, h);
+    client.roundtrip();
+
+    std::string other_app_id = "other.app.id";
+    wlcs::Surface other{client};
+    wlcs::XdgSurfaceStable other_xdg{client, other};
+    wlcs::XdgToplevelStable other_toplevel{other_xdg};
+    xdg_toplevel_set_app_id(xdg_toplevel, other_app_id.c_str());
+    other.attach_visible_buffer(w, h);
+    client.roundtrip();
+
+    EXPECT_THAT(state.activated, Eq(false));
+    EXPECT_THAT(toplevel(app_id).activated(), Eq(false));
+    EXPECT_THAT(toplevel(other_app_id).activated(), Eq(true));
+
+    zwlr_foreign_toplevel_handle_v1_activate(toplevel(app_id), client.seat());
+    client.roundtrip();
+
+    EXPECT_THAT(state.activated, Eq(true));
+    EXPECT_THAT(toplevel(app_id).activated(), Eq(true));
+    EXPECT_THAT(toplevel(other_app_id).activated(), Eq(false));
+}
+
+TEST_F(ForeignToplevelHandleTest, can_close_foreign)
+{
+    bool should_close{false};
+    xdg_toplevel.add_close_notification(
+        [&should_close]()
+        {
+            should_close = true;
+        });
+    surface.attach_visible_buffer(w, h);
+    client.roundtrip();
+
+    EXPECT_THAT(should_close, Eq(false));
+
+    zwlr_foreign_toplevel_handle_v1_close(toplevel());
+    client.roundtrip();
+
+    EXPECT_THAT(should_close, Eq(true));
+}
+
+// TODO: test toplevel outputs
+// TODO: test fullscreening toplevel on a specific output
 // TODO: test popup does not come up as toplevel
+// TODO: test zwlr_foreign_toplevel_handle_v1_set_rectangle somehow
