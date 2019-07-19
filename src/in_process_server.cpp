@@ -801,7 +801,9 @@ public:
         if (layer_shell_v1)
             return layer_shell_v1;
         else
-            BOOST_THROW_EXCEPTION((ExtensionExpectedlyNotSupported{"zwlr_layer_shell_v1", 0}));
+            BOOST_THROW_EXCEPTION(std::runtime_error{
+                "zwlr_layer_shell_v1 not supported by server; "
+                "Consider using CheckInterfaceExpected to disable this test when protocol not suppoeted"});
     }
 
     wl_surface* focused_window() const

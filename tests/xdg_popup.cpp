@@ -516,6 +516,7 @@ TEST_P(XdgPopupPositionerTest, xdg_shell_unstable_v6_popup_placed_correctly)
 
 TEST_P(XdgPopupPositionerTest, layer_shell_popup_placed_correctly)
 {
+    wlcs::CheckInterfaceExpected expect_layer_shell_supported{the_server(), zwlr_layer_shell_v1_interface};
     auto manager = std::make_unique<LayerV1PopupManager>(this);
     auto const& param = GetParam();
 
@@ -743,6 +744,7 @@ INSTANTIATE_TEST_CASE_P(
     testing::Values(XdgPopupTestParam{
         [](wlcs::InProcessServer* const server)
         {
+            wlcs::CheckInterfaceExpected expect_layer_shell_supported{server->the_server(), zwlr_layer_shell_v1_interface};
             return std::make_unique<LayerV1PopupManager>(server);
         }}));
 
