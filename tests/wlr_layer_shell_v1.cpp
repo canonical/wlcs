@@ -60,9 +60,9 @@ public:
         pointer.move_to(pos.first + 2, pos.second + 3);
         client.roundtrip();
 
-        ASSERT_THAT(client.focused_window(), Eq((wl_surface*)surface));
-        ASSERT_THAT(wl_fixed_to_int(client.pointer_position().first), Eq(2));
-        ASSERT_THAT(wl_fixed_to_int(client.pointer_position().second), Eq(3));
+        EXPECT_THAT(client.focused_window(), Eq((wl_surface*)surface));
+        EXPECT_THAT(wl_fixed_to_int(client.pointer_position().first), Eq(2));
+        EXPECT_THAT(wl_fixed_to_int(client.pointer_position().second), Eq(3));
     }
 
     auto output_rect() const -> Rect
@@ -316,7 +316,7 @@ TEST_F(LayerSurfaceTest, can_open_layer_surface)
 TEST_F(LayerSurfaceTest, by_default_gets_configured_without_size)
 {
     commit_and_wait_for_configure();
-    ASSERT_THAT(configured_size(), Eq(std::make_pair(0, 0)));
+    EXPECT_THAT(configured_size(), Eq(std::make_pair(0, 0)));
 }
 
 TEST_F(LayerSurfaceTest, gets_configured_with_supplied_size_when_set)
@@ -324,7 +324,7 @@ TEST_F(LayerSurfaceTest, gets_configured_with_supplied_size_when_set)
     int width = 123, height = 546;
     zwlr_layer_surface_v1_set_size(layer_surface, width, height);
     commit_and_wait_for_configure();
-    ASSERT_THAT(configured_size(), Eq(std::make_pair(width, height)));
+    EXPECT_THAT(configured_size(), Eq(std::make_pair(width, height)));
 }
 
 TEST_F(LayerSurfaceTest, gets_configured_with_supplied_size_even_when_anchored_to_edges)
@@ -333,7 +333,7 @@ TEST_F(LayerSurfaceTest, gets_configured_with_supplied_size_even_when_anchored_t
     zwlr_layer_surface_v1_set_anchor(layer_surface, LayerAnchor(true, true, true, true));
     zwlr_layer_surface_v1_set_size(layer_surface, width, height);
     commit_and_wait_for_configure();
-    ASSERT_THAT(configured_size(), Eq(std::make_pair(width, height)));
+    EXPECT_THAT(configured_size(), Eq(std::make_pair(width, height)));
 }
 
 TEST_F(LayerSurfaceTest, when_anchored_to_all_edges_gets_configured_with_output_size)
@@ -349,8 +349,8 @@ TEST_F(LayerSurfaceTest, gets_configured_after_anchor_change)
     commit_and_wait_for_configure();
     zwlr_layer_surface_v1_set_anchor(layer_surface, LayerAnchor(true, true, true, true));
     commit_and_wait_for_configure();
-    ASSERT_THAT(configured_size().first, Gt(0));
-    ASSERT_THAT(configured_size().second, Gt(0));
+    EXPECT_THAT(configured_size().first, Gt(0));
+    EXPECT_THAT(configured_size().second, Gt(0));
 }
 
 TEST_P(LayerSurfaceAnchorTest, is_initially_positioned_correctly_for_anchor)
