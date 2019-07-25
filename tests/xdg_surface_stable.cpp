@@ -62,3 +62,29 @@ TEST_F(XdgSurfaceStableTest, gets_configure_event)
 
     EXPECT_THAT(surface_configure_count, Eq(1));
 }
+
+// Regression test for https://github.com/MirServer/mir/issues/936
+TEST_F(XdgSurfaceStableTest, is_activated_when_buffer_sent_on_first_commit)
+{
+    wlcs::Client client{the_server()};
+    wlcs::Surface surface{client};
+    wlcs::XdgSurfaceStable xdg_surface{client, surface};
+    wlcs::XdgToplevelStable toplevel{xdg_surface};
+
+    wlcs::XdgToplevelStable::State state{0, 0, nullptr};
+    xdg_surface.add_configure_notification([&](uint32_t serial)
+        {
+            xdg_surface_ack_configure(xdg_surface, serial);
+        });
+    toplevel.add_configure_notification([&](int32_t width, int32_t height, struct wl_array *states)
+        {
+            state = wlcs::XdgToplevelStable::State{width, height, states};
+        });
+
+    auto surface_rendered = std::make_shared<bool>(false);
+    surface.add_frame_callback([surface_rendered](auto) { *surface_rendered = true; });
+    wl_surface_commit(surface);
+    client.dispatch_until([surface_rendered]() { return *surface_rendered; });
+
+    EXPECT_THAT(state.activated, Eq(true));
+}
