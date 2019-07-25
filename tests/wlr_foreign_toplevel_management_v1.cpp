@@ -235,10 +235,10 @@ TEST_F(ForeignToplevelHandleTest, gets_minimized)
     EXPECT_THAT(toplevel().minimized(), Eq(false));
 
     xdg_toplevel_set_minimized(xdg_toplevel);
-    surface.attach_visible_buffer(w, h);
+    wl_surface_commit(surface);
     client.roundtrip();
 
-    EXPECT_THAT(toplevel().maximized(), Eq(true));
+    EXPECT_THAT(toplevel().minimized(), Eq(true));
 }
 
 TEST_F(ForeignToplevelHandleTest, gets_fullscreen)
