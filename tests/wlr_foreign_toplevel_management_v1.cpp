@@ -100,7 +100,7 @@ TEST_F(ForeignToplevelManagerTest, detects_toplevel_from_same_client)
 {
     wlcs::Client client{the_server()};
 
-    client.create_visible_surface(w, h);
+    auto surface{client.create_visible_surface(w, h)};
 
     wlcs::ForeignToplevelManager manager{client};
     client.roundtrip();
@@ -112,7 +112,7 @@ TEST_F(ForeignToplevelManagerTest, detects_toplevel_from_different_client)
     wlcs::Client foreign_client{the_server()};
     wlcs::Client observer_client{the_server()};
 
-    foreign_client.create_visible_surface(w, h);
+    auto surface{foreign_client.create_visible_surface(w, h)};
 
     wlcs::ForeignToplevelManager manager{observer_client};
     observer_client.roundtrip();
@@ -127,7 +127,7 @@ TEST_F(ForeignToplevelManagerTest, detects_toplevel_created_after_manager)
     client.roundtrip();
     ASSERT_THAT(manager.toplevels().size(), Eq(0u));
 
-    client.create_visible_surface(w, h);
+    auto surface{client.create_visible_surface(w, h)};
 
     client.roundtrip();
     ASSERT_THAT(manager.toplevels().size(), Eq(1u));
@@ -138,8 +138,8 @@ TEST_F(ForeignToplevelManagerTest, detects_multiple_toplevels_from_multiple_clie
     wlcs::Client foreign_client{the_server()};
     wlcs::Client observer_client{the_server()};
 
-    foreign_client.create_visible_surface(w, h);
-    observer_client.create_visible_surface(w, h);
+    auto foreign_surface{foreign_client.create_visible_surface(w, h)};
+    auto observer_surface{observer_client.create_visible_surface(w, h)};
 
     wlcs::ForeignToplevelManager manager{observer_client};
     observer_client.roundtrip();
