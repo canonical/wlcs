@@ -269,7 +269,7 @@ TEST_F(ForeignToplevelHandleTest, gets_activated)
     wlcs::Surface other{client};
     wlcs::XdgSurfaceStable other_xdg{client, other};
     wlcs::XdgToplevelStable other_toplevel{other_xdg};
-    xdg_toplevel_set_app_id(xdg_toplevel, other_app_id.c_str());
+    xdg_toplevel_set_app_id(other_toplevel, other_app_id.c_str());
     other.attach_visible_buffer(w, h);
     client.roundtrip();
 
