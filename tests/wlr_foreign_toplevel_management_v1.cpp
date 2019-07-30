@@ -436,13 +436,21 @@ TEST_F(ForeignToplevelHandleTest, can_unminimize_foreign)
 
 TEST_F(ForeignToplevelHandleTest, can_unminimize_foreign_to_restored)
 {
+    wlcs::XdgToplevelStable::State state{0, 0, nullptr};
+    xdg_toplevel.add_configure_notification(
+        [&state](int32_t width, int32_t height, struct wl_array *states)
+        {
+            state = wlcs::XdgToplevelStable::State{width, height, states};
+        });
     surface.attach_visible_buffer(w, h);
     xdg_toplevel_unset_maximized(xdg_toplevel);
+    wl_surface_commit(surface);
     client.roundtrip();
 
     ASSERT_THAT(toplevel().maximized(), Eq(false)) << "precondition failed";
 
     xdg_toplevel_set_minimized(xdg_toplevel);
+    wl_surface_commit(surface);
     client.roundtrip();
 
     ASSERT_THAT(toplevel().minimized(), Eq(true)) << "precondition failed";
@@ -452,17 +460,26 @@ TEST_F(ForeignToplevelHandleTest, can_unminimize_foreign_to_restored)
 
     EXPECT_THAT(toplevel().minimized(), Eq(false));
     EXPECT_THAT(toplevel().maximized(), Eq(false));
+    EXPECT_THAT(state.maximized, Eq(false));
 }
 
 TEST_F(ForeignToplevelHandleTest, can_unminimize_foreign_to_maximized)
 {
+    wlcs::XdgToplevelStable::State state{0, 0, nullptr};
+    xdg_toplevel.add_configure_notification(
+        [&state](int32_t width, int32_t height, struct wl_array *states)
+        {
+            state = wlcs::XdgToplevelStable::State{width, height, states};
+        });
     surface.attach_visible_buffer(w, h);
     xdg_toplevel_set_maximized(xdg_toplevel);
+    wl_surface_commit(surface);
     client.roundtrip();
 
     ASSERT_THAT(toplevel().maximized(), Eq(true)) << "precondition failed";
 
     xdg_toplevel_set_minimized(xdg_toplevel);
+    wl_surface_commit(surface);
     client.roundtrip();
 
     ASSERT_THAT(toplevel().minimized(), Eq(true)) << "precondition failed";
@@ -472,6 +489,7 @@ TEST_F(ForeignToplevelHandleTest, can_unminimize_foreign_to_maximized)
 
     EXPECT_THAT(toplevel().minimized(), Eq(false));
     EXPECT_THAT(toplevel().maximized(), Eq(true));
+    EXPECT_THAT(state.maximized, Eq(true));
 }
 
 TEST_F(ForeignToplevelHandleTest, gets_activated_when_unminimized)
@@ -482,6 +500,7 @@ TEST_F(ForeignToplevelHandleTest, gets_activated_when_unminimized)
     ASSERT_THAT(toplevel().minimized(), Eq(false)) << "precondition failed";
 
     xdg_toplevel_set_minimized(xdg_toplevel);
+    wl_surface_commit(surface);
     client.roundtrip();
 
     ASSERT_THAT(toplevel().minimized(), Eq(true)) << "precondition failed";
@@ -500,6 +519,7 @@ TEST_F(ForeignToplevelHandleTest, gets_unminimized_when_activated)
     ASSERT_THAT(toplevel().minimized(), Eq(false)) << "precondition failed";
 
     xdg_toplevel_set_minimized(xdg_toplevel);
+    wl_surface_commit(surface);
     client.roundtrip();
 
     ASSERT_THAT(toplevel().minimized(), Eq(true)) << "precondition failed";
@@ -508,6 +528,149 @@ TEST_F(ForeignToplevelHandleTest, gets_unminimized_when_activated)
     client.roundtrip();
 
     EXPECT_THAT(toplevel().minimized(), Eq(false));
+}
+
+TEST_F(ForeignToplevelHandleTest, gets_unminimized_when_maximized)
+{
+    surface.attach_visible_buffer(w, h);
+    client.roundtrip();
+
+    ASSERT_THAT(toplevel().minimized(), Eq(false)) << "precondition failed";
+
+    xdg_toplevel_set_minimized(xdg_toplevel);
+    wl_surface_commit(surface);
+    client.roundtrip();
+
+    ASSERT_THAT(toplevel().minimized(), Eq(true)) << "precondition failed";
+
+    zwlr_foreign_toplevel_handle_v1_set_maximized(toplevel());
+    client.roundtrip();
+
+    EXPECT_THAT(toplevel().minimized(), Eq(false));
+    EXPECT_THAT(toplevel().maximized(), Eq(true));
+}
+
+TEST_F(ForeignToplevelHandleTest, gets_unminimized_when_fullscreened)
+{
+    surface.attach_visible_buffer(w, h);
+    client.roundtrip();
+
+    ASSERT_THAT(toplevel().minimized(), Eq(false)) << "precondition failed";
+
+    xdg_toplevel_set_minimized(xdg_toplevel);
+    wl_surface_commit(surface);
+    client.roundtrip();
+
+    ASSERT_THAT(toplevel().minimized(), Eq(true)) << "precondition failed";
+
+    zwlr_foreign_toplevel_handle_v1_set_fullscreen(toplevel(), nullptr);
+    client.roundtrip();
+
+    EXPECT_THAT(toplevel().minimized(), Eq(false));
+    EXPECT_THAT(toplevel().fullscreen(), Eq(true));
+}
+
+TEST_F(ForeignToplevelHandleTest, can_unfullscreen_foreign_to_restored)
+{
+    wlcs::XdgToplevelStable::State state{0, 0, nullptr};
+    xdg_toplevel.add_configure_notification(
+        [&state](int32_t width, int32_t height, struct wl_array *states)
+        {
+            state = wlcs::XdgToplevelStable::State{width, height, states};
+        });
+    xdg_toplevel_unset_maximized(xdg_toplevel);
+    surface.attach_visible_buffer(w, h);
+    client.roundtrip();
+
+    ASSERT_THAT(state.maximized, Eq(false)) << "precondition failed";
+    ASSERT_THAT(toplevel().maximized(), Eq(false)) << "precondition failed";
+
+    xdg_toplevel_set_fullscreen(xdg_toplevel, nullptr);
+    wl_surface_commit(surface);
+    client.roundtrip();
+
+    ASSERT_THAT(state.fullscreen, Eq(true)) << "precondition failed";
+    ASSERT_THAT(toplevel().fullscreen(), Eq(true)) << "precondition failed";
+
+    zwlr_foreign_toplevel_handle_v1_unset_fullscreen(toplevel());
+    client.roundtrip();
+
+    ASSERT_THAT(state.fullscreen, Eq(false)) << "precondition failed";
+    ASSERT_THAT(toplevel().fullscreen(), Eq(false)) << "precondition failed";
+
+    EXPECT_THAT(state.maximized, Eq(false));
+    EXPECT_THAT(toplevel().maximized(), Eq(false));
+}
+
+TEST_F(ForeignToplevelHandleTest, can_unfullscreen_foreign_to_maximized)
+{
+    wlcs::XdgToplevelStable::State state{0, 0, nullptr};
+    xdg_toplevel.add_configure_notification(
+        [&state](int32_t width, int32_t height, struct wl_array *states)
+        {
+            state = wlcs::XdgToplevelStable::State{width, height, states};
+        });
+    xdg_toplevel_set_maximized(xdg_toplevel);
+    surface.attach_visible_buffer(w, h);
+    client.roundtrip();
+
+    ASSERT_THAT(state.maximized, Eq(true)) << "precondition failed";
+    ASSERT_THAT(toplevel().maximized(), Eq(true)) << "precondition failed";
+
+    xdg_toplevel_set_fullscreen(xdg_toplevel, nullptr);
+    wl_surface_commit(surface);
+    client.roundtrip();
+
+    ASSERT_THAT(state.fullscreen, Eq(true)) << "precondition failed";
+    ASSERT_THAT(toplevel().fullscreen(), Eq(true)) << "precondition failed";
+
+    zwlr_foreign_toplevel_handle_v1_unset_fullscreen(toplevel());
+    client.roundtrip();
+
+    ASSERT_THAT(state.fullscreen, Eq(false)) << "precondition failed";
+    ASSERT_THAT(toplevel().fullscreen(), Eq(false)) << "precondition failed";
+
+    EXPECT_THAT(state.maximized, Eq(true));
+    EXPECT_THAT(toplevel().maximized(), Eq(true));
+}
+
+TEST_F(ForeignToplevelHandleTest, can_maximize_foreign_while_fullscreen)
+{
+    wlcs::XdgToplevelStable::State state{0, 0, nullptr};
+    xdg_toplevel.add_configure_notification(
+        [&state](int32_t width, int32_t height, struct wl_array *states)
+        {
+            state = wlcs::XdgToplevelStable::State{width, height, states};
+        });
+    xdg_toplevel_unset_maximized(xdg_toplevel);
+    surface.attach_visible_buffer(w, h);
+    client.roundtrip();
+
+    ASSERT_THAT(state.maximized, Eq(false)) << "precondition failed";
+    ASSERT_THAT(toplevel().maximized(), Eq(false)) << "precondition failed";
+
+    xdg_toplevel_set_fullscreen(xdg_toplevel, nullptr);
+    wl_surface_commit(surface);
+    client.roundtrip();
+
+    ASSERT_THAT(state.fullscreen, Eq(true)) << "precondition failed";
+    ASSERT_THAT(toplevel().fullscreen(), Eq(true)) << "precondition failed";
+
+    zwlr_foreign_toplevel_handle_v1_set_maximized(toplevel());
+    client.roundtrip();
+
+    EXPECT_THAT(state.fullscreen, Eq(true)) << "XDG toplevel became not fullscreen after requesting maximized";
+    EXPECT_THAT(toplevel().fullscreen(), Eq(true)) << "foreign toplevel became not fullscreen after maximize";
+
+    zwlr_foreign_toplevel_handle_v1_unset_fullscreen(toplevel());
+    wl_surface_commit(surface);
+    client.roundtrip();
+
+    ASSERT_THAT(state.fullscreen, Eq(false)) << "precondition failed";
+    ASSERT_THAT(toplevel().fullscreen(), Eq(false)) << "precondition failed";
+
+    EXPECT_THAT(state.maximized, Eq(true));
+    EXPECT_THAT(toplevel().maximized(), Eq(true));
 }
 
 TEST_F(ForeignToplevelHandleTest, can_activate_foreign)
