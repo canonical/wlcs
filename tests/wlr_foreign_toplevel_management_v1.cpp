@@ -381,17 +381,21 @@ TEST_F(ForeignToplevelHandleTest, can_minimize_foreign)
     pointer.move_to(1, 1);
     client.roundtrip();
 
-    EXPECT_THAT(toplevel(app_id).minimized(), Eq(false));
-    EXPECT_THAT(client.window_under_cursor(), Eq((wl_surface*)surface));
+    ASSERT_THAT(toplevel(app_id).minimized(), Eq(false)) << "precondition failed";
+    ASSERT_THAT(client.window_under_cursor(), Eq((wl_surface*)surface)) << "precondition failed";
 
-    zwlr_foreign_toplevel_handle_v1_set_minimized(toplevel());
+    zwlr_foreign_toplevel_handle_v1_set_minimized(toplevel(app_id));
     client.roundtrip();
+
+    EXPECT_THAT(toplevel(app_id).minimized(), Eq(true));
 
     pointer.move_to(2, 2);
     client.roundtrip();
 
-    EXPECT_THAT(toplevel(app_id).minimized(), Eq(true));
-    EXPECT_THAT(client.window_under_cursor(), Eq((wl_surface*)below_surface));
+    EXPECT_THAT(client.window_under_cursor(), Ne((wl_surface*)surface))
+        << "surface under pointer when it should have been minimized";
+    EXPECT_THAT(client.window_under_cursor(), Eq((wl_surface*)below_surface))
+        << "surface under pointer not correct";
 }
 
 TEST_F(ForeignToplevelHandleTest, can_unminimize_foreign)
@@ -413,17 +417,97 @@ TEST_F(ForeignToplevelHandleTest, can_unminimize_foreign)
     pointer.move_to(1, 1);
     client.roundtrip();
 
-    EXPECT_THAT(toplevel(app_id).minimized(), Eq(true));
-    EXPECT_THAT(client.window_under_cursor(), Eq((wl_surface*)below_surface));
+    ASSERT_THAT(toplevel(app_id).minimized(), Eq(true)) << "precondition failed";
+    ASSERT_THAT(client.window_under_cursor(), Eq((wl_surface*)below_surface)) << "precondition failed";
 
-    zwlr_foreign_toplevel_handle_v1_unset_minimized(toplevel());
+    zwlr_foreign_toplevel_handle_v1_unset_minimized(toplevel(app_id));
     client.roundtrip();
+
+    EXPECT_THAT(toplevel(app_id).minimized(), Eq(false));
 
     pointer.move_to(2, 2);
     client.roundtrip();
 
-    EXPECT_THAT(toplevel(app_id).minimized(), Eq(false));
-    EXPECT_THAT(client.window_under_cursor(), Eq((wl_surface*)surface));
+    EXPECT_THAT(client.window_under_cursor(), Ne((wl_surface*)below_surface))
+        << "surface under pointer when it should have been occluded by unminimized surface";
+    EXPECT_THAT(client.window_under_cursor(), Eq((wl_surface*)surface))
+        << "surface under pointer not correct";
+}
+
+TEST_F(ForeignToplevelHandleTest, can_unminimize_foreign_to_restored)
+{
+    surface.attach_visible_buffer(w, h);
+    xdg_toplevel_unset_maximized(xdg_toplevel);
+    client.roundtrip();
+
+    ASSERT_THAT(toplevel().maximized(), Eq(false)) << "precondition failed";
+
+    xdg_toplevel_set_minimized(xdg_toplevel);
+    client.roundtrip();
+
+    ASSERT_THAT(toplevel().minimized(), Eq(true)) << "precondition failed";
+
+    zwlr_foreign_toplevel_handle_v1_unset_minimized(toplevel());
+    client.roundtrip();
+
+    EXPECT_THAT(toplevel().minimized(), Eq(false));
+    EXPECT_THAT(toplevel().maximized(), Eq(false));
+}
+
+TEST_F(ForeignToplevelHandleTest, can_unminimize_foreign_to_maximized)
+{
+    surface.attach_visible_buffer(w, h);
+    xdg_toplevel_set_maximized(xdg_toplevel);
+    client.roundtrip();
+
+    ASSERT_THAT(toplevel().maximized(), Eq(true)) << "precondition failed";
+
+    xdg_toplevel_set_minimized(xdg_toplevel);
+    client.roundtrip();
+
+    ASSERT_THAT(toplevel().minimized(), Eq(true)) << "precondition failed";
+
+    zwlr_foreign_toplevel_handle_v1_unset_minimized(toplevel());
+    client.roundtrip();
+
+    EXPECT_THAT(toplevel().minimized(), Eq(false));
+    EXPECT_THAT(toplevel().maximized(), Eq(true));
+}
+
+TEST_F(ForeignToplevelHandleTest, gets_activated_when_unminimized)
+{
+    surface.attach_visible_buffer(w, h);
+    client.roundtrip();
+
+    ASSERT_THAT(toplevel().minimized(), Eq(false)) << "precondition failed";
+
+    xdg_toplevel_set_minimized(xdg_toplevel);
+    client.roundtrip();
+
+    ASSERT_THAT(toplevel().minimized(), Eq(true)) << "precondition failed";
+
+    zwlr_foreign_toplevel_handle_v1_unset_minimized(toplevel());
+    client.roundtrip();
+
+    EXPECT_THAT(toplevel().activated(), Eq(true));
+}
+
+TEST_F(ForeignToplevelHandleTest, gets_unminimized_when_activated)
+{
+    surface.attach_visible_buffer(w, h);
+    client.roundtrip();
+
+    ASSERT_THAT(toplevel().minimized(), Eq(false)) << "precondition failed";
+
+    xdg_toplevel_set_minimized(xdg_toplevel);
+    client.roundtrip();
+
+    ASSERT_THAT(toplevel().minimized(), Eq(true)) << "precondition failed";
+
+    zwlr_foreign_toplevel_handle_v1_activate(toplevel(), client.seat());
+    client.roundtrip();
+
+    EXPECT_THAT(toplevel().minimized(), Eq(false));
 }
 
 TEST_F(ForeignToplevelHandleTest, can_activate_foreign)
@@ -443,7 +527,7 @@ TEST_F(ForeignToplevelHandleTest, can_activate_foreign)
     wlcs::Surface other{client};
     wlcs::XdgSurfaceStable other_xdg{client, other};
     wlcs::XdgToplevelStable other_toplevel{other_xdg};
-    xdg_toplevel_set_app_id(xdg_toplevel, other_app_id.c_str());
+    xdg_toplevel_set_app_id(other_toplevel, other_app_id.c_str());
     other.attach_visible_buffer(w, h);
     client.roundtrip();
 
