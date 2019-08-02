@@ -26,11 +26,6 @@ using namespace wlcs;
 
 namespace
 {
-struct StartedInProcessServer : InProcessServer
-{
-    StartedInProcessServer() { InProcessServer::SetUp(); }
-    void SetUp() override {}
-};
 
 struct FrameSubmission : StartedInProcessServer
 {
