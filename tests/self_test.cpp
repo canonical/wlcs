@@ -18,6 +18,7 @@
 
 #include "data_device.h"
 #include "helpers.h"
+#include "gtest_helpers.h"
 #include "in_process_server.h"
 
 #include <gmock/gmock.h>
