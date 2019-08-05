@@ -47,6 +47,11 @@ env:
   - SYSTEM=fedora-29 VARIANT=gcc
   - SYSTEM=fedora-30 VARIANT=gcc
 
+matrix:
+  allow_failures:
+    - env: SYSTEM=fedora-30 VARIANT=gcc
+  fast_finish: true
+
 script:
   - sg lxd -c 'LXD_DIR=/var/snap/lxd/common/lxd snap run spread lxd:$SYSTEM:...:$VARIANT'
 
