@@ -920,7 +920,9 @@ public:
     void dispatch_until(
         std::function<bool()> const& predicate, std::chrono::seconds timeout)
     {
-        auto const end_time = std::chrono::steady_clock::now() + timeout;
+        using namespace std::chrono;
+
+        auto const end_time = steady_clock::now() + timeout;
         while (!predicate())
         {
             while (wl_display_prepare_read(display) != 0)
@@ -930,14 +932,22 @@ public:
             }
             wl_display_flush(display);
 
-            auto const maximum_wait = end_time - std::chrono::steady_clock::now();
-            if (maximum_wait.count() < 0)
+            auto const time_left = end_time - steady_clock::now();
+            if (time_left.count() < 0)
             {
                 BOOST_THROW_EXCEPTION((Timeout{"Timeout waiting for condition"}));
             }
 
-            auto const maximum_wait_ms =
-                std::chrono::duration_cast<std::chrono::milliseconds>(maximum_wait);
+            /*
+             * TODO: We really want std::chrono::duration::ceil() here, but that's C++17
+             */
+            /*
+             * We want to wait *at least* as long as time_left. duration_cast<milliseconds>
+             * will perform integer division, so any fractional milliseconds will get dropped.
+             *
+             * Adding 1ms will ensure we wait until *after* we're meant to timeout.
+             */
+            auto const maximum_wait_ms = duration_cast<milliseconds>(time_left) + 1ms;
             pollfd fd{
                 wl_display_get_fd(display),
                 POLLIN | POLLERR,
