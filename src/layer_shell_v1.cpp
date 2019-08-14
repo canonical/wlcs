@@ -33,7 +33,7 @@ wlcs::LayerSurfaceV1::LayerSurfaceV1(
         layer,
         _namespace);
     static struct zwlr_layer_surface_v1_listener const listener {
-        +[](void* data,
+        [](void* data,
             struct zwlr_layer_surface_v1 *zwlr_layer_surface_v1,
             uint32_t serial,
             uint32_t width,
@@ -47,7 +47,7 @@ wlcs::LayerSurfaceV1::LayerSurfaceV1(
                 (void)serial;
                 zwlr_layer_surface_v1_ack_configure(zwlr_layer_surface_v1, serial);
             },
-        +[](void* /*data*/,
+        [](void* /*data*/,
             struct zwlr_layer_surface_v1 */*zwlr_layer_surface_v1*/)
             {
             }
