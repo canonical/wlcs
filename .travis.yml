@@ -58,7 +58,7 @@ jobs:
     git:
       depth: false
     before_install: &decrypt-bot-data
-    - openssl aes-256-cbc -K $encrypted_a928ee198e10_key -iv $encrypted_a928ee198e10_iv -in tools/bot-data.tar.xz.enc -out /tmp/bot-data.tar.xz -d 
+    - openssl aes-256-cbc -K $encrypted_de81f8095dc8_key -iv $encrypted_de81f8095dc8_iv -in tools/bot-data.tar.xz.enc -out /tmp/bot-data.tar.xz -d
     - tar --verbose --extract --xz --file /tmp/bot-data.tar.xz --directory ${HOME}
     # We don't need to do the install steps
     install: skip
