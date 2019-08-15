@@ -126,9 +126,12 @@ private:
 class XdgPopupStable
 {
 public:
-    XdgPopupStable(XdgSurfaceStable& shell_surface_, XdgSurfaceStable& parent, XdgPositionerStable& positioner);
-    XdgPopupStable(XdgToplevelStable const&) = delete;
-    XdgPopupStable& operator=(XdgToplevelStable const&) = delete;
+    XdgPopupStable(
+        XdgSurfaceStable& shell_surface_,
+        std::experimental::optional<XdgSurfaceStable*> parent,
+        XdgPositionerStable& positioner);
+    XdgPopupStable(XdgPopupStable const&) = delete;
+    XdgPopupStable& operator=(XdgPopupStable const&) = delete;
     ~XdgPopupStable();
 
     void add_configure_notification(std::function<void(int32_t, int32_t, int32_t, int32_t)> notification)

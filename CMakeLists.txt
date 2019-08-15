@@ -113,6 +113,7 @@ GENERATE_PROTOCOL(primary-selection-unstable-v1)
 GENERATE_PROTOCOL(wayland)
 GENERATE_PROTOCOL(xdg-shell-unstable-v6)
 GENERATE_PROTOCOL(xdg-shell)
+GENERATE_PROTOCOL(wlr-layer-shell-unstable-v1)
 
 option(WLCS_BUILD_ASAN "Build a test runner with AddressSanitizer annotations" ON)
 option(WLCS_BUILD_TSAN "Build a test runner with ThreadSanitizer annotations" ON)
@@ -136,6 +137,7 @@ set(
   src/in_process_server.cpp
   src/xdg_shell_v6.cpp
   src/xdg_shell_stable.cpp
+  src/layer_shell_v1.cpp
   src/main.cpp
   src/primary_selection.cpp
   src/shared_library.cpp
@@ -161,6 +163,7 @@ set(
   tests/xdg_surface_stable.cpp
   tests/xdg_toplevel_stable.cpp
   tests/xdg_popup.cpp
+  tests/wlr_layer_shell_v1.cpp
   tests/self_test.cpp
 )
 
