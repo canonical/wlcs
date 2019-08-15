@@ -69,7 +69,7 @@ else
     if [[ "$( git describe --exact-match HEAD^${PARENT} )" =~ ^v([0-9\.]+)$ ]]; then
       # copy packages from ppa:mir-team/rc to ppa:mir-team/release_ppa
       RELEASE_VERSION=${BASH_REMATCH[1]}-0ubuntu${UBUNTU_VERSION}
-      echo "Copying mir_${RELEASE_VERSION} from ppa:mir-team/rc to ppa:mir-team/release…"
+      echo "Copying wlcs_${RELEASE_VERSION} from ppa:mir-team/rc to ppa:mir-team/release…"
       python - ${RELEASE_VERSION} <<EOF
 import os
 import sys
