@@ -1,4 +1,16 @@
-wlcs (1.0) disco; urgency=medium
+wlcs (1.1.0-0ubuntu0) eoan; urgency=medium
+
+  * New upstream release. Relevant upstream changes:
+    + Document the compositor-integration version macros
+    + Add tests for the wl_output protocol
+    + More tests for XDG Shell, particularly around popups and window movement
+    + Add tests for wp_primary_selection_unstable_v1 protocol
+    + Add tests for gdk_primary_selection protocol
+    + Lots of build fixes for !Ubuntu systems. Thanks, Neal Gompa!
+
+ -- Christopher James Halse Rogers <raof@ubuntu.com>  Tue, 23 Jul 2019 10:37:52 +1000
+
+wlcs (1.0-0ubuntu0) disco; urgency=medium
 
   * Initial release
 
