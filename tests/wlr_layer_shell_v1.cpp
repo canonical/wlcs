@@ -233,13 +233,13 @@ struct LayerLayerParams
 std::ostream& operator<<(std::ostream& os, const LayerLayerParams& layer)
 {
     os << "layers:";
-    for (auto i : {layer.below, layer.above})
+    for (auto const& i : {layer.below, layer.above})
     {
         os << " ";
         os << "Layer{";
         if (i)
         {
-            switch (i.value())
+            switch (auto const value = i.value())
             {
             case ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND:
                 os << "background";
@@ -254,7 +254,7 @@ std::ostream& operator<<(std::ostream& os, const LayerLayerParams& layer)
                 os << "overlay";
                 break;
             default:
-                os << "INVALID(" << i.value() << ")";
+                os << "INVALID(" << value << ")";
             }
         }
         else
@@ -487,7 +487,7 @@ INSTANTIATE_TEST_CASE_P(
 
 TEST_P(LayerSurfaceLayerTest, surface_on_lower_layer_is_initially_placed_below)
 {
-    auto param = GetParam();
+    auto const& param = GetParam();
 
     SurfaceOnLayer above{client, param.above};
     SurfaceOnLayer below{client, param.below};
@@ -516,7 +516,7 @@ TEST_P(LayerSurfaceLayerTest, surface_on_lower_layer_is_initially_placed_below)
 
 TEST_P(LayerSurfaceLayerTest, below_surface_can_not_be_raised_with_click)
 {
-    auto param = GetParam();
+    auto const& param = GetParam();
 
     SurfaceOnLayer above{client, param.above};
     SurfaceOnLayer below{client, param.below};
