@@ -841,6 +841,14 @@ public:
         return current_touch_location.value().coordinates;
     };
 
+    bool pointer_events_clean() const
+    {
+        if (!pending_buttons.empty() || pending_pointer_location)
+            return false;
+        else
+            return true;
+    }
+
     void add_pointer_enter_notification(PointerEnterNotifier const& on_enter)
     {
         enter_notifiers.push_back(on_enter);
@@ -1070,47 +1078,35 @@ private:
     {
         auto me = static_cast<Impl*>(ctx);
 
-        me->current_pointer_location = SurfaceLocation {
-            surface,
-            std::make_pair(x,y)
-        };
+        if (me->current_pointer_location && !me->pending_pointer_leave)
+            BOOST_THROW_EXCEPTION(std::logic_error(
+                "Pointer tried to enter a surface without first leaving the previous one"));
 
-        std::vector<decltype(enter_notifiers)::const_iterator> to_remove;
-        for (auto notifier = me->enter_notifiers.begin(); notifier != me->enter_notifiers.end(); ++notifier)
-        {
-            if (!(*notifier)(surface, x, y))
-            {
-                to_remove.push_back(notifier);
-            }
-        }
-        for (auto removed : to_remove)
-        {
-            me->enter_notifiers.erase(removed);
-        }
+        me->pending_pointer_location = SurfaceLocation{
+            surface,
+            std::make_pair(x, y)
+        };
     }
 
     static void pointer_leave(
         void* ctx,
         wl_pointer* /*pointer*/,
         uint32_t /*serial*/,
-        wl_surface* surface)
+        wl_surface* /*surface*/)
     {
         auto me = static_cast<Impl*>(ctx);
 
-        me->current_pointer_location = {};
+        if (!me->current_pointer_location)
+            BOOST_THROW_EXCEPTION(std::logic_error("Got wl_pointer.leave when the pointer was not on a surface"));
 
-        std::vector<decltype(leave_notifiers)::const_iterator> to_remove;
-        for (auto notifier = me->leave_notifiers.begin(); notifier != me->leave_notifiers.end(); ++notifier)
-        {
-            if (!(*notifier)(surface))
-            {
-                to_remove.push_back(notifier);
-            }
-        }
-        for (auto removed : to_remove)
-        {
-            me->leave_notifiers.erase(removed);
-        }
+        // TODO: uncomment this and fix the issue it exposes in Mir (Mir is seding null surfaces)
+        /*
+        if (me->current_pointer_location.value().surface != surface)
+            BOOST_THROW_EXCEPTION(std::logic_error("Got wl_pointer.leave with the wrong surface"));
+        */
+
+        me->pending_pointer_location = std::experimental::nullopt;
+        me->pending_pointer_leave = true;
     }
 
     static void pointer_motion(
@@ -1122,20 +1118,12 @@ private:
     {
         auto me = static_cast<Impl*>(ctx);
 
-        me->current_pointer_location.value().coordinates = std::make_pair(x, y);
+        if (!me->current_pointer_location && !me->pending_pointer_location)
+            BOOST_THROW_EXCEPTION(std::logic_error("Got wl_pointer.motion when the pointer was not on a surface"));
 
-        std::vector<decltype(motion_notifiers)::const_iterator> to_remove;
-        for (auto notifier = me->motion_notifiers.begin(); notifier != me->motion_notifiers.end(); ++notifier)
-        {
-            if (!(*notifier)(x, y))
-            {
-                to_remove.push_back(notifier);
-            }
-        }
-        for (auto removed : to_remove)
-        {
-            me->motion_notifiers.erase(removed);
-        }
+        if (!me->pending_pointer_location)
+            me->pending_pointer_location = me->current_pointer_location;
+        me->pending_pointer_location.value().coordinates = std::make_pair(x, y);
     }
 
     static void pointer_button(
@@ -1148,22 +1136,116 @@ private:
     {
         auto me = static_cast<Impl*>(ctx);
 
-        std::vector<decltype(button_notifiers)::const_iterator> to_remove;
-        for (auto notifier = me->button_notifiers.begin(); notifier != me->button_notifiers.end(); ++notifier)
+        me->pending_buttons[button] = std::make_pair(serial, state == WL_POINTER_BUTTON_STATE_PRESSED);
+    }
+
+    static void pointer_frame(void* ctx, wl_pointer* /*pointer*/)
+    {
+        auto me = static_cast<Impl*>(ctx);
+
+        if (me->pending_pointer_leave)
         {
-            if (!(*notifier)(serial, button, state == WL_POINTER_BUTTON_STATE_PRESSED))
+            if (!me->current_pointer_location)
+                BOOST_THROW_EXCEPTION(std::logic_error("Pointer tried to leave when it was not on a surface"));
+
+            wl_surface* old_surface = me->current_pointer_location.value().surface;
+            me->current_pointer_location = std::experimental::nullopt;
+            me->pending_pointer_leave = false;
+
+            me->notify_of_pointer_leave(old_surface);
+        }
+
+        if (me->pending_pointer_location)
+        {
+            auto const old_pointer_location = me->current_pointer_location;
+            me->current_pointer_location = me->pending_pointer_location;
+            me->pending_pointer_location = std::experimental::nullopt;
+
+            if (!old_pointer_location)
+            {
+                me->notify_of_pointer_enter(
+                    me->current_pointer_location.value().surface,
+                    me->current_pointer_location.value().coordinates);
+            }
+            else
+            {
+                me->notify_of_pointer_motion(me->current_pointer_location.value().coordinates);
+            }
+        }
+
+        if (!me->pending_buttons.empty())
+        {
+            me->notify_of_pointer_buttons(me->pending_buttons);
+            me->pending_buttons.clear();
+        }
+    }
+
+    void notify_of_pointer_enter(wl_surface* surface, std::pair<int, int> position)
+    {
+        std::vector<decltype(enter_notifiers)::const_iterator> to_remove;
+        for (auto notifier = enter_notifiers.begin(); notifier != enter_notifiers.end(); ++notifier)
+        {
+            if (!(*notifier)(surface, position.first, position.second))
             {
                 to_remove.push_back(notifier);
             }
         }
         for (auto removed : to_remove)
         {
-            me->button_notifiers.erase(removed);
+            enter_notifiers.erase(removed);
         }
     }
 
-    static void pointer_frame(void* /*ctx*/, wl_pointer* /*pointer*/)
+    void notify_of_pointer_leave(wl_surface* surface)
     {
+        std::vector<decltype(leave_notifiers)::const_iterator> to_remove;
+        for (auto notifier = leave_notifiers.begin(); notifier != leave_notifiers.end(); ++notifier)
+        {
+            if (!(*notifier)(surface))
+            {
+                to_remove.push_back(notifier);
+            }
+        }
+        for (auto removed : to_remove)
+        {
+            leave_notifiers.erase(removed);
+        }
+    }
+
+    void notify_of_pointer_motion(std::pair<int, int> position)
+    {
+
+        std::vector<decltype(motion_notifiers)::const_iterator> to_remove;
+        for (auto notifier = motion_notifiers.begin(); notifier != motion_notifiers.end(); ++notifier)
+        {
+            if (!(*notifier)(position.first, position.second))
+            {
+                to_remove.push_back(notifier);
+            }
+        }
+        for (auto removed : to_remove)
+        {
+            motion_notifiers.erase(removed);
+        }
+    }
+
+    void notify_of_pointer_buttons(std::map<uint32_t, std::pair<uint32_t, bool>> const& buttons)
+    {
+        for (auto const& button : buttons)
+        {
+            std::vector<decltype(button_notifiers)::const_iterator> to_remove;
+            for (auto notifier = button_notifiers.begin(); notifier != button_notifiers.end(); ++notifier)
+            {
+                if (!(*notifier)(button.second.first, button.first, button.second.second))
+                {
+                    to_remove.push_back(notifier);
+                }
+            }
+            for (auto removed : to_remove)
+            {
+                button_notifiers.erase(removed);
+            }
+        }
     }
 
     static constexpr wl_pointer_listener pointer_listener = {
@@ -1386,6 +1468,9 @@ private:
         std::pair<wl_fixed_t, wl_fixed_t> coordinates;
     };
     std::experimental::optional<SurfaceLocation> current_pointer_location;
+    std::experimental::optional<SurfaceLocation> pending_pointer_location;
+    bool pending_pointer_leave{false};
+    std::map<uint32_t, std::pair<uint32_t, bool>> pending_buttons; ///< Maps button id to the serial and if it's down
     std::experimental::optional<SurfaceLocation> current_touch_location;
 
     std::vector<PointerEnterNotifier> enter_notifiers;
@@ -1528,6 +1613,11 @@ std::pair<wl_fixed_t, wl_fixed_t> wlcs::Client::pointer_position() const
 std::pair<wl_fixed_t, wl_fixed_t> wlcs::Client::touch_position() const
 {
     return impl->touch_position();
+}
+
+bool wlcs::Client::pointer_events_clean() const
+{
+    return impl->pointer_events_clean();
 }
 
 void wlcs::Client::add_pointer_enter_notification(PointerEnterNotifier const& on_enter)
