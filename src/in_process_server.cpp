@@ -824,11 +824,15 @@ public:
 
     wl_surface* touched_window() const
     {
-        if (current_touch_location)
+        wl_surface* surface = nullptr;
+        for (auto const& touch : current_touches)
         {
-            return current_touch_location->surface;
+            if (surface && touch.second.surface != surface)
+                BOOST_THROW_EXCEPTION(std::logic_error("touched_window() when multiple surfaces have active touches"));
+            else
+                surface = touch.second.surface;
         }
-        return nullptr;
+        return surface;
     }
 
     std::pair<wl_fixed_t, wl_fixed_t> pointer_position() const
@@ -838,7 +842,12 @@ public:
 
     std::pair<wl_fixed_t, wl_fixed_t> touch_position() const
     {
-        return current_touch_location.value().coordinates;
+        if (current_touches.empty())
+            BOOST_THROW_EXCEPTION(std::logic_error("touch_position() when there are no touches"));
+        else if (current_touches.size() == 1)
+            return current_touches.begin()->second.coordinates;
+        else
+            BOOST_THROW_EXCEPTION(std::logic_error("touch_position() when there are more than 1 touches"));
     };
 
     bool pointer_events_clean() const
@@ -1266,13 +1275,17 @@ private:
         uint32_t /*serial*/,
         uint32_t /*time*/,
         wl_surface* surface,
-        int32_t /*id*/,
+        int32_t id,
         wl_fixed_t x,
         wl_fixed_t y)
     {
         auto me = static_cast<Impl*>(ctx);
 
-        me->current_touch_location = SurfaceLocation {
+        auto touch = me->current_touches.find(id);
+        if (touch != me->current_touches.end())
+            BOOST_THROW_EXCEPTION(std::logic_error("Got wl_touch.down with ID that is already down"));
+
+        me->current_touches[id] = SurfaceLocation {
             surface,
             std::make_pair(x,y)
         };
@@ -1283,29 +1296,37 @@ private:
         wl_touch* /*wl_touch*/,
         uint32_t /*serial*/,
         uint32_t /*time*/,
-        int32_t /*id*/)
+        int32_t id)
     {
         auto me = static_cast<Impl*>(ctx);
 
-        me->current_touch_location = std::experimental::nullopt;
+        auto touch = me->current_touches.find(id);
+        if (touch == me->current_touches.end())
+            BOOST_THROW_EXCEPTION(std::logic_error("Got wl_touch.up with unknown ID"));
+
+        me->current_touches.erase(touch);
     }
 
 	static void touch_motion(
         void* ctx,
         wl_touch* /*wl_touch*/,
         uint32_t /*time*/,
-        int32_t /*id*/,
+        int32_t id,
         wl_fixed_t x,
         wl_fixed_t y)
     {
         auto me = static_cast<Impl*>(ctx);
 
-        if (me->current_touch_location)
-            me->current_touch_location.value().coordinates = std::make_pair(x,y);
+        auto touch = me->current_touches.find(id);
+        if (touch == me->current_touches.end())
+            BOOST_THROW_EXCEPTION(std::logic_error("Got wl_touch.motion with unknown ID"));
+
+        touch->second.coordinates = std::make_pair(x,y);
     }
 
     static void touch_frame(void* /*ctx*/, wl_touch* /*touch*/)
     {
+        // TODO
     }
 
     static constexpr wl_touch_listener touch_listener = {
@@ -1471,7 +1492,7 @@ private:
     std::experimental::optional<SurfaceLocation> pending_pointer_location;
     bool pending_pointer_leave{false};
     std::map<uint32_t, std::pair<uint32_t, bool>> pending_buttons; ///< Maps button id to the serial and if it's down
-    std::experimental::optional<SurfaceLocation> current_touch_location;
+    std::map<int, SurfaceLocation> current_touches;
 
     std::vector<PointerEnterNotifier> enter_notifiers;
     std::vector<PointerLeaveNotifier> leave_notifiers;
