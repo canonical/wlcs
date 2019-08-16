@@ -852,10 +852,12 @@ public:
 
     bool pointer_events_clean() const
     {
-        if (!pending_buttons.empty() || pending_pointer_location)
-            return false;
-        else
-            return true;
+        return pending_buttons.empty() && !pending_pointer_location;
+    }
+
+    bool touch_events_clean() const
+    {
+        return pending_touches.empty() && pending_up_touches.empty();
     }
 
     void add_pointer_enter_notification(PointerEnterNotifier const& on_enter)
@@ -1285,7 +1287,7 @@ private:
         if (touch != me->current_touches.end())
             BOOST_THROW_EXCEPTION(std::logic_error("Got wl_touch.down with ID that is already down"));
 
-        me->current_touches[id] = SurfaceLocation {
+        me->pending_touches[id] = SurfaceLocation {
             surface,
             std::make_pair(x,y)
         };
@@ -1304,7 +1306,7 @@ private:
         if (touch == me->current_touches.end())
             BOOST_THROW_EXCEPTION(std::logic_error("Got wl_touch.up with unknown ID"));
 
-        me->current_touches.erase(touch);
+        me->pending_up_touches.insert(id);
     }
 
 	static void touch_motion(
@@ -1321,12 +1323,28 @@ private:
         if (touch == me->current_touches.end())
             BOOST_THROW_EXCEPTION(std::logic_error("Got wl_touch.motion with unknown ID"));
 
-        touch->second.coordinates = std::make_pair(x,y);
+        me->pending_touches[id] = SurfaceLocation {
+            touch->second.surface,
+            std::make_pair(x,y)
+        };
     }
 
-    static void touch_frame(void* /*ctx*/, wl_touch* /*touch*/)
+    static void touch_frame(void* ctx, wl_touch* /*touch*/)
     {
-        // TODO
+        auto me = static_cast<Impl*>(ctx);
+
+        for (auto const& id : me->pending_up_touches)
+        {
+            me->current_touches.erase(id);
+        }
+
+        for (auto const& touch : me->pending_touches)
+        {
+            me->current_touches[touch.first] = touch.second;
+        }
+
+        me->pending_up_touches.clear();
+        me->pending_touches.clear();
     }
 
     static constexpr wl_touch_listener touch_listener = {
@@ -1492,7 +1510,9 @@ private:
     std::experimental::optional<SurfaceLocation> pending_pointer_location;
     bool pending_pointer_leave{false};
     std::map<uint32_t, std::pair<uint32_t, bool>> pending_buttons; ///< Maps button id to the serial and if it's down
-    std::map<int, SurfaceLocation> current_touches;
+    std::map<int, SurfaceLocation> current_touches; ///< Touches that have gotten a frame event
+    std::map<int, SurfaceLocation> pending_touches; ///< Touches that have gotten down or motion events without a frame
+    std::set<int> pending_up_touches; ///< Touches that have gotten up events without a frame
 
     std::vector<PointerEnterNotifier> enter_notifiers;
     std::vector<PointerLeaveNotifier> leave_notifiers;
@@ -1639,6 +1659,11 @@ std::pair<wl_fixed_t, wl_fixed_t> wlcs::Client::touch_position() const
 bool wlcs::Client::pointer_events_clean() const
 {
     return impl->pointer_events_clean();
+}
+
+bool wlcs::Client::touch_events_clean() const
+{
+    return impl->touch_events_clean();
 }
 
 void wlcs::Client::add_pointer_enter_notification(PointerEnterNotifier const& on_enter)

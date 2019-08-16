@@ -236,6 +236,7 @@ public:
     std::pair<wl_fixed_t, wl_fixed_t> pointer_position() const;
     std::pair<wl_fixed_t, wl_fixed_t> touch_position() const;
     bool pointer_events_clean() const; ///< If we have gotten a frame event since the last pointer event
+    bool touch_events_clean() const; ///< If we have gotten a frame event since the last touch event
 
     using PointerEnterNotifier =
         std::function<bool(wl_surface*, wl_fixed_t x, wl_fixed_t y)>;
