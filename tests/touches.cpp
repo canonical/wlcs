@@ -211,13 +211,29 @@ INSTANTIATE_TEST_CASE_P(
     TouchTest,
     testing::Values(
         TouchTestParams{
-            "subsurface",
+            "not_offset",
             [](wlcs::InProcessServer& server, wlcs::Client& client, int x, int y, int width, int height)
                 -> std::unique_ptr<wlcs::Surface>
                 {
                     auto main_surface = client.create_visible_surface(width, height);
                     server.the_server().move_surface_to(main_surface, x, y);
                     auto subusrface = wlcs::Subsurface::create_visible(main_surface, 0, 0, width, height);
+                    client.run_on_destruction(
+                        [main_surface = std::make_shared<wlcs::Surface>(std::move(main_surface))]() mutable
+                        {
+                            main_surface.reset();
+                        });
+                    return std::make_unique<wlcs::Surface>(std::move(subusrface));
+                }
+            },
+        TouchTestParams{
+            "is_offset",
+            [](wlcs::InProcessServer& server, wlcs::Client& client, int x, int y, int width, int height)
+                -> std::unique_ptr<wlcs::Surface>
+                {
+                    auto main_surface = client.create_visible_surface(width, height);
+                    server.the_server().move_surface_to(main_surface, x - 12, y - 17);
+                    auto subusrface = wlcs::Subsurface::create_visible(main_surface, 12, 17, width, height);
                     client.run_on_destruction(
                         [main_surface = std::make_shared<wlcs::Surface>(std::move(main_surface))]() mutable
                         {
