@@ -1,0 +1,19 @@
+commit a4b5f75f8d6289ae5ef46177c484cf313a50d8d3
+Author: Christopher James Halse Rogers <christopher.halse.rogers@canonical.com>
+Date:   Wed Aug 21 09:53:35 2019 +1000
+
+    Fix project version in CMake
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 5fd1d4d..b421139 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -21,7 +21,7 @@ cmake_minimum_required(VERSION 3.5)
+ cmake_policy(SET CMP0015 NEW)
+ cmake_policy(SET CMP0022 NEW)
+ 
+-project(wlcs VERSION 1.0.0)
++project(wlcs VERSION 1.1.0)
+ 
+ add_definitions(-D_GNU_SOURCE)
+ add_definitions(-D_FILE_OFFSET_BITS=64)
