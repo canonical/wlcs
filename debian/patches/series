@@ -1,2 +1,1 @@
 fix-cmake-version.patch
-fix-pkg-config-with-absolute-libexec-configured.patch
