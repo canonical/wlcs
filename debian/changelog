@@ -1,5 +1,10 @@
 wlcs (1.1.0-0ubuntu1) eoan; urgency=medium
 
   * Initial upload to Ubuntu
+  * debian/patches/fix-cmake-version.patch:
+    + Cherry pick fix for project version. This is 1.1.0, not 1.0.0!
+  * debian/patches/fix-pkg-config-with-absolute-libexec-configured.patch:
+    + Fix duplicate ${prefix} in wlcs.pc when manually specifying
+      CMAKE_INSTALL_LIBEXECDIR
 
  -- Christopher James Halse Rogers <raof@ubuntu.com>  Wed, 21 Aug 2019 12:08:38 +1000
