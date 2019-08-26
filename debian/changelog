@@ -1,10 +1,12 @@
-wlcs (1.1.0-0ubuntu2) UNRELEASED; urgency=medium
+wlcs (1.1.0-0ubuntu2) eoan; urgency=medium
 
   * debian/rules:
   * debian/patches/fix-pkg-config-with-absolute-libexec-configured.patch:
     + Drop, instead passing a relative CMAKE_INSTALL_LIBEXECDIR
+  * debian/copyright:
+    + Fix the paths of tests/xdg_*.cpp
 
- -- Christopher James Halse Rogers <raof@ubuntu.com>  Thu, 22 Aug 2019 16:30:49 +1000
+ -- Christopher James Halse Rogers <raof@ubuntu.com>  Mon, 26 Aug 2019 10:17:06 +1000
 
 wlcs (1.1.0-0ubuntu1) eoan; urgency=medium
 
