@@ -38,12 +38,12 @@ License: LGPL-2 or LGPL-3
 
 Files: tests/test_bad_buffer.cpp
  tests/test_surface_events.cpp
- xdg_popup_stable.cpp
- xdg_popup_v6.cpp
- xdg_surface_stable.cpp
- xdg_surface_v6.cpp
- xdg_toplevel_stable.cpp
- xdg_toplevel_v6.cpp
+ tests/xdg_popup_stable.cpp
+ tests/xdg_popup_v6.cpp
+ tests/xdg_surface_stable.cpp
+ tests/xdg_surface_v6.cpp
+ tests/xdg_toplevel_stable.cpp
+ tests/xdg_toplevel_v6.cpp
 Copyright: 2012 Intel Corporation
  2013 Collabora, Ltd.
  2017-2018 Canonical Ltd.
