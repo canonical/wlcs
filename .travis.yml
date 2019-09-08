@@ -39,13 +39,6 @@ env:
   - DEBFULLNAME="Mir CI Bot"
   - DEBEMAIL="mir-ci-bot@canonical.com"
   matrix:
-  - SYSTEM=ubuntu-16.04 VARIANT=gcc
-  - SYSTEM=ubuntu-18.04 VARIANT=gcc
-  - SYSTEM=ubuntu-19.04 VARIANT=gcc
-  - SYSTEM=ubuntu-devel VARIANT=gcc
-  - SYSTEM=ubuntu-devel VARIANT=clang
-  - SYSTEM=fedora-29 VARIANT=gcc
-  - SYSTEM=fedora-30 VARIANT=gcc
   - SYSTEM=alpine-3.10 VARIANT=gcc
 
 script:
