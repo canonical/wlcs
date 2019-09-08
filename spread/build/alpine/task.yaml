@@ -1,0 +1,15 @@
+summary: Build (on Alpine Linux)
+systems: [alpine-*]
+
+execute: |
+    apk add \
+        wayland-dev \
+        cmake \
+        boost-dev \
+        gtest-dev
+
+    cd $SPREAD_PATH
+    cd $(mktemp --directory)
+    cmake $SPREAD_PATH
+    make -j$(nproc)
+
