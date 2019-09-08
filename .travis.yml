@@ -46,6 +46,7 @@ env:
   - SYSTEM=ubuntu-devel VARIANT=clang
   - SYSTEM=fedora-29 VARIANT=gcc
   - SYSTEM=fedora-30 VARIANT=gcc
+  - SYSTEM=alpine-3.10 VARIANT=gcc
 
 script:
   - sg lxd -c 'LXD_DIR=/var/snap/lxd/common/lxd snap run spread lxd:$SYSTEM:...:$VARIANT'
