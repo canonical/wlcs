@@ -1,0 +1,22 @@
+summary: Build (on Alpine Linux)
+systems: [alpine-*]
+
+execute: |
+    apk add \
+        coreutils \
+        make \
+        g++ \
+        wayland-dev \
+        cmake \
+        boost-dev \
+        gtest-dev
+
+    cd $SPREAD_PATH
+    cd $(mktemp --directory)
+    # Alpine doesn't build gcc's libsanitizer
+    cmake $SPREAD_PATH \
+        -DWLCS_BUILD_ASAN=False \
+        -DWLCS_BUILD_TSAN=False \
+        -DWLCS_BUILD_UBSAN=False
+    make -j$(nproc)
+

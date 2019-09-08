@@ -29,9 +29,9 @@ stages:
 install:
   - sudo adduser $USER lxd
   - sudo apt remove --assume-yes lxd
-  - wget https://cooperteam.net/spread_2017.09.21_amd64.snap
+  - wget https://cooperteam.net/spread.snap
   - sudo snap run lxd init --auto
-  - sudo snap install --dangerous spread_2017.09.21_amd64.snap
+  - sudo snap install --dangerous spread.snap
   - sudo snap connect spread:lxd lxd:lxd
 
 env:
@@ -46,6 +46,7 @@ env:
   - SYSTEM=ubuntu-devel VARIANT=clang
   - SYSTEM=fedora-29 VARIANT=gcc
   - SYSTEM=fedora-30 VARIANT=gcc
+  - SYSTEM=alpine-3.10 VARIANT=gcc
 
 script:
   - sg lxd -c 'LXD_DIR=/var/snap/lxd/common/lxd snap run spread lxd:$SYSTEM:...:$VARIANT'
