@@ -1090,8 +1090,9 @@ private:
         auto me = static_cast<Impl*>(ctx);
 
         if (me->current_pointer_location && !me->pending_pointer_leave)
-            BOOST_THROW_EXCEPTION(std::logic_error(
-                "Pointer tried to enter a surface without first leaving the previous one"));
+            FAIL()
+                << "Pointer tried to enter surface " << surface
+                << " without first leaving surface " << me->current_pointer_location.value().surface;
 
         me->pending_pointer_location = SurfaceLocation{
             surface,
@@ -1108,13 +1109,13 @@ private:
         auto me = static_cast<Impl*>(ctx);
 
         if (!me->current_pointer_location)
-            BOOST_THROW_EXCEPTION(std::logic_error("Got wl_pointer.leave when the pointer was not on a surface"));
+            FAIL() << "Got wl_pointer.leave when the pointer was not on a surface";
 
-        // TODO: uncomment this and fix the issue it exposes in Mir (Mir is seding null surfaces)
-        /*
-        if (me->current_pointer_location.value().surface != surface)
-            BOOST_THROW_EXCEPTION(std::logic_error("Got wl_pointer.leave with the wrong surface"));
-        */
+//         TODO: uncomment this and fix the issue it exposes in Mir (Mir is seding null surfaces)
+//         if (me->current_pointer_location.value().surface != surface)
+//             FAIL()
+//                 << "Got wl_pointer.leave with surface " << surface
+//                 << " instead of " << me->current_pointer_location.value().surface;
 
         me->pending_pointer_location = std::experimental::nullopt;
         me->pending_pointer_leave = true;
@@ -1130,7 +1131,7 @@ private:
         auto me = static_cast<Impl*>(ctx);
 
         if (!me->current_pointer_location && !me->pending_pointer_location)
-            BOOST_THROW_EXCEPTION(std::logic_error("Got wl_pointer.motion when the pointer was not on a surface"));
+            FAIL() << "Got wl_pointer.motion when the pointer was not on a surface";
 
         if (!me->pending_pointer_location)
             me->pending_pointer_location = me->current_pointer_location;
@@ -1157,7 +1158,7 @@ private:
         if (me->pending_pointer_leave)
         {
             if (!me->current_pointer_location)
-                BOOST_THROW_EXCEPTION(std::logic_error("Pointer tried to leave when it was not on a surface"));
+                FAIL() << "Pointer tried to leave when it was not on a surface";
 
             wl_surface* old_surface = me->current_pointer_location.value().surface;
             me->current_pointer_location = std::experimental::nullopt;
@@ -1285,7 +1286,7 @@ private:
 
         auto touch = me->current_touches.find(id);
         if (touch != me->current_touches.end())
-            BOOST_THROW_EXCEPTION(std::logic_error("Got wl_touch.down with ID that is already down"));
+            FAIL() << "Got wl_touch.down with ID " << id << " which is already down";
 
         me->pending_touches[id] = SurfaceLocation {
             surface,
@@ -1304,7 +1305,7 @@ private:
 
         auto touch = me->current_touches.find(id);
         if (touch == me->current_touches.end())
-            BOOST_THROW_EXCEPTION(std::logic_error("Got wl_touch.up with unknown ID"));
+            FAIL() << "Got wl_touch.up with unknown ID " << id;
 
         me->pending_up_touches.insert(id);
     }
@@ -1321,7 +1322,7 @@ private:
 
         auto touch = me->current_touches.find(id);
         if (touch == me->current_touches.end())
-            BOOST_THROW_EXCEPTION(std::logic_error("Got wl_touch.motion with unknown ID"));
+            FAIL() << "Got wl_touch.up with unknown ID " << id;
 
         me->pending_touches[id] = SurfaceLocation {
             touch->second.surface,
