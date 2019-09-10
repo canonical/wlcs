@@ -1104,18 +1104,18 @@ private:
         void* ctx,
         wl_pointer* /*pointer*/,
         uint32_t /*serial*/,
-        wl_surface* /*surface*/)
+        wl_surface* surface)
     {
         auto me = static_cast<Impl*>(ctx);
 
         if (!me->current_pointer_location)
             FAIL() << "Got wl_pointer.leave when the pointer was not on a surface";
 
-//         TODO: uncomment this and fix the issue it exposes in Mir (Mir is seding null surfaces)
-//         if (me->current_pointer_location.value().surface != surface)
-//             FAIL()
-//                 << "Got wl_pointer.leave with surface " << surface
-//                 << " instead of " << me->current_pointer_location.value().surface;
+        // the surface should never be null along the wire, but may come out as null if it's been destroyed
+        if (surface != nullptr && surface != me->current_pointer_location.value().surface)
+            FAIL()
+                << "Got wl_pointer.leave with surface " << surface
+                << " instead of " << me->current_pointer_location.value().surface;
 
         me->pending_pointer_location = std::experimental::nullopt;
         me->pending_pointer_leave = true;
