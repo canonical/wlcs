@@ -1,0 +1,27 @@
+#!/bin/sh
+
+set -e
+
+while [ -n $1 ]
+do
+    case $1 in
+        clang)
+            use_clang=1
+            ;;
+    esac
+    shift
+done
+
+add-apt-repository ppa:mir-team/dev
+apt update
+apt install --yes --no-install-recommends devscripts dpkg-dev equivs
+
+mk-build-deps \
+    --install \
+    --tool "apt --yes -o Debug::pkgProblemResolver=yes"
+
+if [ -n $use_clang ]
+then
+    apt install --yes --no-recommends clang
+fi
+

@@ -1,0 +1,15 @@
+#!/bin/sh
+
+set -e
+
+while [ -n $1 ]
+do
+    case $1 in
+        clang)
+            BUILDENV="$BUILDENV CC=clang CXX=clang++"
+            ;;
+    esac
+    shift
+done
+
+env $BUILDENV debian/rules build

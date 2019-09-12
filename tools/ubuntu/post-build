@@ -1,0 +1,8 @@
+#!/bin/sh
+
+set -e
+
+MULTIARCH_LIBDIR=lib/$(dpkg-architecture -qDEB_HOST_MULTIARCH)
+
+debian/wlcs/usr/$MULTIARCH_LIBDIR/wlcs/wlcs \
+    /usr/$MULTIARCH_LIBDIR/mir/miral_wlcs_integration.so
