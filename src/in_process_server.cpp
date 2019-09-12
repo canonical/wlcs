@@ -816,6 +816,8 @@ public:
 
     wl_surface* focused_window() const
     {
+        if (pointer_events_pending())
+            BOOST_THROW_EXCEPTION(std::runtime_error("Pointer events pending"));
         if (current_pointer_location)
         {
             return current_pointer_location->surface;
@@ -825,6 +827,8 @@ public:
 
     wl_surface* touched_window() const
     {
+        if (touch_events_pending())
+            BOOST_THROW_EXCEPTION(std::runtime_error("Touch events pending"));
         wl_surface* surface = nullptr;
         for (auto const& touch : current_touches)
         {
@@ -838,11 +842,15 @@ public:
 
     std::pair<wl_fixed_t, wl_fixed_t> pointer_position() const
     {
+        if (pointer_events_pending())
+            BOOST_THROW_EXCEPTION(std::runtime_error("Pointer events pending"));
         return current_pointer_location.value().coordinates;
     };
 
     std::pair<wl_fixed_t, wl_fixed_t> touch_position() const
     {
+        if (touch_events_pending())
+            BOOST_THROW_EXCEPTION(std::runtime_error("Touch events pending"));
         if (current_touches.empty())
             BOOST_THROW_EXCEPTION(std::runtime_error("No touches"));
         else if (current_touches.size() == 1)
@@ -850,6 +858,16 @@ public:
         else
             BOOST_THROW_EXCEPTION(std::runtime_error("More than one touches"));
     };
+
+    bool pointer_events_pending() const
+    {
+        return !pending_buttons.empty() || pending_pointer_location;
+    }
+
+    bool touch_events_pending() const
+    {
+        return !pending_touches.empty() || !pending_up_touches.empty();
+    }
 
     void add_pointer_enter_notification(PointerEnterNotifier const& on_enter)
     {
