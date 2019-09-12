@@ -829,7 +829,7 @@ public:
         for (auto const& touch : current_touches)
         {
             if (surface && touch.second.surface != surface)
-                BOOST_THROW_EXCEPTION(std::logic_error("touched_window() when multiple surfaces have active touches"));
+                BOOST_THROW_EXCEPTION(std::runtime_error("Multiple surfaces have active touches"));
             else
                 surface = touch.second.surface;
         }
@@ -844,11 +844,11 @@ public:
     std::pair<wl_fixed_t, wl_fixed_t> touch_position() const
     {
         if (current_touches.empty())
-            BOOST_THROW_EXCEPTION(std::logic_error("touch_position() when there are no touches"));
+            BOOST_THROW_EXCEPTION(std::runtime_error("No touches"));
         else if (current_touches.size() == 1)
             return current_touches.begin()->second.coordinates;
         else
-            BOOST_THROW_EXCEPTION(std::logic_error("touch_position() when there are more than 1 touches"));
+            BOOST_THROW_EXCEPTION(std::runtime_error("More than one touches"));
     };
 
     void add_pointer_enter_notification(PointerEnterNotifier const& on_enter)
