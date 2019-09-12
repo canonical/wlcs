@@ -851,16 +851,6 @@ public:
             BOOST_THROW_EXCEPTION(std::logic_error("touch_position() when there are more than 1 touches"));
     };
 
-    bool pointer_events_clean() const
-    {
-        return pending_buttons.empty() && !pending_pointer_location;
-    }
-
-    bool touch_events_clean() const
-    {
-        return pending_touches.empty() && pending_up_touches.empty();
-    }
-
     void add_pointer_enter_notification(PointerEnterNotifier const& on_enter)
     {
         enter_notifiers.push_back(on_enter);
@@ -1656,16 +1646,6 @@ std::pair<wl_fixed_t, wl_fixed_t> wlcs::Client::pointer_position() const
 std::pair<wl_fixed_t, wl_fixed_t> wlcs::Client::touch_position() const
 {
     return impl->touch_position();
-}
-
-bool wlcs::Client::pointer_events_clean() const
-{
-    return impl->pointer_events_clean();
-}
-
-bool wlcs::Client::touch_events_clean() const
-{
-    return impl->touch_events_clean();
 }
 
 void wlcs::Client::add_pointer_enter_notification(PointerEnterNotifier const& on_enter)
