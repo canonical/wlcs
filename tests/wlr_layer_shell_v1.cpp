@@ -375,6 +375,39 @@ TEST_P(LayerSurfaceAnchorTest, is_initially_positioned_correctly_for_anchor)
     expect_surface_is_at_position(rect.first);
 }
 
+TEST_P(LayerSurfaceAnchorTest, is_positioned_correctly_when_buffer_size_changed)
+{
+    auto const anchor = GetParam();
+    int const initial_width{52}, initial_height{74};
+
+    zwlr_layer_surface_v1_set_anchor(layer_surface, anchor);
+    commit_and_wait_for_configure();
+
+    surface.attach_visible_buffer(initial_width, initial_height);
+
+    auto rect = anchor.placement_rect(output_rect());
+    surface.attach_visible_buffer(rect.second.first, rect.second.second);
+    expect_surface_is_at_position(rect.first);
+}
+
+TEST_P(LayerSurfaceAnchorTest, is_positioned_correctly_when_explicit_size_does_not_match_buffer_size)
+{
+    auto const anchor = GetParam();
+    int const initial_width{52}, initial_height{74};
+
+    zwlr_layer_surface_v1_set_anchor(layer_surface, anchor);
+    commit_and_wait_for_configure();
+
+    surface.attach_visible_buffer(initial_width, initial_height);
+
+    auto rect = anchor.placement_rect(output_rect());
+    zwlr_layer_surface_v1_set_size(layer_surface, rect.second.first, rect.second.second);
+    wl_surface_commit(surface);
+    client.roundtrip();
+
+    expect_surface_is_at_position(rect.first);
+}
+
 TEST_P(LayerSurfaceAnchorTest, is_positioned_correctly_when_anchor_changed)
 {
     commit_and_wait_for_configure();
