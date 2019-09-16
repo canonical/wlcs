@@ -60,7 +60,7 @@ public:
         pointer.move_to(pos.first + 2, pos.second + 3);
         client.roundtrip();
 
-        EXPECT_THAT(client.focused_window(), Eq((wl_surface*)surface));
+        EXPECT_THAT(client.window_under_cursor(), Eq((wl_surface*)surface));
         EXPECT_THAT(wl_fixed_to_int(client.pointer_position().first), Eq(2));
         EXPECT_THAT(wl_fixed_to_int(client.pointer_position().second), Eq(3));
     }
@@ -532,7 +532,7 @@ TEST_P(LayerSurfaceLayerTest, surface_on_lower_layer_is_initially_placed_below)
     pointer.move_to(1, 1);
     client.roundtrip();
 
-    ASSERT_THAT(client.focused_window(), Eq((wl_surface*)below.surface))
+    ASSERT_THAT(client.window_under_cursor(), Eq((wl_surface*)below.surface))
         << "Test could not run because below surface was not detected when above surface was not in the way";
 
     the_server().move_surface_to(above.surface, 0, 0);
@@ -541,9 +541,9 @@ TEST_P(LayerSurfaceLayerTest, surface_on_lower_layer_is_initially_placed_below)
     pointer.move_to(2, 3);
     client.roundtrip();
 
-    ASSERT_THAT(client.focused_window(), Ne((wl_surface*)below.surface))
+    ASSERT_THAT(client.window_under_cursor(), Ne((wl_surface*)below.surface))
         << "Wrong wurface was on top";
-    ASSERT_THAT(client.focused_window(), Eq((wl_surface*)above.surface))
+    ASSERT_THAT(client.window_under_cursor(), Eq((wl_surface*)above.surface))
         << "Correct surface was not on top";
 }
 
@@ -561,7 +561,7 @@ TEST_P(LayerSurfaceLayerTest, below_surface_can_not_be_raised_with_click)
     pointer.move_to(1, 1);
     client.roundtrip();
 
-    ASSERT_THAT(client.focused_window(), Eq((wl_surface*)below.surface))
+    ASSERT_THAT(client.window_under_cursor(), Eq((wl_surface*)below.surface))
         << "Test could not run because below surface was not detected and clicked on";
 
     pointer.left_button_down();
@@ -571,9 +571,9 @@ TEST_P(LayerSurfaceLayerTest, below_surface_can_not_be_raised_with_click)
     pointer.move_to(width / 2 + 2, 1);
     client.roundtrip();
 
-    ASSERT_THAT(client.focused_window(), Ne((wl_surface*)below.surface))
+    ASSERT_THAT(client.window_under_cursor(), Ne((wl_surface*)below.surface))
         << "Wrong wurface was on top";
-    ASSERT_THAT(client.focused_window(), Eq((wl_surface*)above.surface))
+    ASSERT_THAT(client.window_under_cursor(), Eq((wl_surface*)above.surface))
         << "Correct surface was not on top";
 }
 

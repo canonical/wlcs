@@ -50,7 +50,7 @@ struct PointerInputDevice : AbstractInputDevice
 
     wl_surface* focused_window() override
     {
-        return client.focused_window();
+        return client.window_under_cursor();
     }
 
     std::pair<wl_fixed_t, wl_fixed_t> position_on_window() override

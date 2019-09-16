@@ -120,7 +120,7 @@ TEST_F(XdgToplevelStableTest, pointer_respects_window_geom_offset)
     pointer.move_to(pointer_x, pointer_y);
     client.roundtrip();
 
-    ASSERT_THAT(client.focused_window(), Eq((wl_surface*)window.surface));
+    ASSERT_THAT(client.window_under_cursor(), Eq((wl_surface*)window.surface));
     ASSERT_THAT(client.pointer_position(),
                 Ne(std::make_pair(
                     wl_fixed_from_int(pointer_x - window_pos_x),
@@ -213,7 +213,7 @@ TEST_F(XdgToplevelStableTest, interactive_move)
     pointer.move_to(end_x, end_y);
     client.roundtrip();
 
-    EXPECT_THAT(client.focused_window(), Eq(static_cast<struct wl_surface*>(surface)));
+    EXPECT_THAT(client.window_under_cursor(), Eq(static_cast<struct wl_surface*>(surface)));
     EXPECT_THAT(client.pointer_position(),
                 Eq(std::make_pair(
                     wl_fixed_from_int(end_x - window_x - dx),

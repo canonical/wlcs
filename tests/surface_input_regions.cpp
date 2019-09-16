@@ -105,13 +105,13 @@ TEST_P(SurfaceWithInputRegions, pointer_seen_entering_and_leaving_input_region)
     pointer.move_to(top_left_x + params.initial_x, top_left_y + params.initial_y);
     client.roundtrip();
 
-    EXPECT_THAT(client.focused_window(), Ne(wl_surface))
+    EXPECT_THAT(client.window_under_cursor(), Ne(wl_surface))
         << "pointer over surface when it should have been outside input region";
 
     pointer.move_by(params.dx, params.dy);
     client.roundtrip();
 
-    ASSERT_THAT(client.focused_window(), Eq(wl_surface))
+    ASSERT_THAT(client.window_under_cursor(), Eq(wl_surface))
         << "pointer not over surface when it should have been in input region";
     EXPECT_THAT(client.pointer_position(),
                 Eq(std::make_pair(
@@ -122,7 +122,7 @@ TEST_P(SurfaceWithInputRegions, pointer_seen_entering_and_leaving_input_region)
     pointer.move_by(-params.dx, -params.dy);
     client.roundtrip();
 
-    EXPECT_THAT(client.focused_window(), Ne(wl_surface))
+    EXPECT_THAT(client.window_under_cursor(), Ne(wl_surface))
         << "pointer over surface when it should have been outside input region";
 }
 
@@ -340,13 +340,13 @@ TEST_P(SurfaceTypesWithInputRegion, pointer_seen_entering_and_leaving_input_regi
     pointer.move_to(top_left_x + params.initial_x, top_left_y + params.initial_y);
     client.roundtrip();
 
-    EXPECT_THAT(client.focused_window(), Ne(wl_surface))
+    EXPECT_THAT(client.window_under_cursor(), Ne(wl_surface))
         << "pointer over surface when it should have been outside input region";
 
     pointer.move_by(params.dx, params.dy);
     client.roundtrip();
 
-    ASSERT_THAT(client.focused_window(), Eq(wl_surface))
+    ASSERT_THAT(client.window_under_cursor(), Eq(wl_surface))
         << "pointer not over surface when it should have been in input region";
     EXPECT_THAT(client.pointer_position(),
                 Eq(std::make_pair(
@@ -357,7 +357,7 @@ TEST_P(SurfaceTypesWithInputRegion, pointer_seen_entering_and_leaving_input_regi
     pointer.move_by(-params.dx, -params.dy);
     client.roundtrip();
 
-    EXPECT_THAT(client.focused_window(), Ne(wl_surface))
+    EXPECT_THAT(client.window_under_cursor(), Ne(wl_surface))
         << "pointer over surface when it should have been outside input region";
 }
 

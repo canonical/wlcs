@@ -205,14 +205,14 @@ TEST_P(SurfacePointerMotionTest, pointer_movement)
 
     client.roundtrip();
 
-    EXPECT_THAT(client.focused_window(), Ne(wl_surface));
+    EXPECT_THAT(client.window_under_cursor(), Ne(wl_surface));
 
     /* move pointer; it should now be inside the surface */
     pointer.move_by(params.dx, params.dy);
 
     client.roundtrip();
 
-    EXPECT_THAT(client.focused_window(), Eq(wl_surface));
+    EXPECT_THAT(client.window_under_cursor(), Eq(wl_surface));
     EXPECT_THAT(client.pointer_position(),
                 Eq(std::make_pair(
                     wl_fixed_from_int(params.initial_x + params.dx),
@@ -222,7 +222,7 @@ TEST_P(SurfacePointerMotionTest, pointer_movement)
     pointer.move_by(-params.dx, -params.dy);
 
     client.roundtrip();
-    EXPECT_THAT(client.focused_window(), Ne(wl_surface));
+    EXPECT_THAT(client.window_under_cursor(), Ne(wl_surface));
 }
 
 INSTANTIATE_TEST_CASE_P(
@@ -274,7 +274,7 @@ TEST_F(ClientSurfaceEventsTest, surface_moves_under_pointer)
 
     client.roundtrip();
 
-    EXPECT_THAT(client.focused_window(), Ne(wl_surface));
+    EXPECT_THAT(client.window_under_cursor(), Ne(wl_surface));
 
     /* move the surface so that it is under the pointer */
     the_server().move_surface_to(surface, 450, 450);
@@ -282,10 +282,10 @@ TEST_F(ClientSurfaceEventsTest, surface_moves_under_pointer)
     client.dispatch_until(
         [wl_surface, &client]()
         {
-            return client.focused_window() == wl_surface;
+            return client.window_under_cursor() == wl_surface;
         });
 
-    EXPECT_THAT(client.focused_window(), Eq(wl_surface));
+    EXPECT_THAT(client.window_under_cursor(), Eq(wl_surface));
     EXPECT_THAT(client.pointer_position(),
                 Eq(std::make_pair(
                     wl_fixed_from_int(50),
@@ -383,7 +383,7 @@ TEST_F(ClientSurfaceEventsTest, surface_resizes_under_pointer)
 
     client.roundtrip();
 
-    ASSERT_THAT(client.focused_window(), Ne(static_cast<wl_surface*>(surface)));
+    ASSERT_THAT(client.window_under_cursor(), Ne(static_cast<wl_surface*>(surface)));
 
     bool surface_entered{false};
     client.add_pointer_enter_notification(
@@ -451,7 +451,7 @@ TEST_F(ClientSurfaceEventsTest, surface_moves_while_under_pointer)
     client.dispatch_until(
         [&client, &surface]()
         {
-            if (client.focused_window() == surface)
+            if (client.window_under_cursor() == surface)
             {
                 EXPECT_THAT(client.pointer_position().first, Eq(wl_fixed_from_int(50)));
                 EXPECT_THAT(client.pointer_position().second, Eq(wl_fixed_from_int(50)));

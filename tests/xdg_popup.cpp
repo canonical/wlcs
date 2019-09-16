@@ -643,7 +643,7 @@ TEST_P(XdgPopupTest, pointer_focus_goes_to_popup)
     pointer.move_to(manager->window_x + 1, manager->window_y + 1);
     manager->client.roundtrip();
 
-    EXPECT_THAT(manager->client.focused_window(), Eq((wl_surface*)manager->surface));
+    EXPECT_THAT(manager->client.window_under_cursor(), Eq((wl_surface*)manager->surface));
 
     auto positioner = PositionerParams{}
         .with_size(30, 30)
@@ -655,7 +655,7 @@ TEST_P(XdgPopupTest, pointer_focus_goes_to_popup)
     pointer.move_to(manager->window_x + 2, manager->window_y + 1);
     manager->client.roundtrip();
 
-    EXPECT_THAT(manager->client.focused_window(), Eq((wl_surface*)manager->popup_surface.value()));
+    EXPECT_THAT(manager->client.window_under_cursor(), Eq((wl_surface*)manager->popup_surface.value()));
 }
 
 TEST_P(XdgPopupTest, popup_gives_up_pointer_focus_when_gone)
@@ -674,14 +674,14 @@ TEST_P(XdgPopupTest, popup_gives_up_pointer_focus_when_gone)
     pointer.move_to(manager->window_x + 2, manager->window_y + 1);
     manager->client.roundtrip();
 
-    EXPECT_THAT(manager->client.focused_window(), Eq((wl_surface*)manager->popup_surface.value()));
+    EXPECT_THAT(manager->client.window_under_cursor(), Eq((wl_surface*)manager->popup_surface.value()));
 
     manager->unmap_popup();
     manager->client.roundtrip();
     pointer.move_to(manager->window_x + 3, manager->window_y + 1);
     manager->client.roundtrip();
 
-    EXPECT_THAT(manager->client.focused_window(), Eq((wl_surface*)manager->surface));
+    EXPECT_THAT(manager->client.window_under_cursor(), Eq((wl_surface*)manager->surface));
 }
 
 TEST_F(XdgPopupTest, zero_size_anchor_rect_stable)
