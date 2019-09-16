@@ -18,6 +18,7 @@
 
 #include "helpers.h"
 #include "in_process_server.h"
+#include "xdg_shell_stable.h"
 
 #include <gmock/gmock.h>
 
@@ -195,15 +196,45 @@ INSTANTIATE_TEST_CASE_P(
     TouchTest,
     testing::Values(
         TouchTestParams{
-            "xdg_stable_surface",
+            "window_geom_unset",
             [](wlcs::InProcessServer& server, wlcs::Client& client, int x, int y, int width, int height)
                 -> std::unique_ptr<wlcs::Surface>
                 {
-                    auto surface = client.create_xdg_shell_stable_surface(width, height);
-                    server.the_server().move_surface_to(surface, x, y);
-                    return std::make_unique<wlcs::Surface>(std::move(surface));;
+                    auto surface = std::make_unique<wlcs::Surface>(client);
+                    auto xdg_surface = std::make_shared<wlcs::XdgSurfaceStable>(client, *surface);
+                    auto xdg_toplevel = std::make_shared<wlcs::XdgToplevelStable>(*xdg_surface);
+                    surface->attach_visible_buffer(width, height);
+                    client.run_on_destruction(
+                        [xdg_surface, xdg_toplevel]() mutable
+                        {
+                            xdg_toplevel.reset();
+                            xdg_surface.reset();
+                        });
+                    server.the_server().move_surface_to(*surface, x, y);
+                    return surface;
+                }
+            },
+        TouchTestParams{
+            "window_geom_set",
+            [](wlcs::InProcessServer& server, wlcs::Client& client, int x, int y, int width, int height)
+                -> std::unique_ptr<wlcs::Surface>
+                {
+                    auto surface = std::make_unique<wlcs::Surface>(client);
+                    auto xdg_surface = std::make_shared<wlcs::XdgSurfaceStable>(client, *surface);
+                    auto xdg_toplevel = std::make_shared<wlcs::XdgToplevelStable>(*xdg_surface);
+                    xdg_surface_set_window_geometry(*xdg_surface, 20, 15, width - 25, height - 4);
+                    surface->attach_visible_buffer(width, height);
+                    client.run_on_destruction(
+                        [xdg_surface, xdg_toplevel]() mutable
+                        {
+                            xdg_toplevel.reset();
+                            xdg_surface.reset();
+                        });
+                    server.the_server().move_surface_to(*surface, x + 20, y + 15);
+                    return surface;
                 }
             }
+        // TODO: Add popup test
     ));
 
 INSTANTIATE_TEST_CASE_P(
@@ -211,13 +242,29 @@ INSTANTIATE_TEST_CASE_P(
     TouchTest,
     testing::Values(
         TouchTestParams{
-            "subsurface",
+            "not_offset",
             [](wlcs::InProcessServer& server, wlcs::Client& client, int x, int y, int width, int height)
                 -> std::unique_ptr<wlcs::Surface>
                 {
                     auto main_surface = client.create_visible_surface(width, height);
                     server.the_server().move_surface_to(main_surface, x, y);
                     auto subusrface = wlcs::Subsurface::create_visible(main_surface, 0, 0, width, height);
+                    client.run_on_destruction(
+                        [main_surface = std::make_shared<wlcs::Surface>(std::move(main_surface))]() mutable
+                        {
+                            main_surface.reset();
+                        });
+                    return std::make_unique<wlcs::Surface>(std::move(subusrface));
+                }
+            },
+        TouchTestParams{
+            "is_offset",
+            [](wlcs::InProcessServer& server, wlcs::Client& client, int x, int y, int width, int height)
+                -> std::unique_ptr<wlcs::Surface>
+                {
+                    auto main_surface = client.create_visible_surface(width, height);
+                    server.the_server().move_surface_to(main_surface, x - 12, y - 17);
+                    auto subusrface = wlcs::Subsurface::create_visible(main_surface, 12, 17, width, height);
                     client.run_on_destruction(
                         [main_surface = std::make_shared<wlcs::Surface>(std::move(main_surface))]() mutable
                         {
