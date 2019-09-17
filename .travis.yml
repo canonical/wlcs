@@ -29,7 +29,7 @@ stages:
 install:
   - sudo adduser $USER lxd
   - sudo apt remove --assume-yes lxd
-  - wget https://cooperteam.net/spread.snap
+  - wget https://people.canonical.com/~chrishr/spread.snap
   - sudo snap run lxd init --auto
   - sudo snap install --dangerous spread.snap
   - sudo snap connect spread:lxd lxd:lxd
