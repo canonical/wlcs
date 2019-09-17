@@ -814,7 +814,7 @@ public:
                 "Consider using CheckInterfaceExpected to disable this test when protocol not suppoeted"});
     }
 
-    wl_surface* focused_window() const
+    wl_surface* window_under_cursor() const
     {
         if (pointer_events_pending())
             BOOST_THROW_EXCEPTION(std::runtime_error("Pointer events pending"));
@@ -1646,9 +1646,9 @@ zwlr_layer_shell_v1* wlcs::Client::layer_shell_v1() const
     return impl->the_layer_shell_v1();
 }
 
-wl_surface* wlcs::Client::focused_window() const
+wl_surface* wlcs::Client::window_under_cursor() const
 {
-    return impl->focused_window();
+    return impl->window_under_cursor();
 }
 
 wl_surface* wlcs::Client::touched_window() const
