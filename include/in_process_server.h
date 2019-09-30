@@ -226,6 +226,7 @@ public:
 
     size_t output_count() const;
     OutputState output_state(size_t index) const;
+    void release_output(size_t index);
 
     wl_shell* shell() const;
     zxdg_shell_v6* xdg_shell_v6() const;
