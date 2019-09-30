@@ -39,3 +39,15 @@ TEST_F(WlOutputTest, wl_output_properties_set)
     EXPECT_THAT((bool)output.mode_size, Eq(true));
     EXPECT_THAT((bool)output.scale, Eq(true));
 }
+
+TEST_F(WlOutputTest, wl_output_release)
+{
+    wlcs::Client client{the_server()};
+
+    // Skip test if compositor doesn't support a new enough wl_output version
+    client.acquire_interface(wl_output_interface.name, &wl_output_interface, WL_OUTPUT_RELEASE_SINCE_VERSION);
+
+    ASSERT_THAT(client.output_count(), Ge(1u));
+    client.release_output(0);
+    client.roundtrip();
+}
