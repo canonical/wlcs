@@ -1621,7 +1621,7 @@ size_t wlcs::Client::output_count() const
 wlcs::OutputState wlcs::Client::output_state(size_t index) const
 {
     if (index > output_count())
-        throw std::runtime_error("Invalid output index");
+        throw std::out_of_range("Invalid output index");
 
     return impl->outputs[index]->current;
 }
@@ -1629,11 +1629,11 @@ wlcs::OutputState wlcs::Client::output_state(size_t index) const
 void wlcs::Client::release_output(size_t index)
 {
     if (index > output_count())
-        throw std::runtime_error("Invalid output index");
+        throw std::out_of_range("Invalid output index");
 
     auto const version = wl_output_get_version(impl->outputs[index]->current.output);
     if (version < WL_OUTPUT_RELEASE_SINCE_VERSION)
-        throw std::runtime_error("Output version " + std::to_string(version) + " too low to support .release");
+        throw std::logic_error("Output version " + std::to_string(version) + " too low to support .release");
 
     wl_output_release(impl->outputs[index]->current.output);
     impl->outputs.erase(impl->outputs.begin() + index);
