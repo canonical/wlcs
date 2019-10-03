@@ -29,6 +29,7 @@
 #include "generated/wayland-client.h"
 #include "generated/xdg-shell-unstable-v6-client.h"
 #include "generated/xdg-shell-client.h"
+#include "generated/xdg-output-unstable-v1-client.h"
 
 #include "linux/input.h"
 #include <boost/throw_exception.hpp>
@@ -668,6 +669,7 @@ public:
         if (xdg_shell_v6) zxdg_shell_v6_destroy(xdg_shell_v6);
         if (xdg_shell_stable) xdg_wm_base_destroy(xdg_shell_stable);
         if (layer_shell_v1) zwlr_layer_shell_v1_destroy(layer_shell_v1);
+        if (xdg_output_manager_v1) zxdg_output_manager_v1_destroy(xdg_output_manager_v1);
         for (auto const& output: outputs)
             wl_output_destroy(output->current.output);
         for (auto callback: destruction_callbacks)
@@ -811,6 +813,16 @@ public:
         else
             BOOST_THROW_EXCEPTION(std::runtime_error{
                 "zwlr_layer_shell_v1 not supported by server; "
+                "Consider using CheckInterfaceExpected to disable this test when protocol not suppoeted"});
+    }
+
+    zxdg_output_manager_v1* the_xdg_output_manager_v1() const
+    {
+        if (xdg_output_manager_v1)
+            return xdg_output_manager_v1;
+        else
+            BOOST_THROW_EXCEPTION(std::runtime_error{
+                "xdg_output_manager_v1 not supported by server; "
                 "Consider using CheckInterfaceExpected to disable this test when protocol not suppoeted"});
     }
 
@@ -1480,6 +1492,11 @@ private:
             me->layer_shell_v1 = static_cast<struct zwlr_layer_shell_v1*>(
                 wl_registry_bind(registry, id, &zwlr_layer_shell_v1_interface, version));
         }
+        else if ("zxdg_output_manager_v1"s == interface)
+        {
+            me->xdg_output_manager_v1 = static_cast<struct zxdg_output_manager_v1*>(
+                wl_registry_bind(registry, id, &zxdg_output_manager_v1_interface, version));
+        }
     }
 
     static void global_removed(void*, wl_registry*, uint32_t)
@@ -1510,6 +1527,7 @@ private:
     struct zwlr_layer_shell_v1* layer_shell_v1 = nullptr;
     struct zwp_primary_selection_device_manager_v1* primary_selection_device_manager = nullptr;
     struct gtk_primary_selection_device_manager* gtk_primary_selection_device_manager_ = nullptr;
+    struct zxdg_output_manager_v1* xdg_output_manager_v1 = nullptr;
 
     struct SurfaceLocation
     {
@@ -1644,6 +1662,11 @@ xdg_wm_base* wlcs::Client::xdg_shell_stable() const
 zwlr_layer_shell_v1* wlcs::Client::layer_shell_v1() const
 {
     return impl->the_layer_shell_v1();
+}
+
+zxdg_output_manager_v1* wlcs::Client::xdg_output_manager_v1() const
+{
+    return impl->the_xdg_output_manager_v1();
 }
 
 wl_surface* wlcs::Client::window_under_cursor() const
