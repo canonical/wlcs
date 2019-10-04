@@ -131,6 +131,7 @@ set(
   include/primary_selection.h
   include/xdg_shell_v6.h
   include/xdg_shell_stable.h
+  include/xdg_output_v1.h
 
   src/data_device.cpp
   src/gtk_primary_selection.cpp
@@ -146,6 +147,7 @@ set(
   src/xfail_supporting_test_listener.cpp
   src/termcolor.hpp
   src/thread_proxy.h
+  src/xdg_output_v1.cpp
 
   ${PROTOCOL_SOURCES}
 
