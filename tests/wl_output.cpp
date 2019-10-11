@@ -44,10 +44,9 @@ TEST_F(WlOutputTest, wl_output_release)
 {
     wlcs::Client client{the_server()};
 
-    // Skip test if compositor doesn't support a new enough wl_output version
-    client.acquire_interface(wl_output_interface.name, &wl_output_interface, WL_OUTPUT_RELEASE_SINCE_VERSION);
-
-    ASSERT_THAT(client.output_count(), Ge(1u));
-    client.release_output(0);
+    // Acquire *any* wl_output; we don't care which
+    auto output = static_cast<wl_output*>(client.acquire_interface(wl_output_interface.name, &wl_output_interface, WL_OUTPUT_RELEASE_SINCE_VERSION));
+    client.roundtrip();
+    wl_output_release(output);
     client.roundtrip();
 }
