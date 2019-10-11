@@ -29,6 +29,20 @@
 namespace wlcs
 {
 
+class XdgOutputManagerV1
+{
+public:
+    XdgOutputManagerV1(Client& client);
+    ~XdgOutputManagerV1();
+
+    operator zxdg_output_manager_v1*() const;
+    auto client() const -> Client&;
+
+private:
+    struct Impl;
+    std::unique_ptr<Impl> const impl;
+};
+
 class XdgOutputV1
 {
 public:
@@ -40,7 +54,7 @@ public:
         std::experimental::optional<std::string> description;
     };
 
-    XdgOutputV1(Client& client, size_t output_index);
+    XdgOutputV1(XdgOutputManagerV1& manager, size_t output_index);
 
     XdgOutputV1(XdgOutputV1 const&) = delete;
     XdgOutputV1 const& operator=(XdgOutputV1 const&) = delete;

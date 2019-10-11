@@ -34,10 +34,10 @@ private:
 TEST_F(XdgOutputV1Test, xdg_output_properties_set)
 {
     Client client{the_server()};
-
     ASSERT_THAT(client.output_count(), Ge(1u));
 
-    XdgOutputV1 xdg_output{client, 0};
+    XdgOutputManagerV1 xdg_output_manager{client};
+    XdgOutputV1 xdg_output{xdg_output_manager, 0};
     client.roundtrip();
 
     auto const& state = xdg_output.state();

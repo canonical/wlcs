@@ -19,12 +19,50 @@
 #include "xdg_output_v1.h"
 #include <boost/throw_exception.hpp>
 
+struct wlcs::XdgOutputManagerV1::Impl
+{
+    Impl(Client& client)
+        : client{client},
+          manager{static_cast<struct zxdg_output_manager_v1*>(
+              client.acquire_interface(
+                  zxdg_output_manager_v1_interface.name,
+                  &zxdg_output_manager_v1_interface,
+                  zxdg_output_manager_v1_interface.version))}
+    {
+    }
+
+    ~Impl()
+    {
+        zxdg_output_manager_v1_destroy(manager);
+    }
+
+    Client& client;
+    zxdg_output_manager_v1* const manager;
+};
+
+wlcs::XdgOutputManagerV1::XdgOutputManagerV1(Client& client)
+    : impl{std::make_unique<Impl>(client)}
+{
+}
+
+wlcs::XdgOutputManagerV1::~XdgOutputManagerV1() = default;
+
+wlcs::XdgOutputManagerV1::operator zxdg_output_manager_v1*() const
+{
+    return impl->manager;
+}
+
+auto wlcs::XdgOutputManagerV1::client() const -> Client&
+{
+    return impl->client;
+}
+
 struct wlcs::XdgOutputV1::Impl
 {
-    Impl(Client& client, size_t output_index)
+    Impl(XdgOutputManagerV1& manager, size_t output_index)
         : output{zxdg_output_manager_v1_get_xdg_output(
-              client.xdg_output_manager_v1(),
-              client.output_state(output_index).output)},
+              manager,
+              manager.client().output_state(output_index).output)},
           version{zxdg_output_v1_get_version(output)}
     {
         zxdg_output_v1_add_listener(output, &Impl::listener, this);
@@ -81,12 +119,12 @@ zxdg_output_v1_listener const wlcs::XdgOutputV1::Impl::listener = {
     },
 };
 
-wlcs::XdgOutputV1::XdgOutputV1(Client& client, size_t output_index)
-    : impl{std::make_shared<Impl>(client, output_index)}
+wlcs::XdgOutputV1::XdgOutputV1(XdgOutputManagerV1& manager, size_t output_index)
+    : impl{std::make_shared<Impl>(manager, output_index)}
 {
     if (impl->version >= 3)
     {
-        client.add_output_done_notifier(output_index, [weak = std::weak_ptr<Impl>(impl)]()
+        manager.client().add_output_done_notifier(output_index, [weak = std::weak_ptr<Impl>(impl)]()
             {
                 if (auto const impl = weak.lock())
                 {
