@@ -21,10 +21,13 @@
 
 struct wlcs::XdgOutputV1::Impl
 {
-    Impl(zxdg_output_v1* output)
-        : output{output},
+    Impl(Client& client, size_t output_index)
+        : output{zxdg_output_manager_v1_get_xdg_output(
+              client.xdg_output_manager_v1(),
+              client.output_state(output_index).output)},
           version{zxdg_output_v1_get_version(output)}
     {
+        zxdg_output_v1_add_listener(output, &Impl::listener, this);
     }
 
     ~Impl()
@@ -79,11 +82,8 @@ zxdg_output_v1_listener const wlcs::XdgOutputV1::Impl::listener = {
 };
 
 wlcs::XdgOutputV1::XdgOutputV1(Client& client, size_t output_index)
-    : impl{std::make_shared<Impl>(zxdg_output_manager_v1_get_xdg_output(
-          client.xdg_output_manager_v1(),
-          client.output_state(output_index).output))}
+    : impl{std::make_shared<Impl>(client, output_index)}
 {
-    zxdg_output_v1_add_listener(impl->output, &Impl::listener, impl.get());
     if (impl->version >= 3)
     {
         client.add_output_done_notifier(output_index, [weak = std::weak_ptr<Impl>(impl)]()
