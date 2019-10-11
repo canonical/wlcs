@@ -23,7 +23,7 @@ struct wlcs::XdgOutputV1::Impl
 {
     Impl(zxdg_output_v1* output)
         : output{output},
-         version{zxdg_output_v1_get_version(output)}
+          version{zxdg_output_v1_get_version(output)}
     {
     }
 
@@ -73,7 +73,7 @@ zxdg_output_v1_listener const wlcs::XdgOutputV1::Impl::listener = {
     [] /* description */ (void *data, zxdg_output_v1 *, const char *description)
     {
         auto const impl = static_cast<Impl*>(data);
-        impl->_state.description = description;
+        impl->_state.description = std::string{description};
         impl->dirty = true;
     },
 };
