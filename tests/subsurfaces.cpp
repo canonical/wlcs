@@ -508,6 +508,70 @@ TEST_P(SubsurfaceTest, subsurface_of_a_subsurface_handled)
                     wl_fixed_from_int(pointer_y_2 - subsurface_top_y - subsurface_y))));
 }
 
+TEST_P(SubsurfaceTest, subsurface_moves_under_input_device_once)
+{
+    int const input_x = surface_x + 10, input_y = surface_y + 5;
+    int const subsurface_x = -23, subsurface_y = -17;
+
+    input_device->to_screen_position(input_x, input_y);
+    client.roundtrip();
+
+    ASSERT_THAT(input_device->focused_window(), Eq((wl_surface*)subsurface)) << "precondition failed";
+    ASSERT_THAT(input_device->position_on_window(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(input_x - surface_x),
+                    wl_fixed_from_int(input_y - surface_y)))) << "precondition failed";
+
+    wl_subsurface_set_position(subsurface, subsurface_x, subsurface_y);
+    wl_surface_commit(subsurface);
+    wl_surface_commit(main_surface);
+    client.roundtrip();
+
+    EXPECT_THAT(input_device->focused_window(), Eq((wl_surface*)subsurface)) << "subsurface not focuesed";
+    EXPECT_THAT(input_device->position_on_window(),
+                Ne(std::make_pair(
+                    wl_fixed_from_int(input_x - surface_x),
+                    wl_fixed_from_int(input_y - surface_y)))) << "input device did not get new location";
+    EXPECT_THAT(input_device->position_on_window(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(input_x - surface_x - subsurface_x),
+                    wl_fixed_from_int(input_y - surface_y - subsurface_y)))) << "input device in wrong location";
+}
+
+TEST_P(SubsurfaceTest, subsurface_moves_under_input_device_twice)
+{
+    int const input_x = surface_x + 10, input_y = surface_y + 5;
+    int const subsurface_x_0 = 4, subsurface_y_0 = 2;
+    int const subsurface_x_1 = -23, subsurface_y_1 = -17;
+
+    input_device->to_screen_position(input_x, input_y);
+    wl_subsurface_set_position(subsurface, subsurface_x_0, subsurface_y_0);
+    wl_surface_commit(subsurface);
+    wl_surface_commit(main_surface);
+    client.roundtrip();
+
+    ASSERT_THAT(input_device->focused_window(), Eq((wl_surface*)subsurface)) << "precondition failed";
+    ASSERT_THAT(input_device->position_on_window(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(input_x - surface_x - subsurface_x_0),
+                    wl_fixed_from_int(input_y - surface_y - subsurface_y_0)))) << "precondition failed";
+
+    wl_subsurface_set_position(subsurface, subsurface_x_1, subsurface_y_1);
+    wl_surface_commit(subsurface);
+    wl_surface_commit(main_surface);
+    client.roundtrip();
+
+    EXPECT_THAT(input_device->focused_window(), Eq((wl_surface*)subsurface)) << "subsurface not focuesed";
+    EXPECT_THAT(input_device->position_on_window(),
+                Ne(std::make_pair(
+                    wl_fixed_from_int(input_x - surface_x - subsurface_x_0),
+                    wl_fixed_from_int(input_y - surface_y - subsurface_y_0)))) << "input device did not get new location";
+    EXPECT_THAT(input_device->position_on_window(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(input_x - surface_x - subsurface_x_1),
+                    wl_fixed_from_int(input_y - surface_y - subsurface_y_1)))) << "input device in wrong location";
+}
+
 INSTANTIATE_TEST_CASE_P(
     WlShellSubsurfaces,
     SubsurfaceTest,
