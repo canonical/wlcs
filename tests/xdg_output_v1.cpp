@@ -24,12 +24,7 @@
 using namespace testing;
 using namespace wlcs;
 
-class XdgOutputV1Test
-    : public wlcs::StartedInProcessServer
-{
-private:
-    wlcs::CheckInterfaceExpected expect_xdg_output_supported{the_server(), zxdg_output_manager_v1_interface};
-};
+using XdgOutputV1Test = wlcs::InProcessServer;
 
 TEST_F(XdgOutputV1Test, xdg_output_properties_set)
 {
