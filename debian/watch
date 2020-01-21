@@ -1,5 +1,5 @@
 # Compulsory line, this is a version 4 file
 version=4
 
-opts="pgpsigurlmangle=s/$/.asc/" \
+opts="pgpsigurlmangle=s/$/.asc/,dversionmangle=s/\+dfsg//,repacksuffix=+dfsg" \
     https://github.com/MirServer/wlcs/releases/latest .*/wlcs-(\d\S+)\.tar\.xz
