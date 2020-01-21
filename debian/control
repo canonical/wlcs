@@ -9,7 +9,7 @@ Build-Depends:
  libwayland-dev,
  pkg-config,
  google-mock
-Standards-Version: 4.4.0
+Standards-Version: 4.4.1
 Section: devel
 Homepage: https://github.com/MirServer/wlcs
 Vcs-Browser: https://salsa.debian.org/mir-server-team/wlcs
