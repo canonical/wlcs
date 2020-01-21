@@ -1,3 +1,10 @@
+wlcs (1.1.0+dfsg-1) UNRELEASED; urgency=medium
+
+  [ Christopher James Halse Rogers ]
+  * Initial upload to Debian. (Closes: #949474).
+
+ -- Mike Gabriel <sunweaver@debian.org>  Thu, 22 Aug 2019 16:30:49 +1000
+
 wlcs (1.1.0-0ubuntu2) UNRELEASED; urgency=medium
 
   * debian/rules:
