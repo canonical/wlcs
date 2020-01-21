@@ -1,6 +1,6 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: wlcs
-Upstream-Contact: Alan Griffiths <alan@octopull.co.uk>
+Upstream-Contact: mir-devel@lists.ubuntu.com
 Source: https://github.com/MirServer/wlcs
 Files-Excluded: .travis.yml bors.toml spread.yaml spread/* tools/*
 
@@ -36,22 +36,27 @@ Files:
  tests/touches.cpp
  tests/wl_output.cpp
 Copyright:
-  2017-2019, Canonical, Ltd
-  2017, Canonical, Ltd
-  2018, Canonical, Ltd
-  2019, Canonical, Ltd
-  2017-2019, Canonical, Ltd
+  2017-2019, Canonical, Ltd.
+  2017, Canonical, Ltd.
+  2018, Canonical, Ltd.
+  2019, Canonical, Ltd.
+  2017-2019, Canonical, Ltd.
 License: GPL-3
 
 Files: src/test_c_compile.c
- spread/build/fedora/task.yaml
- spread/build/ubuntu/task.yaml
+ .gitignore
+ README.rst
+ wlcs.pc.in
 Copyright:
-  2017-2019, Canonical, Ltd
+  2017-2019, Canonical, Ltd.
 License: GPL-3
 Comment:
  No copyright header(s) in files. Assuming license and copyright
  holdership from similar files in this project.
+
+Files: CMakeLists.txt
+Copyright: 2017, Canonical Ltd.
+License: GPL-2-or-3
 
 Files: src/protocol/gtk-primary-selection.xml
  src/protocol/primary-selection-unstable-v1.xml
@@ -68,7 +73,7 @@ Copyright:
   2013, Jasper St. Pierre
   2015-2016, Red Hat
   2015-2016, Red Hat
-  2015-2017, Samsung Electronics Co., Ltd
+  2015-2017, Samsung Electronics Co., Ltd.
   2015-2017, Red Hat Inc.
 License: MIT~X11
 
@@ -82,11 +87,11 @@ Files: include/helpers.h
  src/helpers.cpp
  src/shared_library.cpp
 Copyright:
-  2013, Canonical, Ltd
+  2013, Canonical, Ltd.
 License: LGPL-2-or-3
 
 Files: cmake/FindGtestGmock.cmake
-Copyright: 2017-2019, Canonical Ltd
+Copyright: 2017-2019, Canonical Ltd.
 License: LGPL-3
 Comment:
  Assuming copyright holder ship from majority of files.
@@ -96,8 +101,7 @@ Comment:
 
 Files: tests/test_bad_buffer.cpp
  tests/test_surface_events.cpp
- tests/xdg_popup_stable.cpp
- tests/xdg_popup_v6.cpp
+ tests/xdg_popup.cpp
  tests/xdg_surface_stable.cpp
  tests/xdg_surface_v6.cpp
  tests/xdg_toplevel_stable.cpp
@@ -107,32 +111,27 @@ Copyright:
   2013, Collabora, Ltd.
   2017-2018, Canonical Ltd.
 License: Expat
- Permission is hereby granted, free of charge, to any person obtaining
- a copy of this software and associated documentation files (the
- "Software"), to deal in the Software without restriction, including
- without limitation the rights to use, copy, modify, merge, publish,
- distribute, sublicense, and/or sell copies of the Software, and to
- permit persons to whom the Software is furnished to do so, subject to
- the following conditions:
- .
- The above copyright notice and this permission notice (including the
- next paragraph) shall be included in all copies or substantial
- portions of the Software.
- .
- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- NONINFRINGEMENT.  IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- SOFTWARE.
 
 Files: debian/*
 Copyright:
   2019, Christopher James Halse Rogers <raof@ubuntu.com>
   2020, Mike Gabriel <mike.gabriel@das-netzwerkteam.de>
-License: GPL-2+ or LGPL-2+ or Expat or BSD-3-clause
+License: GPL-3 or GPL-2-or-3 or LGPL-2-or-3 or LGPL-3 or Expat or BSD-3-clause or MIT~X11
+
+License: GPL-2-or-3
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License version 2 or 3.
+ as published by the Free Software Foundation.
+ .
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+ .
+ On Debian systems, the full text of the GNU General Public
+ Licenses can be found in the file
+ `/usr/share/common-licenses/GPL-2' and
+ `/usr/share/common-licenses/GPL-3'.
 
 License: GPL-3
  This program is free software: you can redistribute it and/or modify
@@ -158,7 +157,7 @@ License: LGPL-2-or-3
  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  GNU Lesser General Public License for more details.
  .
- On Debian systems, the full text of the GNU Lesser General Public Licence
+ On Debian systems, the full text of the GNU Lesser General Public Licences
  can be found in the files
  `/usr/share/common-licenses/LGPL-2` and
  `/usr/share/common-licenses/LGPL-3`
@@ -225,3 +224,25 @@ License: MIT~X11
  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  DEALINGS IN THE SOFTWARE.
+
+License: Expat
+ Permission is hereby granted, free of charge, to any person obtaining
+ a copy of this software and associated documentation files (the
+ "Software"), to deal in the Software without restriction, including
+ without limitation the rights to use, copy, modify, merge, publish,
+ distribute, sublicense, and/or sell copies of the Software, and to
+ permit persons to whom the Software is furnished to do so, subject to
+ the following conditions:
+ .
+ The above copyright notice and this permission notice (including the
+ next paragraph) shall be included in all copies or substantial
+ portions of the Software.
+ .
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ NONINFRINGEMENT.  IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ SOFTWARE.
