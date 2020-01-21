@@ -19,7 +19,9 @@ Package: wlcs
 Section: devel
 Architecture: any
 Multi-Arch: same
-Depends: ${misc:Depends}, ${shlibs:Depends}
+Depends:
+ ${misc:Depends},
+ ${shlibs:Depends},
 Description: Wayland Conformance Suite's
  wlcs aspires to be a protocol-conformance-verifying test suite usable by
  Wayland compositor implementations.
