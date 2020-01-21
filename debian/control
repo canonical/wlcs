@@ -1,6 +1,9 @@
 Source: wlcs
 Priority: optional
-Maintainer: Christopher James Halse Rogers <raof@ubuntu.com>
+Maintainer: Debian Mir Team <team+mir@tracker.debian.org>
+Uploaders:
+ Christopher James Halse Rogers <raof@ubuntu.com>,
+ Mike Gabriel <sunweaver@debian.org>,
 Build-Depends:
  debhelper-compat (= 12),
  cmake,
