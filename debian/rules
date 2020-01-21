@@ -28,3 +28,6 @@ override_dh_auto_configure:
 
 %:
 	dh $@
+
+get-orig-source:
+	uscan --noconf --force-download --rename --download-current-version --repack --destdir=..
