@@ -13,7 +13,7 @@ Build-Depends:
  pkg-config,
  google-mock
 Standards-Version: 4.4.1
-RulesRequiresRoot: no
+Rules-Requires-Root: no
 Section: devel
 Homepage: https://github.com/MirServer/wlcs
 Vcs-Browser: https://salsa.debian.org/mir-server-team/wlcs
