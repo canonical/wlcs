@@ -1,3 +1,9 @@
+wlcs (1.1.0+dfsg-2) unstable; urgency=medium
+
+  * Source-only upload as-is.
+
+ -- Mike Gabriel <sunweaver@debian.org>  Sun, 02 Feb 2020 07:37:17 +0100
+
 wlcs (1.1.0+dfsg-1) unstable; urgency=medium
 
   [ Christopher James Halse Rogers ]
