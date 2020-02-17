@@ -1,3 +1,11 @@
+wlcs (1.1.0+dfsg-4) unstable; urgency=medium
+
+  * debian/rules:
+    + Drop old comments.
+    + Fix varialble name WITH_UBSAN.
+
+ -- Mike Gabriel <sunweaver@debian.org>  Mon, 17 Feb 2020 22:53:56 +0100
+
 wlcs (1.1.0+dfsg-3) unstable; urgency=medium
 
   * debian/control:
