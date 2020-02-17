@@ -1,3 +1,13 @@
+wlcs (1.1.0+dfsg-3) unstable; urgency=medium
+
+  * debian/control:
+    + Limit building to linux-any architectures.
+  * debian/rules:
+    + Disable UBSAN and TSAN sanitizers on architectures that don't support
+      them.
+
+ -- Mike Gabriel <sunweaver@debian.org>  Mon, 17 Feb 2020 20:47:38 +0100
+
 wlcs (1.1.0+dfsg-2) unstable; urgency=medium
 
   * Source-only upload as-is.
