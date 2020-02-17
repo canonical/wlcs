@@ -20,7 +20,7 @@ Vcs-Browser: https://salsa.debian.org/mir-server-team/wlcs
 Vcs-Git: https://salsa.debian.org/mir-server-team/wlcs.git
 
 Package: wlcs
-Architecture: any
+Architecture: linux-any
 Multi-Arch: same
 Depends:
  ${misc:Depends},
