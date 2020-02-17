@@ -5,23 +5,32 @@ include /usr/share/dpkg/default.mk
 # see FEATURE AREAS in dpkg-buildflags(1)
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
-COMMON_CONFIGURE_OPTIONS =\
-  -DWLCS_BUILD_ASAN=ON \
-  -DWLCS_BUILD_UBSAN=ON \
-  -DWLCS_BUILD_TSAN=ON \
-  -DCMAKE_INSTALL_LIBEXECDIR="lib/${DEB_HOST_MULTIARCH}"
+WITH_ASAN  = -DWLCS_BUILD_ASAN=ON
+WITH_UBSAN = -DWLCS_BUILD_UBSAN=ON
+WITH_TSAN  = -DWLCS_BUILD_TSAN=ON
 
-ifeq ($(filter i386 armhf, $(DEB_HOST_ARCH)),)
-  ifeq ($(DEB_DISTRIBUTION),xenial)
-    ifneq ($(filter arm64 ppc64el, $(DEB_HOST_ARCH)),)
-      # arm64 on 16.04 does not have tsan
-      COMMON_CONFIGURE_OPTIONS += -DWLCS_BUILD_TSAN=OFF
-    endif
+ifeq ($(DEB_DISTRIBUTION),xenial)
+  ifneq ($(filter arm64 ppc64el, $(DEB_HOST_ARCH)),)
+    # arm64 on 16.04 does not have tsan
+    WITH_TSAN = -DWLCS_BUILD_TSAN=OFF
   endif
-else
-  # i386 and armhf do not have tsan
-  COMMON_CONFIGURE_OPTIONS += -DWLCS_BUILD_TSAN=OFF
 endif
+
+ifneq ($(filter armel armhf i386 mipsel mips64el s390x alpha hppa ia64 m68k powerpc riscv64 sh4 sparc64 x32, $(DEB_HOST_ARCH)),)
+  # i386 and armhf do not have tsan
+  WITH_TSAN = -DWLCS_BUILD_TSAN=OFF
+endif
+
+ifneq ($(filter mipsel mips64el alpha hppa ia64 m68k powerpc riscv64 sh4, $(DEB_HOST_ARCH)),)
+  # i386 and armhf do not have tsan
+  WITH_TSAN = -DWLCS_BUILD_UBSAN=OFF
+endif
+
+COMMON_CONFIGURE_OPTIONS =\
+  $(WITH_ASAN) \
+  $(WITH_UBSAN) \
+  $(WITH_TSAN) \
+  -DCMAKE_INSTALL_LIBEXECDIR="lib/${DEB_HOST_MULTIARCH}"
 
 override_dh_auto_configure:
 	dh_auto_configure -- $(COMMON_CONFIGURE_OPTIONS)
