@@ -1723,6 +1723,7 @@ public:
         : surface_{wl_compositor_create_surface(client.compositor())},
           owner_{client}
     {
+        wl_surface_add_listener(surface_, &surface_listener, this);
     }
 
     ~Impl()
@@ -1782,9 +1783,16 @@ public:
     {
         return owner_;
     }
+
+    auto current_outputs() -> std::set<wl_output*> const&
+    {
+        return outputs;
+    }
+
 private:
 
     static std::vector<std::pair<Impl const*, wl_callback*>> pending_callbacks;
+    std::set<wl_output*> outputs;
 
     static void frame_callback(void* ctx, wl_callback* callback, uint32_t frame_time)
     {
@@ -1809,6 +1817,41 @@ private:
         &frame_callback
     };
 
+    static void on_enter(void* data, wl_surface* /*wl_surface*/, wl_output* output)
+    {
+        auto const self = static_cast<Impl*>(data);
+
+        if (self->outputs.find(output) != self->outputs.end())
+        {
+            BOOST_THROW_EXCEPTION(std::runtime_error(
+                "Got wl_surface.enter(wl_output@" +
+                std::to_string(wl_proxy_get_id(reinterpret_cast<wl_proxy*>(output))) +
+                ") for an output the surface is already on"));
+        }
+
+        self->outputs.insert(output);
+    }
+
+    static void on_leave(void* data, wl_surface* /*wl_surface*/, wl_output* output)
+    {
+        auto const self = static_cast<Impl*>(data);
+
+        if (self->outputs.find(output) == self->outputs.end())
+        {
+            BOOST_THROW_EXCEPTION(std::runtime_error(
+                "Got wl_surface.leave(wl_output@" +
+                std::to_string(wl_proxy_get_id(reinterpret_cast<wl_proxy*>(output))) +
+                ") for an output the surface is not on"));
+        }
+
+        self->outputs.erase(output);
+    }
+
+    static constexpr wl_surface_listener surface_listener{
+        &on_enter,
+        &on_leave,
+    };
+
     struct wl_surface* const surface_;
     Client& owner_;
 };
@@ -1816,6 +1859,7 @@ private:
 std::vector<std::pair<wlcs::Surface::Impl const*, wl_callback*>> wlcs::Surface::Impl::pending_callbacks;
 
 constexpr wl_callback_listener wlcs::Surface::Impl::frame_listener;
+constexpr wl_surface_listener wlcs::Surface::Impl::surface_listener;
 
 wlcs::Surface::Surface(Client& client)
     : impl{std::make_unique<Impl>(client)}
@@ -1849,6 +1893,11 @@ void wlcs::Surface::attach_visible_buffer(int width, int height)
 wlcs::Client& wlcs::Surface::owner() const
 {
     return impl->owner();
+}
+
+auto wlcs::Surface:: current_outputs() -> std::set<wl_output*> const&
+{
+    return impl->current_outputs();
 }
 
 class wlcs::Subsurface::Impl

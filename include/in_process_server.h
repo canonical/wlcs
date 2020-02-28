@@ -144,6 +144,7 @@ public:
     std::pair<int, int> pointer_position() const;
 
     Client& owner() const;
+    auto current_outputs() -> std::set<wl_output*> const&;
 
 private:
     class Impl;
