@@ -617,4 +617,23 @@ TEST_F(ClientSurfaceEventsTest, surface_leaves_output)
     EXPECT_THAT(surface.current_outputs(), IsEmpty()) << "Did not leave output after being moved off-screen";
 }
 
+TEST_F(ClientSurfaceEventsTest, surface_renters_output)
+{
+    using namespace testing;
+
+    wlcs::Client client{the_server()};
+
+    auto surface = client.create_visible_surface(100, 100);
+    the_server().move_surface_to(surface, -200, 0);
+    client.roundtrip();
+
+    ASSERT_THAT(surface.current_outputs(), IsEmpty()) << "Precondition failed";
+
+    the_server().move_surface_to(surface, 0, 0);
+    client.roundtrip();
+
+    EXPECT_THAT(surface.current_outputs(), Not(IsEmpty()))
+        << "Surface did not renter output when it moved back on screen";
+}
+
 // TODO: make parameterized for different types of shell surfaces
