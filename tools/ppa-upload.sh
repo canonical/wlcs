@@ -115,7 +115,7 @@ EOF
   done
 
   # upload to dev PPA
-  TARGET_PPA=ppa:mir-team/dev
+  TARGET_PPA=ppa:mir-team/wlcs-dev
   GIT_VERSION=$( git describe | sed 's/^v//' )
   WLCS_VERSION=${GIT_VERSION/-/+dev}
 fi
