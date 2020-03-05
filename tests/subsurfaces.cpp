@@ -508,7 +508,7 @@ TEST_P(SubsurfaceTest, subsurface_of_a_subsurface_handled)
                     wl_fixed_from_int(pointer_y_2 - subsurface_top_y - subsurface_y))));
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     WlShellSubsurfaces,
     SubsurfaceTest,
     testing::Values(
@@ -530,7 +530,7 @@ INSTANTIATE_TEST_CASE_P(
         }
     ));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     XdgShellV6Subsurfaces,
     SubsurfaceTest,
     testing::Values(
@@ -552,7 +552,7 @@ INSTANTIATE_TEST_CASE_P(
         }
     ));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     XdgShellStableSubsurfaces,
     SubsurfaceTest,
     testing::Values(
@@ -574,7 +574,7 @@ INSTANTIATE_TEST_CASE_P(
         }
     ));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     TouchInputSubsurfaces,
     SubsurfaceTest,
     testing::Values(

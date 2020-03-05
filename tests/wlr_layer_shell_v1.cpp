@@ -513,7 +513,7 @@ TEST_P(LayerSurfaceAnchorTest, maximized_xdg_toplevel_is_shrunk_for_exclusive_zo
     EXPECT_THAT(new_height, Eq(expected_height));
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     Anchor,
     LayerSurfaceAnchorTest,
     testing::ValuesIn(LayerAnchor::get_all()));
@@ -577,7 +577,7 @@ TEST_P(LayerSurfaceLayerTest, below_surface_can_not_be_raised_with_click)
         << "Correct surface was not on top";
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     Layer,
     LayerSurfaceLayerTest,
     testing::Values(

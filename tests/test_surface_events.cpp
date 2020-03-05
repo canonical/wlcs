@@ -225,7 +225,7 @@ TEST_P(SurfacePointerMotionTest, pointer_movement)
     EXPECT_THAT(client.window_under_cursor(), Ne(wl_surface));
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     PointerCrossingSurfaceCorner,
     SurfacePointerMotionTest,
     testing::Values(
@@ -235,7 +235,7 @@ INSTANTIATE_TEST_CASE_P(
         PointerMotion{"Top-right", PointerMotion::window_width, -1, -1, 1}
     ));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     PointerCrossingSurfaceEdge,
     SurfacePointerMotionTest,
     testing::Values(
