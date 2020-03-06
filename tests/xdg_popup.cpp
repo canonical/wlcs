@@ -531,14 +531,14 @@ TEST_P(XdgPopupPositionerTest, layer_shell_popup_placed_correctly)
         Eq(std::experimental::make_optional(param.expected_positon))) << "popup placed in incorrect position";
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     Default,
     XdgPopupPositionerTest,
     testing::Values(
         PositionerTestParams{"default values", (window_width - popup_width) / 2, (window_height - popup_height) / 2, PositionerParams()}
     ));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     Anchor,
     XdgPopupPositionerTest,
     testing::Values(
@@ -567,7 +567,7 @@ INSTANTIATE_TEST_CASE_P(
             PositionerParams().with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM_RIGHT)}
     ));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     Gravity,
     XdgPopupPositionerTest,
     testing::Values(
@@ -599,7 +599,7 @@ INSTANTIATE_TEST_CASE_P(
             PositionerParams().with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT)}
     ));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     AnchorRect,
     XdgPopupPositionerTest,
     testing::Values(
@@ -720,7 +720,7 @@ TEST_P(XdgPopupTest, popup_configure_is_valid)
     EXPECT_THAT(manager->state.value().height, Gt(0));
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     XdgPopupStable,
     XdgPopupTest,
     testing::Values(XdgPopupTestParam{
@@ -729,7 +729,7 @@ INSTANTIATE_TEST_CASE_P(
             return std::make_unique<XdgPopupStableManager>(server);
         }}));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     XdgPopupUnstableV6,
     XdgPopupTest,
     testing::Values(XdgPopupTestParam{
@@ -738,7 +738,7 @@ INSTANTIATE_TEST_CASE_P(
             return std::make_unique<XdgPopupV6Manager>(server);
         }}));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     LayerShellPopup,
     XdgPopupTest,
     testing::Values(XdgPopupTestParam{
