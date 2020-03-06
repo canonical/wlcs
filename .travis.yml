@@ -1,6 +1,6 @@
-sudo: required
 dist: xenial
-
+os: linux
+version: ~> 1.0
 language: cpp
 
 branches:
@@ -38,7 +38,7 @@ env:
   global:
   - DEBFULLNAME="Mir CI Bot"
   - DEBEMAIL="mir-ci-bot@canonical.com"
-  matrix:
+  jobs:
   - SYSTEM=ubuntu-16.04 VARIANT=gcc
   - SYSTEM=ubuntu-18.04 VARIANT=gcc
   - SYSTEM=ubuntu-19.04 VARIANT=gcc
