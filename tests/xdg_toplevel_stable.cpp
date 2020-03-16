@@ -222,6 +222,36 @@ TEST_F(XdgToplevelStableTest, interactive_move)
     client.roundtrip();
 }
 
+TEST_F(XdgToplevelStableTest, parent_can_be_set)
+{
+    const int window_pos_x = 200, window_pos_y = 280;
+
+    wlcs::Client client{the_server()};
+
+    ConfigurationWindow parent{client};
+    the_server().move_surface_to(parent.surface, window_pos_x, window_pos_y);
+
+    ConfigurationWindow child{client};
+    the_server().move_surface_to(child.surface, window_pos_x, window_pos_y);
+
+    xdg_toplevel_set_parent(child, parent);
+    wl_surface_commit(child.surface);
+    client.roundtrip();
+}
+
+TEST_F(XdgToplevelStableTest, null_parent_can_be_set)
+{
+    const int window_pos_x = 200, window_pos_y = 280;
+
+    wlcs::Client client{the_server()};
+    ConfigurationWindow window{client};
+    the_server().move_surface_to(window.surface, window_pos_x, window_pos_y);
+
+    xdg_toplevel_set_parent(window, nullptr);
+    wl_surface_commit(window.surface);
+    client.roundtrip();
+}
+
 // TODO: interactive resize
 // This would probably make sense as a parameterized test, with resizing in all directions
 // Like move, resize is not implemented in the current WLCS window manager, and should not be tested until it is
