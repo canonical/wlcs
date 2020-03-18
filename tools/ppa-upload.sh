@@ -41,7 +41,7 @@ GIT_REVISION=$( git rev-parse --short HEAD )
 
 if [[ "${GIT_BRANCH}" =~ ^(release/|v)([0-9\.]+)$ ]]; then
   # we're on a release branch
-  TARGET_PPA=ppa:mir-team/rc
+  TARGET_PPA=ppa:mir-team/wlcs-rc
   WLCS_SERIES=${BASH_REMATCH[2]}
   if [[ "$( git describe --exact-match )" =~ ^v[0-9\.]+$ ]] 2> /dev/null; then
     # this is a final release, use the tag version
@@ -67,9 +67,9 @@ else
   PARENT=2
   while git rev-parse HEAD^${PARENT} >/dev/null 2>&1; do
     if [[ "$( git describe --exact-match HEAD^${PARENT} )" =~ ^v([0-9\.]+)$ ]]; then
-      # copy packages from ppa:mir-team/rc to ppa:mir-team/release_ppa
+      # copy packages from ppa:mir-team/wlcs-rc to ppa:mir-team/wlcs
       RELEASE_VERSION=${BASH_REMATCH[1]}-0ubuntu${UBUNTU_VERSION}
-      echo "Copying wlcs_${RELEASE_VERSION} from ppa:mir-team/rc to ppa:mir-team/release…"
+      echo "Copying wlcs_${RELEASE_VERSION} from ppa:mir-team/wlcs-rc to ppa:mir-team/wlcs…"
       python - ${RELEASE_VERSION} <<EOF
 import os
 import sys
@@ -96,8 +96,8 @@ ubuntu = lp.distributions["ubuntu"]
 series = ubuntu.getSeries(name_or_version=os.environ['RELEASE'])
 
 mir_team = lp.people["mir-team"]
-rc_ppa = mir_team.getPPAByName(name="rc")
-release_ppa = mir_team.getPPAByName(name="release")
+rc_ppa = mir_team.getPPAByName(name="wlcs-rc")
+release_ppa = mir_team.getPPAByName(name="wlcs")
 
 release_ppa.copyPackage(source_name="wlcs",
                         version=sys.argv[1],
@@ -115,7 +115,7 @@ EOF
   done
 
   # upload to dev PPA
-  TARGET_PPA=ppa:mir-team/dev
+  TARGET_PPA=ppa:mir-team/wlcs-dev
   GIT_VERSION=$( git describe | sed 's/^v//' )
   WLCS_VERSION=${GIT_VERSION/-/+dev}
 fi

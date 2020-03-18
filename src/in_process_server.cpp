@@ -1022,6 +1022,7 @@ public:
     {
         OutputState current;
         OutputState pending;
+        std::vector<std::function<void()>> done_notifiers;
 
         Output(struct wl_output* output)
             : current{output},
@@ -1069,6 +1070,9 @@ public:
                 me->current.scale = me->pending.scale;
 
             me->pending = OutputState{me->current.output};
+
+            for (auto const& notifier : me->done_notifiers)
+                notifier();
         }
 
         static void scale_thunk(void* ctx, struct wl_output */*wl_output*/, int32_t factor)
@@ -1624,6 +1628,14 @@ wlcs::OutputState wlcs::Client::output_state(size_t index) const
         throw std::runtime_error("Invalid output index");
 
     return impl->outputs[index]->current;
+}
+
+void wlcs::Client::add_output_done_notifier(size_t index, std::function<void()> const& notifier)
+{
+    if (index > output_count())
+        throw std::runtime_error("Invalid output index");
+
+    impl->outputs[index]->done_notifiers.push_back(notifier);
 }
 
 wl_shell* wlcs::Client::shell() const

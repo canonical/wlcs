@@ -157,7 +157,7 @@ TEST_P(TouchTest, touch_drag_outside_of_surface_and_back_not_lost)
     client.roundtrip();
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     WlShellSurface,
     TouchTest,
     testing::Values(
@@ -175,7 +175,7 @@ INSTANTIATE_TEST_CASE_P(
             }
     ));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     XdgShellV6Surface,
     TouchTest,
     testing::Values(
@@ -191,7 +191,7 @@ INSTANTIATE_TEST_CASE_P(
             }
     ));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     XdgShellStableSurface,
     TouchTest,
     testing::Values(
@@ -237,7 +237,7 @@ INSTANTIATE_TEST_CASE_P(
         // TODO: Add popup test
     ));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     Subsurface,
     TouchTest,
     testing::Values(

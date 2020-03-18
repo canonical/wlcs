@@ -129,7 +129,7 @@ TEST_P(SurfaceWithInputRegions, pointer_seen_entering_and_leaving_input_region)
 InputRegion const full_surface_region{"full surface", {
     {RegionAction::add, 0, 0, RegionAndMotion::window_width, RegionAndMotion::window_height}}};
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     NormalRegion,
     SurfaceWithInputRegions,
     testing::Values(
@@ -161,7 +161,7 @@ InputRegion const smaller_region{"smaller", {{
     RegionAndMotion::window_width - region_inset_x * 2,
     RegionAndMotion::window_height - region_inset_y * 2}}};
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SmallerRegion,
     SurfaceWithInputRegions,
     testing::Values(
@@ -195,7 +195,7 @@ InputRegion const larger_region{"larger", {{
     RegionAndMotion::window_width + region_outset_x * 2,
     RegionAndMotion::window_height + region_outset_y * 2}}};
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     ClippedLargerRegion,
     SurfaceWithInputRegions,
     testing::Values(
@@ -225,7 +225,7 @@ InputRegion const multi_rect_region{"multi rect", {
     {RegionAction::add, small_rect_inset, RegionAndMotion::window_height / 2,
      RegionAndMotion::window_width - small_rect_inset * 2, RegionAndMotion::window_height / 2 + 20}}};
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     MultiRectRegionEdges,
     SurfaceWithInputRegions,
     testing::Values(
@@ -251,7 +251,7 @@ INSTANTIATE_TEST_CASE_P(
             0, -1}
     ));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     MultiRectRegionCorners,
     SurfaceWithInputRegions,
     testing::Values(
@@ -458,7 +458,7 @@ auto region_param_values_for_surface_creator(SurfaceCreator creator) {
                 1, -1}});
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     WlShellSurface,
     SurfaceTypesWithInputRegion,
     region_param_values_for_surface_creator(
@@ -474,7 +474,7 @@ INSTANTIATE_TEST_CASE_P(
                 return surface;
             }}));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     XdgShellV6Surface,
     SurfaceTypesWithInputRegion,
     region_param_values_for_surface_creator(
@@ -490,7 +490,7 @@ INSTANTIATE_TEST_CASE_P(
                 return surface;
             }}));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     XdgShellStableSurface,
     SurfaceTypesWithInputRegion,
     region_param_values_for_surface_creator(
@@ -506,7 +506,7 @@ INSTANTIATE_TEST_CASE_P(
                 return surface;
             }}));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     Subsurface,
     SurfaceTypesWithInputRegion,
     region_param_values_for_surface_creator(

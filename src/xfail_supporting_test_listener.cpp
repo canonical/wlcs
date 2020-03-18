@@ -170,7 +170,7 @@ void testing::XFailSupportingTestListenerWrapper::OnTestIterationEnd(testing::Un
             << skipped_tests
             << singular_or_plural(" test", skipped_tests)
             << " skipped:" << std::endl;
-        for (auto const name : skipped_test_names)
+        for (auto const& name : skipped_test_names)
         {
             std::cout
                 << termcolor::yellow << "[  SKIPPED ] "
@@ -192,7 +192,7 @@ void testing::XFailSupportingTestListenerWrapper::OnTestIterationEnd(testing::Un
             << failed_tests
             << singular_or_plural(" test", failed_tests)
             << " failed:" << std::endl;
-        for (auto const name : failed_test_names)
+        for (auto const& name : failed_test_names)
         {
             std::cout
                 << termcolor::red << "[  FAILED  ] "

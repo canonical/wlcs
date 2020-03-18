@@ -572,7 +572,7 @@ TEST_P(SubsurfaceTest, subsurface_moves_under_input_device_twice)
                     wl_fixed_from_int(input_y - surface_y - subsurface_y_1)))) << "input device in wrong location";
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     WlShellSubsurfaces,
     SubsurfaceTest,
     testing::Values(
@@ -594,7 +594,7 @@ INSTANTIATE_TEST_CASE_P(
         }
     ));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     XdgShellV6Subsurfaces,
     SubsurfaceTest,
     testing::Values(
@@ -616,7 +616,7 @@ INSTANTIATE_TEST_CASE_P(
         }
     ));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     XdgShellStableSubsurfaces,
     SubsurfaceTest,
     testing::Values(
@@ -638,7 +638,7 @@ INSTANTIATE_TEST_CASE_P(
         }
     ));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     TouchInputSubsurfaces,
     SubsurfaceTest,
     testing::Values(
