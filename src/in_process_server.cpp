@@ -1821,30 +1821,30 @@ private:
     {
         auto const self = static_cast<Impl*>(data);
 
-        if (self->outputs.find(output) != self->outputs.end())
+        auto const inserted = self->outputs.insert(output);
+
+        if (!inserted.second)
         {
             BOOST_THROW_EXCEPTION(std::runtime_error(
                 "Got wl_surface.enter(wl_output@" +
                 std::to_string(wl_proxy_get_id(reinterpret_cast<wl_proxy*>(output))) +
                 ") for an output the surface is already on"));
         }
-
-        self->outputs.insert(output);
     }
 
     static void on_leave(void* data, wl_surface* /*wl_surface*/, wl_output* output)
     {
         auto const self = static_cast<Impl*>(data);
 
-        if (self->outputs.find(output) == self->outputs.end())
+        auto const erased = self->outputs.erase(output);
+
+        if (!erased)
         {
             BOOST_THROW_EXCEPTION(std::runtime_error(
                 "Got wl_surface.leave(wl_output@" +
                 std::to_string(wl_proxy_get_id(reinterpret_cast<wl_proxy*>(output))) +
                 ") for an output the surface is not on"));
         }
-
-        self->outputs.erase(output);
     }
 
     static constexpr wl_surface_listener surface_listener{
