@@ -12,7 +12,7 @@ backends:
                 image: ubuntu-daily:devel/amd64
             - fedora-30
             - fedora-31
-            - alpine-3.10
+            - alpine-3.11
 
 suites:
     spread/build/:
