@@ -29,6 +29,6 @@ execute: |
     # TODO: Store the set of passing tests in the Travis cache, and fail if a test which
     #       previously passed now fails.
     ./wlcs /usr/lib/$(dpkg-architecture -qDEB_HOST_MULTIARCH)/mir/miral_wlcs_integration.so || {
-        test $? -gt 128 -a $? -lt 165
+        test $? -lt 128 -o $? -gt 165
     }
 
