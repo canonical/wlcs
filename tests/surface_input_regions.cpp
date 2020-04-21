@@ -23,10 +23,9 @@
 
 #include <vector>
 #include <memory>
+#include <experimental/optional>
 
 using namespace testing;
-
-// No tests use subtract as that is not yet implemented in Mir
 
 enum class RegionAction
 {
@@ -34,15 +33,17 @@ enum class RegionAction
     subtract,
 };
 
-struct InputRegion
+struct Region
 {
     struct Element
     {
         RegionAction action;
-        int x, y, width, height;
+        std::pair<int, int> top_left;
+        std::pair<int, int> size;
     };
 
     std::string name;
+    std::pair<int, int> surface_size;
     std::vector<Element> elements;
 
     void apply_to_surface(wlcs::Client& client, wl_surface* surface) const
@@ -53,10 +54,10 @@ struct InputRegion
             switch(e.action)
             {
             case RegionAction::add:
-                wl_region_add(wl_region, e.x, e.y, e.width, e.height);
+                wl_region_add(wl_region, e.top_left.first, e.top_left.second, e.size.first, e.size.second);
                 break;
             case RegionAction::subtract:
-                wl_region_subtract(wl_region, e.x, e.y, e.width, e.height);
+                wl_region_subtract(wl_region, e.top_left.first, e.top_left.second, e.size.first, e.size.second);
                 break;
             }
         }
@@ -67,447 +68,504 @@ struct InputRegion
     }
 };
 
-struct RegionAndMotion
+struct RegionWithTestPoints
 {
-    static int constexpr window_width = 181;
-    static int constexpr window_height = 208;
+    RegionWithTestPoints()
+        : name{"default constructed"},
+          region{"default constructed", {0, 0}, {}},
+          on_surface{0, 0},
+          off_surface{0, 0}
+    {
+    }
+
+    RegionWithTestPoints(
+        std::string const& name,
+        Region region,
+        std::pair<int, int> on_surface,
+        std::pair<int, int> delta)
+        : name{name},
+          region{region},
+          on_surface{on_surface},
+          off_surface{on_surface.first + delta.first, on_surface.second + delta.second}
+    {
+    }
+
     std::string name;
-    InputRegion region;
-    int initial_x, initial_y; // Relative to surface top-left
-    int dx, dy; // pointer motion
+    Region region;
+    std::pair<int, int> on_surface;
+    std::pair<int, int> off_surface;
 };
 
-std::ostream& operator<<(std::ostream& out, RegionAndMotion const& param)
+std::ostream& operator<<(std::ostream& out, RegionWithTestPoints const& param)
 {
-    return out << "region: " << param.region.name << ", pointer: " << param.name;
+    return out << param.region.name << " " << param.name;
 }
 
-class SurfaceWithInputRegions :
+struct SurfaceBuilder
+{
+    SurfaceBuilder(std::string const& name) : name{name} {}
+    virtual ~SurfaceBuilder() = default;
+
+    virtual auto build(
+        wlcs::Server& server,
+        wlcs::Client& client,
+        std::pair<int, int> position,
+        Region const& region) const -> std::unique_ptr<wlcs::Surface> = 0;
+
+    std::string const name;
+};
+
+std::ostream& operator<<(std::ostream& out, std::shared_ptr<SurfaceBuilder> const& param)
+{
+    return out << param->name;
+}
+
+struct WlShellSurfaceBuilder : SurfaceBuilder
+{
+    WlShellSurfaceBuilder() : SurfaceBuilder{"wl_shell_surface"} {}
+
+    auto build(
+        wlcs::Server& server,
+        wlcs::Client& client,
+        std::pair<int, int> position,
+        Region const& region) const -> std::unique_ptr<wlcs::Surface> override
+    {
+        auto surface = std::make_unique<wlcs::Surface>(
+            client.create_wl_shell_surface(region.surface_size.first, region.surface_size.second));
+        server.move_surface_to(*surface, position.first, position.second);
+        region.apply_to_surface(client, *surface);
+        return surface;
+    }
+};
+
+struct XdgV6SurfaceBuilder : SurfaceBuilder
+{
+    XdgV6SurfaceBuilder() : SurfaceBuilder{"zxdg_surface_v6"} {}
+
+    auto build(
+        wlcs::Server& server,
+        wlcs::Client& client,
+        std::pair<int, int> position,
+        Region const& region) const -> std::unique_ptr<wlcs::Surface> override
+    {
+        auto surface = std::make_unique<wlcs::Surface>(
+            client.create_xdg_shell_v6_surface(region.surface_size.first, region.surface_size.second));
+        server.move_surface_to(*surface, position.first, position.second);
+        region.apply_to_surface(client, *surface);
+        return surface;
+    }
+};
+
+struct XdgStableSurfaceBuilder : SurfaceBuilder
+{
+    XdgStableSurfaceBuilder() : SurfaceBuilder{"xdg_surface (stable)"} {}
+
+    auto build(
+        wlcs::Server& server,
+        wlcs::Client& client,
+        std::pair<int, int> position,
+        Region const& region) const -> std::unique_ptr<wlcs::Surface> override
+    {
+        auto surface = std::make_unique<wlcs::Surface>(
+            client.create_xdg_shell_stable_surface(region.surface_size.first, region.surface_size.second));
+        server.move_surface_to(*surface, position.first, position.second);
+        region.apply_to_surface(client, *surface);
+        return surface;
+    }
+};
+
+struct SubsurfaceBuilder : SurfaceBuilder
+{
+    SubsurfaceBuilder(std::pair<int, int> offset)
+        : SurfaceBuilder{
+            "subsurface (offset " +
+            std::to_string(offset.first) +
+            ", " +
+            std::to_string(offset.second) +
+            ")"},
+          offset{offset}
+    {
+    }
+
+    auto build(
+        wlcs::Server& server,
+        wlcs::Client& client,
+        std::pair<int, int> position,
+        Region const& region) const -> std::unique_ptr<wlcs::Surface> override
+    {
+        auto main_surface = std::make_shared<wlcs::Surface>(
+            client.create_visible_surface(20, 30));
+        server.move_surface_to(
+            *main_surface,
+            position.first - offset.first,
+            position.second - offset.second);
+        client.run_on_destruction(
+            [main_surface]() mutable
+            {
+                main_surface.reset();
+            });
+        auto subsurface = std::make_unique<wlcs::Surface>(wlcs::Subsurface::create_visible(
+            *main_surface,
+            offset.first, offset.second,
+            region.surface_size.first, region.surface_size.second));
+        region.apply_to_surface(client, *subsurface);
+        wl_surface_commit(*main_surface);
+        client.roundtrip();
+        return subsurface;
+    }
+
+    std::pair<int, int> offset;
+};
+
+auto const all_surface_types = Values(
+    std::make_shared<WlShellSurfaceBuilder>(),
+    std::make_shared<XdgV6SurfaceBuilder>(),
+    std::make_shared<XdgStableSurfaceBuilder>(),
+    std::make_shared<SubsurfaceBuilder>(std::make_pair(0, 0)),
+    std::make_shared<SubsurfaceBuilder>(std::make_pair(7, 12)));
+
+// TODO: popup surfaces
+
+struct InputType
+{
+    InputType(std::string const& name) : name{name} {}
+    virtual ~InputType() = default;
+
+    struct Device
+    {
+        virtual ~Device() = default;
+        virtual void to_position(std::pair<int, int> position) = 0;
+    };
+
+    virtual auto create_device(wlcs::Server& server) -> std::unique_ptr<Device> = 0;
+    virtual auto current_surface(wlcs::Client const& client) -> wl_surface* = 0;
+    virtual auto position_on_surface(wlcs::Client const& client) -> std::pair<int, int> = 0;
+
+    std::string const name;
+};
+
+std::ostream& operator<<(std::ostream& out, std::shared_ptr<InputType> const& param)
+{
+    return out << param->name;
+}
+
+struct PointerInput : InputType
+{
+    PointerInput() : InputType{"pointer"} {}
+
+    struct Pointer : Device
+    {
+        Pointer(wlcs::Server& server)
+            : pointer{server.create_pointer()}
+        {
+        }
+
+        void to_position(std::pair<int, int> position) override
+        {
+            pointer.move_to(position.first, position.second);
+        }
+
+        wlcs::Pointer pointer;
+    };
+
+    auto create_device(wlcs::Server& server) -> std::unique_ptr<Device> override
+    {
+        return std::make_unique<Pointer>(server);
+    }
+
+    auto current_surface(wlcs::Client const& client) -> wl_surface* override
+    {
+        return client.window_under_cursor();
+    }
+
+    auto position_on_surface(wlcs::Client const& client) -> std::pair<int, int> override
+    {
+        auto const wl_fixed_position = client.pointer_position();
+        return {
+            wl_fixed_to_int(wl_fixed_position.first),
+            wl_fixed_to_int(wl_fixed_position.second)};
+    }
+};
+
+struct TouchInput : InputType
+{
+    TouchInput() : InputType{"touch"} {}
+
+    struct Touch : Device
+    {
+        Touch(wlcs::Server& server)
+            : touch{server.create_touch()}
+        {
+        }
+
+        void to_position(std::pair<int, int> position) override
+        {
+            if (is_down)
+            {
+                touch.up();
+            }
+
+            touch.down_at(position.first, position.second);
+            is_down = true;
+        }
+
+        wlcs::Touch touch;
+        bool is_down = false;
+    };
+
+    auto create_device(wlcs::Server& server) -> std::unique_ptr<Device> override
+    {
+        return std::make_unique<Touch>(server);
+    }
+
+    auto current_surface(wlcs::Client const& client) -> wl_surface* override
+    {
+        return client.touched_window();
+    }
+
+    auto position_on_surface(wlcs::Client const& client) -> std::pair<int, int> override
+    {
+        auto const wl_fixed_position = client.touch_position();
+        return {
+            wl_fixed_to_int(wl_fixed_position.first),
+            wl_fixed_to_int(wl_fixed_position.second)};
+    }
+};
+
+auto const all_input_types = Values(
+    std::make_shared<PointerInput>(),
+    std::make_shared<TouchInput>());
+
+class RegionSurfaceInputCombinations :
     public wlcs::InProcessServer,
-    public testing::WithParamInterface<RegionAndMotion>
+    public testing::WithParamInterface<std::tuple<
+        RegionWithTestPoints,
+        std::shared_ptr<SurfaceBuilder>,
+        std::shared_ptr<InputType>>>
 {
 };
 
-TEST_P(SurfaceWithInputRegions, pointer_seen_entering_and_leaving_input_region)
+TEST_P(RegionSurfaceInputCombinations, input_inside_region_seen)
 {
+    auto const top_left = std::make_pair(64, 49);
     wlcs::Client client{the_server()};
-    auto const params = GetParam();
-    int const top_left_x = 64, top_left_y = 7;
-    auto surface = client.create_visible_surface(
-        params.window_width,
-        params.window_height);
-    the_server().move_surface_to(surface, top_left_x, top_left_y);
-    auto const wl_surface = static_cast<struct wl_surface*>(surface);
+    RegionWithTestPoints region;
+    std::shared_ptr<SurfaceBuilder> builder;
+    std::shared_ptr<InputType> input;
 
-    params.region.apply_to_surface(client, wl_surface);
+    std::tie(region, builder, input) = GetParam();
 
-    auto pointer = the_server().create_pointer();
-    pointer.move_to(top_left_x + params.initial_x, top_left_y + params.initial_y);
+    auto surface = builder->build(
+        the_server(),
+        client,
+        top_left,
+        region.region);
+    struct wl_surface* const wl_surface = *surface;
+
+    auto const device = input->create_device(the_server());
+    device->to_position({
+        top_left.first + region.on_surface.first,
+        top_left.second + region.on_surface.second});
     client.roundtrip();
 
-    EXPECT_THAT(client.window_under_cursor(), Ne(wl_surface))
-        << "pointer over surface when it should have been outside input region";
+    EXPECT_THAT(input->current_surface(client), Eq(wl_surface))
+        << input << " not seen by "<< builder << " when inside " << region.name << " of " << region.region.name << " region";
 
-    pointer.move_by(params.dx, params.dy);
-    client.roundtrip();
-
-    ASSERT_THAT(client.window_under_cursor(), Eq(wl_surface))
-        << "pointer not over surface when it should have been in input region";
-    EXPECT_THAT(client.pointer_position(),
-                Eq(std::make_pair(
-                    wl_fixed_from_int(params.initial_x + params.dx),
-                    wl_fixed_from_int(params.initial_y + params.dy))))
-        << "pointer in the wrong place over surface";
-
-    pointer.move_by(-params.dx, -params.dy);
-    client.roundtrip();
-
-    EXPECT_THAT(client.window_under_cursor(), Ne(wl_surface))
-        << "pointer over surface when it should have been outside input region";
+    if (input->current_surface(client) == wl_surface)
+    {
+        EXPECT_THAT(input->position_on_surface(client), Eq(region.on_surface))
+            << input << " in the wrong place over " << builder << " while testing " << region;
+    }
 }
 
-InputRegion const full_surface_region{"full surface", {
-    {RegionAction::add, 0, 0, RegionAndMotion::window_width, RegionAndMotion::window_height}}};
+TEST_P(RegionSurfaceInputCombinations, input_not_seen_after_leaving_region)
+{
+    auto const top_left = std::make_pair(64, 49);
+    wlcs::Client client{the_server()};
+    RegionWithTestPoints region;
+    std::shared_ptr<SurfaceBuilder> builder;
+    std::shared_ptr<InputType> input;
+    std::tie(region, builder, input) = GetParam();
 
-INSTANTIATE_TEST_SUITE_P(
-    NormalRegion,
-    SurfaceWithInputRegions,
-    testing::Values(
-        RegionAndMotion{
-            "Centre-left", full_surface_region,
-            -1, RegionAndMotion::window_height / 2,
-            1, 0},
-        RegionAndMotion{
-            "Bottom-centre", full_surface_region,
-            RegionAndMotion::window_width / 2, RegionAndMotion::window_height,
-            0, -1},
-        RegionAndMotion{
-            "Centre-right", full_surface_region,
-            RegionAndMotion::window_width, RegionAndMotion::window_height / 2,
-            -1, 0},
-        RegionAndMotion{
-            "Top-centre", full_surface_region,
-            RegionAndMotion::window_width / 2, -1,
-            0, 1}
-    ));
+    auto surface = builder->build(
+        the_server(),
+        client,
+        top_left,
+        region.region);
+    struct wl_surface* const wl_surface = *surface;
 
-int const region_inset_x = 12;
-int const region_inset_y = 17;
+    auto const device = input->create_device(the_server());
+    device->to_position({
+        top_left.first + region.on_surface.first,
+        top_left.second + region.on_surface.second});
+    client.roundtrip();
+    device->to_position({
+        top_left.first + region.off_surface.first,
+        top_left.second + region.off_surface.second});
+    client.roundtrip();
 
-InputRegion const smaller_region{"smaller", {{
-    RegionAction::add,
-    region_inset_x,
-    region_inset_y,
-    RegionAndMotion::window_width - region_inset_x * 2,
-    RegionAndMotion::window_height - region_inset_y * 2}}};
+    EXPECT_THAT(input->current_surface(client), Ne(wl_surface))
+        << input << " seen by " << builder << " when outside " << region.name << " of " << region.region.name << " region";
+}
 
-INSTANTIATE_TEST_SUITE_P(
-    SmallerRegion,
-    SurfaceWithInputRegions,
-    testing::Values(
-        RegionAndMotion{
-            "Centre-left", smaller_region,
-            region_inset_x - 1, RegionAndMotion::window_height / 2,
-            1, 0},
-        RegionAndMotion{
-            "Bottom-centre", smaller_region,
-            RegionAndMotion::window_width / 2, RegionAndMotion::window_height - region_inset_y,
-            0, -1},
-        RegionAndMotion{
-            "Centre-right", smaller_region,
-            RegionAndMotion::window_width - region_inset_x, RegionAndMotion::window_height / 2,
-            -1, 0},
-        RegionAndMotion{
-            "Top-centre", smaller_region,
-            RegionAndMotion::window_width / 2, region_inset_y - 1,
-            0, 1}
-    ));
+auto const surface_size{std::make_pair(215, 108)};
+
+Region const full_surface_region{"explicitly specified full surface", surface_size, {
+    {RegionAction::add, {0, 0}, surface_size}}};
+
+auto const full_surface_edges = Values(
+    RegionWithTestPoints{"left edge", full_surface_region,
+        {0, surface_size.second / 2},
+        {-1, 0}},
+    RegionWithTestPoints{"bottom edge", full_surface_region,
+        {surface_size.first / 2, surface_size.second - 1},
+        {0, 1}},
+    RegionWithTestPoints{"right edge", full_surface_region,
+        {surface_size.first - 1, surface_size.second / 2},
+        {1, 0}},
+    RegionWithTestPoints{"top edge", full_surface_region,
+        {surface_size.first / 2, 0},
+        {0, -1}});
+
+auto const region_inset = std::make_pair(12, 17);
+
+Region const smaller_region{"smaller", surface_size, {
+    {RegionAction::add, region_inset, {
+        surface_size.first - region_inset.first * 2,
+        surface_size.second - region_inset.second * 2}}}};
+
+auto const smaller_region_edges = Values(
+    RegionWithTestPoints{"left edge", smaller_region,
+        {region_inset.first, surface_size.second / 2},
+        {-1, 0}},
+    RegionWithTestPoints{"bottom edge", smaller_region,
+        {surface_size.first / 2, surface_size.second - region_inset.second - 1},
+        {0, 1}},
+    RegionWithTestPoints{"right edge", smaller_region,
+        {surface_size.first - region_inset.first - 1, surface_size.second / 2},
+        {1, 0}},
+    RegionWithTestPoints{"top edge", smaller_region,
+        {surface_size.first / 2, region_inset.second},
+        {0, -1}});
 
 // If a region is larger then the surface it should be clipped
 
-int const region_outset_x = 12;
-int const region_outset_y = 17;
+auto const region_outset = std::make_pair(12, 17);
 
-InputRegion const larger_region{"larger", {{
-    RegionAction::add,
-    - region_outset_x,
-    - region_outset_y,
-    RegionAndMotion::window_width + region_outset_x * 2,
-    RegionAndMotion::window_height + region_outset_y * 2}}};
+Region const larger_region{"larger", surface_size, {
+    {RegionAction::add, {-region_outset.first, -region_outset.second}, {
+        surface_size.first + region_inset.first * 2,
+        surface_size.second + region_inset.second * 2}}}};
 
-INSTANTIATE_TEST_SUITE_P(
-    ClippedLargerRegion,
-    SurfaceWithInputRegions,
-    testing::Values(
-        RegionAndMotion{
-            "Centre-left", larger_region,
-            -1, RegionAndMotion::window_height / 2,
-            10, 0},
-        RegionAndMotion{
-            "Bottom-centre", larger_region,
-            RegionAndMotion::window_width / 2, RegionAndMotion::window_height,
-            0, -1},
-        RegionAndMotion{
-            "Centre-right", larger_region,
-            RegionAndMotion::window_width, RegionAndMotion::window_height / 2,
-            -1, 0},
-        RegionAndMotion{
-            "Top-centre", larger_region,
-            RegionAndMotion::window_width / 2, -1,
-            0, 1}
-    ));
+auto const larger_region_edges = Values(
+    RegionWithTestPoints{"left edge", larger_region,
+        {0, surface_size.second / 2},
+        {-1, 0}},
+    RegionWithTestPoints{"bottom edge", larger_region,
+        {surface_size.first / 2, surface_size.second - 1},
+        {0, 1}},
+    RegionWithTestPoints{"right edge", larger_region,
+        {surface_size.first - 1, surface_size.second / 2},
+        {1, 0}},
+    RegionWithTestPoints{"top edge", larger_region,
+        {surface_size.first / 2, 0},
+        {0, -1}});
 
 int const small_rect_inset = 16;
 
-InputRegion const multi_rect_region{"multi rect", {
-    {RegionAction::add, 0, 0,
-     RegionAndMotion::window_width, RegionAndMotion::window_height / 2},
-    {RegionAction::add, small_rect_inset, RegionAndMotion::window_height / 2,
-     RegionAndMotion::window_width - small_rect_inset * 2, RegionAndMotion::window_height / 2 + 20}}};
+// Looks something like this:
+// (dotted line is real surface, solid line is input region rectangles)
+//   _______A_______
+//  |               |
+// B|               |C
+//  |_D___________E_|
+//  :   |       |   :
+//  :  F|       |G  :
+//  '---|---H---|---'
+//      |_______|
+//          I
+Region const multi_rect_region{"multi-rect", surface_size, {
+    // upper rect
+    {RegionAction::add,
+        {0, 0},
+        {surface_size.first, surface_size.second / 2}},
+    // lower rect
+    {RegionAction::add,
+        {small_rect_inset, surface_size.second / 2},
+        {surface_size.first - small_rect_inset * 2, surface_size.second / 2 + 20}}}};
+
+auto const multi_rect_edges = Values(
+    RegionWithTestPoints{"top region edge at surface top edge", multi_rect_region, // A in diagram
+        {surface_size.first / 2, 0},
+        {0, -1}},
+    RegionWithTestPoints{"right region edge at surface right edge", multi_rect_region, // C in diagram
+        {surface_size.first - 1, surface_size.second / 4},
+        {1, 0}},
+    RegionWithTestPoints{"left region edge inside surface", multi_rect_region, // F in diagram
+        {small_rect_inset, surface_size.second * 3 / 4},
+        {-1, 0}},
+    RegionWithTestPoints{"step edge", multi_rect_region,  // D in diagram
+        {small_rect_inset / 2, surface_size.second / 2 - 1},
+        {0, 1}},
+    RegionWithTestPoints{"bottom clipped edge", multi_rect_region,  // I in diagram
+        {surface_size.first / 2, surface_size.second - 1},
+        {0, 1}});
+
+auto const multi_rect_corners = Values(
+    RegionWithTestPoints{
+        "top-left corner", multi_rect_region, // AxB in diagram
+        {0, 0},
+        {-1, -1}},
+    RegionWithTestPoints{
+        "top-right corner", multi_rect_region, // AxC in diagram
+        {surface_size.first - 1, 0},
+        {1, -1}},
+    RegionWithTestPoints{
+        "bottom-left corner", multi_rect_region, // HxF in diagram
+        {small_rect_inset, surface_size.second - 1},
+        {-1, 1}},
+    RegionWithTestPoints{
+        "bottom-right corner", multi_rect_region, // HxG in diagram
+        {surface_size.first - small_rect_inset - 1, surface_size.second - 1},
+        {1, 1}},
+    RegionWithTestPoints{
+        "left interior corner", multi_rect_region, // HxF in diagram
+        {small_rect_inset, surface_size.second / 2 - 1},
+        {-1, 1}},
+    RegionWithTestPoints{
+        "right interior corner", multi_rect_region, // HxG in diagram
+        {surface_size.first - small_rect_inset - 1, surface_size.second / 2 - 1},
+        {1, 1}});
+
+// TODO: test subtract
+// TODO: test empty region
+// TODO: test default region
+
+// There's way too many region edges/surface type/input device combinations, so we don't run all of them
+// multi_rect_edges covers most cases, so we test it against all surface type/input device combinations
+// We test the rest against just XDG toplevel
 
 INSTANTIATE_TEST_SUITE_P(
-    MultiRectRegionEdges,
-    SurfaceWithInputRegions,
-    testing::Values(
-        RegionAndMotion{
-            "Top-left-edge", multi_rect_region,
-            -1, RegionAndMotion::window_height / 4,
-            1, 0},
-        RegionAndMotion{
-            "Top-right-edge", multi_rect_region,
-            RegionAndMotion::window_width, RegionAndMotion::window_height / 4,
-            -1, 0},
-        RegionAndMotion{
-            "Bottom-left-edge", multi_rect_region,
-            small_rect_inset - 1, RegionAndMotion::window_height * 3 / 4,
-            1, 0},
-        RegionAndMotion{
-            "Bottom-right-edge", multi_rect_region,
-            RegionAndMotion::window_width - small_rect_inset, RegionAndMotion::window_height * 3 / 4,
-            -1, 0},
-        RegionAndMotion{
-            "Step-bottom-edge", multi_rect_region,
-            small_rect_inset / 2, RegionAndMotion::window_height / 2,
-            0, -1}
-    ));
+    MultiRectEdges,
+    RegionSurfaceInputCombinations,
+    Combine(multi_rect_edges, all_surface_types, all_input_types));
 
 INSTANTIATE_TEST_SUITE_P(
-    MultiRectRegionCorners,
-    SurfaceWithInputRegions,
-    testing::Values(
-        RegionAndMotion{
-            "Top-left", multi_rect_region,
-            -1, -1,
-            1, 1},
-        RegionAndMotion{
-            "Bottom-left", multi_rect_region,
-            small_rect_inset -1, RegionAndMotion::window_height,
-            1, -1},
-        RegionAndMotion{
-            "Bottom-right", multi_rect_region,
-            RegionAndMotion::window_width - small_rect_inset, RegionAndMotion::window_height,
-            -1, -1},
-        RegionAndMotion{
-            "Top-right", multi_rect_region,
-            RegionAndMotion::window_width, -1,
-            -1, 1},
-        RegionAndMotion{
-            "Step-corner-left", multi_rect_region,
-            -1, RegionAndMotion::window_height / 2,
-            1, -1},
-        RegionAndMotion{
-            "Step-corner-right", multi_rect_region,
-            RegionAndMotion::window_width, RegionAndMotion::window_height / 2,
-            -1, -1},
-        RegionAndMotion{
-            "Step-inside-horiz-left", multi_rect_region,
-            small_rect_inset - 1, RegionAndMotion::window_height / 2,
-            1, 0},
-        RegionAndMotion{
-            "Step-inside-horiz-right", multi_rect_region,
-            RegionAndMotion::window_width - small_rect_inset, RegionAndMotion::window_height / 2,
-            -1, 0},
-        RegionAndMotion{
-            "Step-inside-diag-left", multi_rect_region,
-            small_rect_inset - 1, RegionAndMotion::window_height / 2,
-            1, -1},
-        RegionAndMotion{
-            "Step-inside-diag-right", multi_rect_region,
-            RegionAndMotion::window_width - small_rect_inset, RegionAndMotion::window_height / 2,
-            -1, -1}
-    ));
-
-struct SurfaceCreator
-{
-    using SurfaceMaker = std::function<std::unique_ptr<wlcs::Surface>(
-        wlcs::InProcessServer& server, wlcs::Client& client,
-        int x, int y, int width, int height,
-        InputRegion const& input_region)>;
-
-    std::string name;
-    SurfaceMaker create;
-};
-
-class SurfaceTypesWithInputRegion :
-    public wlcs::InProcessServer,
-    public testing::WithParamInterface<std::tuple<SurfaceCreator, RegionAndMotion>>
-{
-};
-
-TEST_P(SurfaceTypesWithInputRegion, pointer_seen_inside_region)
-{
-    wlcs::Client client{the_server()};
-    int const top_left_x = 64, top_left_y = 7;
-    SurfaceCreator surface_creator;
-    RegionAndMotion params;
-    std::tie(surface_creator, params) = GetParam();
-
-    auto surface = surface_creator.create(
-        *this, client, top_left_x, top_left_y, params.window_width,
-        params.window_height, params.region);
-    auto const wl_surface = static_cast<struct wl_surface*>(*surface);
-
-    auto pointer = the_server().create_pointer();
-    pointer.move_to(top_left_x + params.initial_x, top_left_y + params.initial_y);
-    client.roundtrip();
-    pointer.move_by(params.dx, params.dy);
-    client.roundtrip();
-
-    ASSERT_THAT(client.window_under_cursor(), Eq(wl_surface))
-        << "pointer not seen by surface when inside input region";
-    EXPECT_THAT(client.pointer_position(),
-                Eq(std::make_pair(
-                    wl_fixed_from_int(params.initial_x + params.dx),
-                    wl_fixed_from_int(params.initial_y + params.dy))))
-        << "pointer in the wrong place over surface";
-}
-
-TEST_P(SurfaceTypesWithInputRegion, pointer_not_seen_outside_input_region)
-{
-    wlcs::Client client{the_server()};
-    int const top_left_x = 64, top_left_y = 7;
-    SurfaceCreator surface_creator;
-    RegionAndMotion params;
-    std::tie(surface_creator, params) = GetParam();
-
-    auto surface = surface_creator.create(
-        *this, client, top_left_x, top_left_y, params.window_width,
-        params.window_height, params.region);
-    auto const wl_surface = static_cast<struct wl_surface*>(*surface);
-
-    auto pointer = the_server().create_pointer();
-    pointer.move_to(top_left_x + params.initial_x + params.dx, top_left_y + params.initial_y + params.dy);
-    client.roundtrip();
-    pointer.move_by(-params.dx, -params.dy);
-    client.roundtrip();
-
-    EXPECT_THAT(client.window_under_cursor(), Ne(wl_surface))
-        << "pointer seen by surface when outside input region";
-}
-
-TEST_P(SurfaceTypesWithInputRegion, touch_inside_input_region_is_seen)
-{
-    wlcs::Client client{the_server()};
-    int const top_left_x = 64, top_left_y = 7;
-    SurfaceCreator surface_creator;
-    RegionAndMotion params;
-    std::tie(surface_creator, params) = GetParam();
-
-    auto surface = surface_creator.create(
-        *this, client, top_left_x, top_left_y, params.window_width,
-        params.window_height, params.region);
-    auto const wl_surface = static_cast<struct wl_surface*>(*surface);
-
-    auto touch = the_server().create_touch();
-    int touch_x = top_left_x + params.initial_x;
-    int touch_y = top_left_y + params.initial_y;
-
-    touch.down_at(touch_x + params.dx, touch_y + params.dy);
-    client.roundtrip();
-    ASSERT_THAT(client.touched_window(), Eq(wl_surface))
-        << "touch in input region not sent to surface";
-    EXPECT_THAT(client.touch_position(),
-                Eq(std::make_pair(
-                    wl_fixed_from_int(params.initial_x + params.dx),
-                    wl_fixed_from_int(params.initial_y + params.dy))))
-        << "touch in wrong place";
-    touch.up();
-    client.roundtrip();
-}
-
-TEST_P(SurfaceTypesWithInputRegion, touch_outside_input_region_not_seen)
-{
-    wlcs::Client client{the_server()};
-    int const top_left_x = 64, top_left_y = 7;
-    SurfaceCreator surface_creator;
-    RegionAndMotion params;
-    std::tie(surface_creator, params) = GetParam();
-
-    auto surface = surface_creator.create(
-        *this, client, top_left_x, top_left_y, params.window_width,
-        params.window_height, params.region);
-    auto const wl_surface = static_cast<struct wl_surface*>(*surface);
-
-    auto touch = the_server().create_touch();
-    int touch_x = top_left_x + params.initial_x;
-    int touch_y = top_left_y + params.initial_y;
-
-    touch.down_at(touch_x, touch_y);
-    client.roundtrip();
-    EXPECT_THAT(client.touched_window(), Ne(wl_surface))
-        << "touch outside of input region sent to surface";
-    touch.up();
-    client.roundtrip();
-}
-
-auto const surface_type_creators = testing::Values(
-    SurfaceCreator{
-        "wl-shell-surface",
-        [](wlcs::InProcessServer& server, wlcs::Client& client,
-            int x, int y, int width, int height,
-            InputRegion const& input_region) -> std::unique_ptr<wlcs::Surface>
-        {
-            auto surface = std::make_unique<wlcs::Surface>(client.create_wl_shell_surface(width, height));
-            server.the_server().move_surface_to(*surface, x, y);
-            input_region.apply_to_surface(client, *surface);
-            return surface;
-        }},
-    SurfaceCreator{
-        "xdg-shell-v6-surface",
-        [](wlcs::InProcessServer& server, wlcs::Client& client,
-            int x, int y, int width, int height,
-            InputRegion const& input_region) -> std::unique_ptr<wlcs::Surface>
-        {
-            auto surface = std::make_unique<wlcs::Surface>(client.create_xdg_shell_v6_surface(width, height));
-            server.the_server().move_surface_to(*surface, x, y);
-            input_region.apply_to_surface(client, *surface);
-            return surface;
-        }},
-    SurfaceCreator{
-        "xdg-shell-stable-surface",
-        [](wlcs::InProcessServer& server, wlcs::Client& client,
-            int x, int y, int width, int height,
-            InputRegion const& input_region) -> std::unique_ptr<wlcs::Surface>
-        {
-            auto surface = std::make_unique<wlcs::Surface>(client.create_xdg_shell_stable_surface(width, height));
-            server.the_server().move_surface_to(*surface, x, y);
-            input_region.apply_to_surface(client, *surface);
-            return surface;
-        }},
-    SurfaceCreator{
-        "subsurface",
-        [](wlcs::InProcessServer& server, wlcs::Client& client,
-            int x, int y, int width, int height,
-            InputRegion const& input_region) -> std::unique_ptr<wlcs::Surface>
-        {
-            auto main_surface = std::make_shared<wlcs::Surface>(client.create_visible_surface(width, height));
-            server.the_server().move_surface_to(*main_surface, x, y);
-            auto subsurface = std::make_unique<wlcs::Surface>(wlcs::Subsurface::create_visible(
-                *main_surface, 0, 0, width, height));
-            client.run_on_destruction(
-                [main_surface]() mutable
-                {
-                    main_surface.reset();
-                });
-            input_region.apply_to_surface(client, *subsurface);
-            wl_surface_commit(*main_surface);
-            client.roundtrip();
-            return subsurface;
-        }});
-
-auto const movement_onto_regions = testing::Values(
-    RegionAndMotion{
-        "bottom-outside-surface", multi_rect_region,
-        RegionAndMotion::window_width / 2, RegionAndMotion::window_height,
-        0, -1},
-    RegionAndMotion{
-        "Top-left-edge", multi_rect_region,
-        -1, RegionAndMotion::window_height / 4,
-        1, 0},
-    RegionAndMotion{
-        "Bottom-right-edge", multi_rect_region,
-        RegionAndMotion::window_width - small_rect_inset, RegionAndMotion::window_height * 3 / 4,
-        -1, 0},
-    RegionAndMotion{
-        "Step-bottom-edge", multi_rect_region,
-        small_rect_inset / 2, RegionAndMotion::window_height / 2,
-        0, -1},
-    RegionAndMotion{
-        "Step-corner-right", multi_rect_region,
-        RegionAndMotion::window_width, RegionAndMotion::window_height / 2,
-        -1, -1},
-    RegionAndMotion{
-        "Step-inside-horiz-right", multi_rect_region,
-        RegionAndMotion::window_width - small_rect_inset, RegionAndMotion::window_height / 2,
-        -1, 0},
-    RegionAndMotion{
-        "Step-inside-diag-left", multi_rect_region,
-        small_rect_inset - 1, RegionAndMotion::window_height / 2,
-        1, -1});
+    FullSurface,
+    RegionSurfaceInputCombinations,
+    Combine(full_surface_edges, Values(std::make_shared<XdgStableSurfaceBuilder>()), all_input_types));
 
 INSTANTIATE_TEST_SUITE_P(
-    AllSurfaceTypes,
-    SurfaceTypesWithInputRegion,
-    Combine(surface_type_creators, movement_onto_regions));
+    SmallerRegion,
+    RegionSurfaceInputCombinations,
+    Combine(smaller_region_edges, Values(std::make_shared<XdgStableSurfaceBuilder>()), all_input_types));
 
-// TODO: surface with empty input region
+INSTANTIATE_TEST_SUITE_P(
+    ClippedLargerRegion,
+    RegionSurfaceInputCombinations,
+    Combine(larger_region_edges, Values(std::make_shared<XdgStableSurfaceBuilder>()), all_input_types));
+
+INSTANTIATE_TEST_SUITE_P(
+    MultiRectCorners,
+    RegionSurfaceInputCombinations,
+    Combine(multi_rect_corners, Values(std::make_shared<XdgStableSurfaceBuilder>()), all_input_types));
