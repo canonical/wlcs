@@ -643,11 +643,46 @@ TEST_P(SurfaceInputCombinations, input_not_seen_over_empty_region)
     client.roundtrip();
 
     auto const device = input->create_device(the_server());
-    device->to_position({top_left.first + 4, top_left.second +4});
+    device->to_position({top_left.first + 4, top_left.second + 4});
     client.roundtrip();
 
     EXPECT_THAT(input->current_surface(client), Ne(wl_surface))
         << input << " seen by " << builder << " with empty input region";
+}
+
+TEST_P(SurfaceInputCombinations, input_hits_parent_after_falling_through_subsurface)
+{
+    auto const top_left = std::make_pair(64, 49);
+    wlcs::Client client{the_server()};
+    std::shared_ptr<SurfaceBuilder> builder;
+    std::shared_ptr<InputType> input;
+    std::tie(builder, input) = GetParam();
+
+    auto parent = builder->build(
+        the_server(),
+        client,
+        top_left,
+        surface_size);
+    struct wl_surface* const parent_wl_surface = *parent;
+    auto subsurface = std::make_unique<wlcs::Subsurface>(wlcs::Subsurface::create_visible(
+        *parent,
+        0, 0,
+        surface_size.first, surface_size.second));
+    wl_subsurface_set_desync(*subsurface);
+    struct wl_surface* const sub_wl_surface = *subsurface;
+
+    Region const region{"region", surface_size, {{RegionAction::add, {0, 0}, {1, 1}}}};
+    region.apply_to_surface(client, sub_wl_surface);
+
+    auto const device = input->create_device(the_server());
+    device->to_position({top_left.first + 4, top_left.second + 4});
+    client.roundtrip();
+
+    EXPECT_THAT(input->current_surface(client), Ne(sub_wl_surface))
+        << input << " seen by subsurface when not over region";
+
+    EXPECT_THAT(input->current_surface(client), Eq(parent_wl_surface))
+        << input << " not seen by " << builder << " when it should have fallen through the subsurface input region";
 }
 
 // There's way too many region edges/surface type/input device combinations, so we don't run all of them
