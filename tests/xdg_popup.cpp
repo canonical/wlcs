@@ -720,6 +720,44 @@ TEST_P(XdgPopupTest, popup_configure_is_valid)
     EXPECT_THAT(manager->state.value().height, Gt(0));
 }
 
+/* TODO: This should actually be a parmetrised test handling the cartesian product
+ * of current -> new role changes. For now, this exposes a crash in Mir, so just use this
+ */
+TEST_F(XdgPopupTest, changing_role_is_forbidden)
+{
+    wlcs::Client client{the_server()};
+    auto* const xdg_wm_base =
+        static_cast<struct xdg_wm_base*>(client.acquire_interface("xdg_wm_base", &xdg_wm_base_interface, 1));
+
+    auto surface = client.create_visible_surface(300, 300);
+
+    try
+    {
+        // Note: This call here should generate a protocol error (see XdgSurfaceStable tests)
+        // Mir incorrectly fails to generate an error here.
+        auto* const xdg_surface = xdg_wm_base_get_xdg_surface(xdg_wm_base, surface);
+        wlcs::XdgPositionerStable positioner{client};
+
+        // size must always be set
+        xdg_positioner_set_size(positioner, 200, 100);
+
+        // anchor rect must always be set
+        xdg_positioner_set_anchor_rect(positioner, 0, 0, 50, 50);
+
+        // This call causes a use-after-free in Mir, somehow.
+        xdg_surface_get_popup(xdg_surface, nullptr, positioner);
+
+        wl_surface_commit(surface);
+        client.roundtrip();
+    }
+    catch(wlcs::ProtocolError const& error)
+    {
+        return;
+    }
+
+    FAIL() << "Expected protocol error wasn't raised";
+}
+
 INSTANTIATE_TEST_SUITE_P(
     XdgPopupStable,
     XdgPopupTest,
