@@ -685,6 +685,43 @@ TEST_P(SurfaceInputCombinations, input_hits_parent_after_falling_through_subsurf
         << input << " not seen by " << builder << " when it should have fallen through the subsurface input region";
 }
 
+TEST_P(SurfaceInputCombinations, unmapping_parent_stops_subsurface_getting_input)
+{
+    auto const top_left = std::make_pair(64, 49);
+    wlcs::Client client{the_server()};
+    std::shared_ptr<SurfaceBuilder> builder;
+    std::shared_ptr<InputType> input;
+    std::tie(builder, input) = GetParam();
+
+    auto parent = builder->build(
+        the_server(),
+        client,
+        top_left,
+        surface_size);
+    struct wl_surface* const parent_wl_surface = *parent;
+    auto subsurface = std::make_unique<wlcs::Subsurface>(wlcs::Subsurface::create_visible(
+        *parent,
+        0, 0,
+        surface_size.first, surface_size.second));
+    wl_subsurface_set_desync(*subsurface);
+    struct wl_surface* const sub_wl_surface = *subsurface;
+    client.roundtrip();
+
+    wl_surface_attach(parent_wl_surface, nullptr, 0, 0);
+    wl_surface_commit(parent_wl_surface);
+    client.roundtrip();
+
+    auto const device = input->create_device(the_server());
+    device->to_position({top_left.first + 4, top_left.second + 4});
+    client.roundtrip();
+
+    EXPECT_THAT(input->current_surface(client), Ne(parent_wl_surface))
+        << input << " seen by " << builder << " after it was unmapped";
+
+    EXPECT_THAT(input->current_surface(client), Ne(sub_wl_surface))
+        << input << " seen by subsurface after parent " << builder << " was unmapped";
+}
+
 // There's way too many region edges/surface type/input device combinations, so we don't run all of them
 // multi_rect_edges covers most cases, so we test it against all surface type/input device combinations
 // We test the rest against just XDG toplevel
