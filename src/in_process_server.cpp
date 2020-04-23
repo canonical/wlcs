@@ -670,7 +670,7 @@ public:
         if (layer_shell_v1) zwlr_layer_shell_v1_destroy(layer_shell_v1);
         for (auto const& output: outputs)
             wl_output_destroy(output->current.output);
-        for (auto callback: destruction_callbacks)
+        for (auto const& callback: destruction_callbacks)
             callback();
         destruction_callbacks.clear();
         wl_display_disconnect(display);
