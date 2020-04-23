@@ -223,6 +223,11 @@ auto const all_surface_types = Values(
     std::make_shared<SubsurfaceBuilder>(std::make_pair(0, 0)),
     std::make_shared<SubsurfaceBuilder>(std::make_pair(7, 12)));
 
+auto const toplevel_surface_types = Values(
+    std::make_shared<WlShellSurfaceBuilder>(),
+    std::make_shared<XdgV6SurfaceBuilder>(),
+    std::make_shared<XdgStableSurfaceBuilder>());
+
 // TODO: popup surfaces
 
 struct InputType
@@ -722,6 +727,48 @@ TEST_P(SurfaceInputCombinations, unmapping_parent_stops_subsurface_getting_input
         << input << " seen by subsurface after parent " << builder << " was unmapped";
 }
 
+// Will only be instantiated with toplevel surfaces
+class ToplevelInputCombinations :
+    public wlcs::InProcessServer,
+    public testing::WithParamInterface<std::tuple<
+        std::shared_ptr<SurfaceBuilder>,
+        std::shared_ptr<InputType>>>
+{
+};
+
+TEST_P(ToplevelInputCombinations, input_falls_through_surface_without_region_after_null_buffer_committed)
+{
+    auto const top_left = std::make_pair(64, 49);
+    wlcs::Client client{the_server()};
+    std::shared_ptr<SurfaceBuilder> builder;
+    std::shared_ptr<InputType> input;
+    std::tie(builder, input) = GetParam();
+
+    auto lower = client.create_visible_surface(surface_size.first, surface_size.second);
+    the_server().move_surface_to(lower, top_left.first, top_left.second);
+    struct wl_surface* const lower_wl_surface = lower;
+
+    auto upper = builder->build(
+        the_server(),
+        client,
+        top_left,
+        surface_size);
+    struct wl_surface* const upper_wl_surface = *upper;
+    wl_surface_attach(upper_wl_surface, nullptr, 0, 0);
+    wl_surface_commit(upper_wl_surface);
+    client.roundtrip();
+
+    auto const device = input->create_device(the_server());
+    device->to_position(top_left);
+    client.roundtrip();
+
+    EXPECT_THAT(input->current_surface(client), Ne(upper_wl_surface))
+        << input << " seen by " << builder << " after null buffer committed";
+
+    EXPECT_THAT(input->current_surface(client), Eq(lower_wl_surface))
+        << input << " not seen by lower toplevel after null buffer committed to " << builder;
+}
+
 // There's way too many region edges/surface type/input device combinations, so we don't run all of them
 // multi_rect_edges covers most cases, so we test it against all surface type/input device combinations
 // We test the rest against just XDG toplevel
@@ -760,3 +807,8 @@ INSTANTIATE_TEST_SUITE_P(
     SurfaceInputRegions,
     SurfaceInputCombinations,
     Combine(all_surface_types, all_input_types));
+
+INSTANTIATE_TEST_SUITE_P(
+    ToplevelInputRegions,
+    ToplevelInputCombinations,
+    Combine(toplevel_surface_types, all_input_types));
