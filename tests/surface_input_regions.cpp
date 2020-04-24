@@ -727,6 +727,180 @@ TEST_P(SurfaceInputCombinations, unmapping_parent_stops_subsurface_getting_input
         << input << " seen by subsurface after parent " << builder << " was unmapped";
 }
 
+TEST_P(SurfaceInputCombinations, input_falls_through_subsurface_when_unmapped)
+{
+    auto const top_left = std::make_pair(200, 49);
+    wlcs::Client client{the_server()};
+    std::shared_ptr<SurfaceBuilder> builder;
+    std::shared_ptr<InputType> input;
+    std::tie(builder, input) = GetParam();
+
+    auto lower = client.create_visible_surface(surface_size.first, surface_size.second);
+    the_server().move_surface_to(lower, top_left.first - 100, top_left.second);
+    struct wl_surface* const lower_wl_surface = lower;
+
+    auto parent = builder->build(
+        the_server(),
+        client,
+        top_left,
+        surface_size);
+    ASSERT_THAT(surface_size.first, Gt(100));
+    struct wl_surface* const parent_wl_surface = *parent;
+    auto subsurface = std::make_unique<wlcs::Subsurface>(wlcs::Subsurface::create_visible(
+        *parent,
+        -100, 0,
+        surface_size.first, surface_size.second));
+    wl_subsurface_set_desync(*subsurface);
+    struct wl_surface* const sub_wl_surface = *subsurface;
+    client.roundtrip();
+
+    wl_surface_attach(sub_wl_surface, nullptr, 0, 0);
+    wl_surface_commit(sub_wl_surface);
+    client.roundtrip();
+
+    auto const device = input->create_device(the_server());
+    device->to_position({top_left.first - 90, top_left.second + 10});
+    client.roundtrip();
+
+    EXPECT_THAT(input->current_surface(client), Ne(sub_wl_surface))
+        << input << " seen by subsurface after it was unmapped";
+
+    EXPECT_THAT(input->current_surface(client), Ne(parent_wl_surface))
+        << input << " seen by " << builder << " even through it shouldn't have been over it's input region";
+
+    EXPECT_THAT(input->current_surface(client), Eq(lower_wl_surface))
+        << input << " not seen by lower surface";
+}
+
+TEST_P(SurfaceInputCombinations, input_falls_through_subsurface_when_parent_unmapped)
+{
+    auto const top_left = std::make_pair(200, 49);
+    wlcs::Client client{the_server()};
+    std::shared_ptr<SurfaceBuilder> builder;
+    std::shared_ptr<InputType> input;
+    std::tie(builder, input) = GetParam();
+
+    auto lower = client.create_visible_surface(surface_size.first, surface_size.second);
+    the_server().move_surface_to(lower, top_left.first - 100, top_left.second);
+    struct wl_surface* const lower_wl_surface = lower;
+
+    auto parent = builder->build(
+        the_server(),
+        client,
+        top_left,
+        surface_size);
+    ASSERT_THAT(surface_size.first, Gt(100));
+    struct wl_surface* const parent_wl_surface = *parent;
+    auto subsurface = std::make_unique<wlcs::Subsurface>(wlcs::Subsurface::create_visible(
+        *parent,
+        -100, 0,
+        surface_size.first, surface_size.second));
+    wl_subsurface_set_desync(*subsurface);
+    struct wl_surface* const sub_wl_surface = *subsurface;
+    client.roundtrip();
+
+    wl_surface_attach(parent_wl_surface, nullptr, 0, 0);
+    wl_surface_commit(parent_wl_surface);
+    client.roundtrip();
+
+    auto const device = input->create_device(the_server());
+    device->to_position({top_left.first - 90, top_left.second + 10});
+    client.roundtrip();
+
+    EXPECT_THAT(input->current_surface(client), Ne(sub_wl_surface))
+        << input << " seen by subsurface after parent was unmapped";
+
+    EXPECT_THAT(input->current_surface(client), Ne(parent_wl_surface))
+        << input << " seen by " << builder << " after being unmapped (also input should have gone to subsurface)";
+
+    EXPECT_THAT(input->current_surface(client), Eq(lower_wl_surface))
+        << input << " not seen by lower surface";
+}
+
+TEST_P(SurfaceInputCombinations, input_seen_after_surface_unmapped_and_remapped)
+{
+    auto const top_left = std::make_pair(200, 49);
+    wlcs::Client client{the_server()};
+    std::shared_ptr<SurfaceBuilder> builder;
+    std::shared_ptr<InputType> input;
+    std::tie(builder, input) = GetParam();
+
+    auto lower = client.create_visible_surface(surface_size.first, surface_size.second);
+    the_server().move_surface_to(lower, top_left.first, top_left.second);
+    struct wl_surface* const lower_wl_surface = lower;
+
+    auto upper = builder->build(
+        the_server(),
+        client,
+        top_left,
+        surface_size);
+    struct wl_surface* const upper_wl_surface = *upper;
+
+    wl_surface_attach(upper_wl_surface, nullptr, 0, 0);
+    wl_surface_commit(upper_wl_surface);
+    client.roundtrip();
+
+    upper->attach_visible_buffer(surface_size.first, surface_size.second);
+
+    auto const device = input->create_device(the_server());
+    device->to_position({top_left.first + 1, top_left.second + 1});
+    client.roundtrip();
+
+    EXPECT_THAT(input->current_surface(client), Ne(lower_wl_surface))
+        << input << " seen by lower surface when " << builder << " should be in the way";
+
+    EXPECT_THAT(input->current_surface(client), Eq(upper_wl_surface))
+        << input << " not seen by " << builder << " after it was unmapped and remapped";
+}
+
+TEST_P(SurfaceInputCombinations, input_seen_by_subsurface_after_parent_unmapped_and_remapped)
+{
+    auto const top_left = std::make_pair(200, 49);
+    wlcs::Client client{the_server()};
+    std::shared_ptr<SurfaceBuilder> builder;
+    std::shared_ptr<InputType> input;
+    std::tie(builder, input) = GetParam();
+
+    auto lower = client.create_visible_surface(surface_size.first, surface_size.second);
+    the_server().move_surface_to(lower, top_left.first - 100, top_left.second);
+    struct wl_surface* const lower_wl_surface = lower;
+
+    auto parent = builder->build(
+        the_server(),
+        client,
+        top_left,
+        surface_size);
+    ASSERT_THAT(surface_size.first, Gt(100));
+    struct wl_surface* const parent_wl_surface = *parent;
+    auto subsurface = std::make_unique<wlcs::Subsurface>(wlcs::Subsurface::create_visible(
+        *parent,
+        -100, 0,
+        surface_size.first, surface_size.second));
+    wl_subsurface_set_desync(*subsurface);
+    struct wl_surface* const sub_wl_surface = *subsurface;
+    client.roundtrip();
+
+    wl_surface_attach(parent_wl_surface, nullptr, 0, 0);
+    wl_surface_commit(parent_wl_surface);
+    client.roundtrip();
+
+    parent->attach_visible_buffer(surface_size.first, surface_size.second);
+    //the_server().move_surface_to(*parent, top_left.first, top_left.second);
+
+    auto const device = input->create_device(the_server());
+    device->to_position({top_left.first - 90, top_left.second + 10});
+    client.roundtrip();
+
+    EXPECT_THAT(input->current_surface(client), Ne(lower_wl_surface))
+        << input << " seen by lower surface when subsurface should be in the way";
+
+    EXPECT_THAT(input->current_surface(client), Ne(parent_wl_surface))
+        << input << " seen by " << builder << " when it should be seen by it's subsurface";
+
+    EXPECT_THAT(input->current_surface(client), Eq(sub_wl_surface))
+        << input << " not seen by subsurface after parent was unmapped and remapped";
+}
+
 // Will only be instantiated with toplevel surfaces
 class ToplevelInputCombinations :
     public wlcs::InProcessServer,
