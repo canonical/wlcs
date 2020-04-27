@@ -228,6 +228,9 @@ auto const toplevel_surface_types = Values(
     std::make_shared<XdgV6SurfaceBuilder>(),
     std::make_shared<XdgStableSurfaceBuilder>());
 
+auto const xdg_stable_surface_type = Values(
+    std::make_shared<XdgStableSurfaceBuilder>());
+
 // TODO: popup surfaces
 
 struct InputType
@@ -960,22 +963,22 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     FullSurface,
     RegionSurfaceInputCombinations,
-    Combine(full_surface_edges, Values(std::make_shared<XdgStableSurfaceBuilder>()), all_input_types));
+    Combine(full_surface_edges, xdg_stable_surface_type, all_input_types));
 
 INSTANTIATE_TEST_SUITE_P(
     SmallerRegion,
     RegionSurfaceInputCombinations,
-    Combine(smaller_region_edges, Values(std::make_shared<XdgStableSurfaceBuilder>()), all_input_types));
+    Combine(smaller_region_edges, xdg_stable_surface_type, all_input_types));
 
 INSTANTIATE_TEST_SUITE_P(
     ClippedLargerRegion,
     RegionSurfaceInputCombinations,
-    Combine(larger_region_edges, Values(std::make_shared<XdgStableSurfaceBuilder>()), all_input_types));
+    Combine(larger_region_edges, xdg_stable_surface_type, all_input_types));
 
 INSTANTIATE_TEST_SUITE_P(
     MultiRectCorners,
     RegionSurfaceInputCombinations,
-    Combine(multi_rect_corners, Values(std::make_shared<XdgStableSurfaceBuilder>()), all_input_types));
+    Combine(multi_rect_corners, xdg_stable_surface_type, all_input_types));
 
 INSTANTIATE_TEST_SUITE_P(
     SurfaceInputRegions,
