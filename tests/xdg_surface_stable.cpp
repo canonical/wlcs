@@ -62,3 +62,120 @@ TEST_F(XdgSurfaceStableTest, gets_configure_event)
 
     EXPECT_THAT(surface_configure_count, Eq(1));
 }
+
+TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_existing_role_is_an_error)
+{
+    wlcs::Client client{the_server()};
+
+    auto* const xdg_wm_base = static_cast<struct xdg_wm_base*>(
+        client.acquire_interface("xdg_wm_base", &xdg_wm_base_interface, 1));
+
+    // We need some way of assigning a role to a wl_surface. wl_subcompositor is as good a way as any.
+    auto* const subcompositor = static_cast<struct wl_subcompositor*>(
+        client.acquire_interface("wl_subcompositor", &wl_subcompositor_interface, 1));
+
+    // We need a parent for the subsurface
+    auto const parent = client.create_visible_surface(300, 300);
+
+    auto* const surface = wl_compositor_create_surface(client.compositor());
+    // It doesn't matter that we leak the wl_subsurface; that'll be cleaned up in client destruction.
+    wl_subcompositor_get_subsurface(subcompositor, surface, parent);
+    client.roundtrip();
+
+    try
+    {
+        xdg_wm_base_get_xdg_surface(xdg_wm_base, surface);
+        client.roundtrip();
+    }
+    catch(wlcs::ProtocolError const& error)
+    {
+        EXPECT_THAT(error.interface(), Eq(&xdg_wm_base_interface));
+        EXPECT_THAT(error.error_code(), Eq(XDG_WM_BASE_ERROR_ROLE));
+        return;
+    }
+
+    FAIL() << "Expected protocol error not received";
+}
+
+
+TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_attached_buffer_is_an_error)
+{
+    wlcs::Client client{the_server()};
+
+    auto* const xdg_wm_base = static_cast<struct xdg_wm_base*>(
+        client.acquire_interface("xdg_wm_base", &xdg_wm_base_interface, 1));
+
+    auto* const surface = wl_compositor_create_surface(client.compositor());
+    wlcs::ShmBuffer buffer{client, 300, 300};
+    wl_surface_attach(surface, buffer, 0, 0);
+    client.roundtrip();
+
+    try
+    {
+        xdg_wm_base_get_xdg_surface(xdg_wm_base, surface);
+        client.roundtrip();
+    }
+    catch(wlcs::ProtocolError const& error)
+    {
+        EXPECT_THAT(error.interface(), Eq(&xdg_wm_base_interface));
+        EXPECT_THAT(error.error_code(), Eq(XDG_WM_BASE_ERROR_INVALID_SURFACE_STATE));
+        return;
+    }
+
+    FAIL() << "Expected protocol error not received";
+}
+
+TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_committed_buffer_is_an_error)
+{
+    wlcs::Client client{the_server()};
+
+    auto* const xdg_wm_base = static_cast<struct xdg_wm_base*>(
+        client.acquire_interface("xdg_wm_base", &xdg_wm_base_interface, 1));
+
+    auto* const surface = wl_compositor_create_surface(client.compositor());
+    wlcs::ShmBuffer buffer{client, 300, 300};
+    wl_surface_attach(surface, buffer, 0, 0);
+    wl_surface_commit(surface);
+    client.roundtrip();
+
+    try
+    {
+        xdg_wm_base_get_xdg_surface(xdg_wm_base, surface);
+        client.roundtrip();
+    }
+    catch(wlcs::ProtocolError const& error)
+    {
+        EXPECT_THAT(error.interface(), Eq(&xdg_wm_base_interface));
+        EXPECT_THAT(error.error_code(), Eq(XDG_WM_BASE_ERROR_INVALID_SURFACE_STATE));
+        return;
+    }
+
+    FAIL() << "Expected protocol error not received";
+}
+
+TEST_F(XdgSurfaceStableTest, attaching_buffer_to_unconfigured_xdg_surface_is_an_error)
+{
+    wlcs::Client client{the_server()};
+
+    auto* const xdg_wm_base = static_cast<struct xdg_wm_base*>(
+        client.acquire_interface("xdg_wm_base", &xdg_wm_base_interface, 1));
+
+    auto* const surface = wl_compositor_create_surface(client.compositor());
+    wlcs::ShmBuffer buffer{client, 300, 300};
+    client.roundtrip();
+
+    try
+    {
+        xdg_wm_base_get_xdg_surface(xdg_wm_base, surface);
+        wl_surface_attach(surface, buffer, 0, 0);
+        client.roundtrip();
+    }
+    catch(wlcs::ProtocolError const& error)
+    {
+        EXPECT_THAT(error.interface(), Eq(&xdg_surface_interface));
+        EXPECT_THAT(error.error_code(), Eq(XDG_SURFACE_ERROR_UNCONFIGURED_BUFFER));
+        return;
+    }
+
+    FAIL() << "Expected protocol error not received";
+}
