@@ -474,6 +474,9 @@ TEST_P(SubsurfaceTest, place_below_simple)
 {
     auto subsurface_moving_down{wlcs::Subsurface::create_visible(main_surface, 0, 0, subsurface_width, subsurface_height)};
     wl_subsurface_place_below(subsurface_moving_down, subsurface);
+    wl_surface_commit(subsurface_moving_down);
+    wl_surface_commit(subsurface);
+    wl_surface_commit(main_surface);
 
     input_device->to_screen_position(5 + surface_x, 5 + surface_y);
     client.roundtrip();
@@ -489,6 +492,9 @@ TEST_P(SubsurfaceTest, place_above_simple)
 {
     auto subsurface_being_covered{wlcs::Subsurface::create_visible(main_surface, 0, 0, subsurface_width, subsurface_height)};
     wl_subsurface_place_above(subsurface, subsurface_being_covered);
+    wl_surface_commit(subsurface);
+    wl_surface_commit(subsurface_being_covered);
+    wl_surface_commit(main_surface);
 
     input_device->to_screen_position(5 + surface_x, 5 + surface_y);
     client.roundtrip();
