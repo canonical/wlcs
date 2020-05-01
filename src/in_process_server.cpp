@@ -1625,7 +1625,7 @@ size_t wlcs::Client::output_count() const
 wlcs::OutputState wlcs::Client::output_state(size_t index) const
 {
     if (index > output_count())
-        throw std::runtime_error("Invalid output index");
+        throw std::out_of_range("Invalid output index");
 
     return impl->outputs[index]->current;
 }
