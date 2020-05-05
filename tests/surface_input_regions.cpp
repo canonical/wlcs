@@ -702,6 +702,7 @@ TEST_P(SurfaceInputCombinations, input_not_seen_over_empty_region)
 TEST_P(SurfaceInputCombinations, input_hits_parent_after_falling_through_subsurface)
 {
     auto const top_left = std::make_pair(64, 49);
+    auto const input_offset = std::make_pair(4, 4);
     wlcs::Client client{the_server()};
     std::shared_ptr<SurfaceBuilder> builder;
     std::shared_ptr<InputType> input;
@@ -724,7 +725,7 @@ TEST_P(SurfaceInputCombinations, input_hits_parent_after_falling_through_subsurf
     region.apply_to_surface(client, sub_wl_surface);
 
     auto const device = input->create_device(the_server());
-    device->to_position({top_left.first + 4, top_left.second + 4});
+    device->to_position({top_left.first + input_offset.first, top_left.second + input_offset.second});
     client.roundtrip();
 
     EXPECT_THAT(input->current_surface(client), Ne(sub_wl_surface))
@@ -732,6 +733,9 @@ TEST_P(SurfaceInputCombinations, input_hits_parent_after_falling_through_subsurf
 
     EXPECT_THAT(input->current_surface(client), Eq(parent_wl_surface))
         << input << " not seen by " << builder << " when it should have fallen through the subsurface input region";
+
+    EXPECT_THAT(input->position_on_surface(client), Eq(input_offset))
+        << input << " seen in the wrong place";
 }
 
 TEST_P(SurfaceInputCombinations, unmapping_parent_stops_subsurface_getting_input)
@@ -864,35 +868,41 @@ TEST_P(SurfaceInputCombinations, input_falls_through_subsurface_when_parent_unma
 TEST_P(SurfaceInputCombinations, input_seen_after_surface_unmapped_and_remapped)
 {
     auto const top_left = std::make_pair(200, 49);
+    auto const input_offset = std::make_pair(4, 4);
     wlcs::Client client{the_server()};
     std::shared_ptr<SurfaceBuilder> builder;
     std::shared_ptr<InputType> input;
     std::tie(builder, input) = GetParam();
 
-    auto upper = builder->build(
+    auto surface = builder->build(
         the_server(),
         client,
         top_left,
         surface_size);
-    struct wl_surface* const upper_wl_surface = *upper;
+    struct wl_surface* const wl_surface = *surface;
 
-    wl_surface_attach(upper_wl_surface, nullptr, 0, 0);
-    wl_surface_commit(upper_wl_surface);
+    wl_surface_attach(wl_surface, nullptr, 0, 0);
+    wl_surface_commit(wl_surface);
     client.roundtrip();
 
-    upper->attach_visible_buffer(surface_size.first, surface_size.second);
+    surface->attach_visible_buffer(surface_size.first, surface_size.second);
 
     auto const device = input->create_device(the_server());
-    device->to_position({top_left.first + 1, top_left.second + 1});
+    device->to_position({top_left.first + input_offset.first, top_left.second + input_offset.second});
     client.roundtrip();
 
-    EXPECT_THAT(input->current_surface(client), Eq(upper_wl_surface))
+    EXPECT_THAT(input->current_surface(client), Eq(wl_surface))
         << input << " not seen by " << builder << " after it was unmapped and remapped";
+
+    EXPECT_THAT(input->position_on_surface(client), Eq(input_offset))
+        << input << " seen in the wrong place";
 }
 
 TEST_P(SurfaceInputCombinations, input_seen_by_subsurface_after_parent_unmapped_and_remapped)
 {
     auto const top_left = std::make_pair(200, 49);
+    auto const input_offset = std::make_pair(-90, 10);
+    auto const subsurface_offset = std::make_pair(-100, 0);
     wlcs::Client client{the_server()};
     std::shared_ptr<SurfaceBuilder> builder;
     std::shared_ptr<InputType> input;
@@ -907,7 +917,7 @@ TEST_P(SurfaceInputCombinations, input_seen_by_subsurface_after_parent_unmapped_
     struct wl_surface* const parent_wl_surface = *parent;
     auto subsurface = std::make_unique<wlcs::Subsurface>(wlcs::Subsurface::create_visible(
         *parent,
-        -100, 0,
+        subsurface_offset.first, subsurface_offset.second,
         surface_size.first, surface_size.second));
     wl_subsurface_set_desync(*subsurface);
     struct wl_surface* const sub_wl_surface = *subsurface;
@@ -921,7 +931,7 @@ TEST_P(SurfaceInputCombinations, input_seen_by_subsurface_after_parent_unmapped_
     //the_server().move_surface_to(*parent, top_left.first, top_left.second);
 
     auto const device = input->create_device(the_server());
-    device->to_position({top_left.first - 90, top_left.second + 10});
+    device->to_position({top_left.first + input_offset.first, top_left.second + input_offset.second});
     client.roundtrip();
 
     EXPECT_THAT(input->current_surface(client), Ne(parent_wl_surface))
@@ -929,11 +939,16 @@ TEST_P(SurfaceInputCombinations, input_seen_by_subsurface_after_parent_unmapped_
 
     EXPECT_THAT(input->current_surface(client), Eq(sub_wl_surface))
         << input << " not seen by subsurface after parent was unmapped and remapped";
+
+    EXPECT_THAT(input->position_on_surface(client), Eq(
+        std::make_pair(input_offset.first - subsurface_offset.first, input_offset.second - subsurface_offset.second)))
+        << input << " seen in the wrong place";
 }
 
 TEST_P(SurfaceInputCombinations, input_seen_after_dragged_off_surface)
 {
     auto const top_left = std::make_pair(200, 49);
+    auto const input_offset = std::make_pair(-5, 5);
     wlcs::Client client{the_server()};
     std::shared_ptr<SurfaceBuilder> builder;
     std::shared_ptr<InputType> input;
@@ -956,16 +971,16 @@ TEST_P(SurfaceInputCombinations, input_seen_after_dragged_off_surface)
     device->down();
     client.roundtrip();
 
-    ASSERT_THAT(input->current_surface(client), Eq(main_wl_surface))
-        << input << " not seen by " << builder << " (precondition failed)";
-
-    device->drag_or_move_to_position({top_left.first - 5, top_left.second + 5});
+    device->drag_or_move_to_position({top_left.first + input_offset.first, top_left.second + input_offset.second});
     client.roundtrip();
 
     EXPECT_THAT(input->current_surface(client), Ne(other_wl_surface))
         << input << " seen by second surface event though it was dragged from first";
 
     EXPECT_THAT(input->current_surface(client), Eq(main_wl_surface))
+        << input << " not seen by " << builder << " after being dragged away";
+
+    EXPECT_THAT(input->position_on_surface(client), Eq(input_offset))
         << input << " not seen by " << builder << " after being dragged away";
 }
 
