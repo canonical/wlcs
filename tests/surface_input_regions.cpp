@@ -216,20 +216,22 @@ struct SubsurfaceBuilder : SurfaceBuilder
     std::pair<int, int> offset;
 };
 
+// All this pointer casting nonsense is only to make 16.04 GCC happy
+
 auto const all_surface_types = Values(
-    std::make_shared<WlShellSurfaceBuilder>(),
-    std::make_shared<XdgV6SurfaceBuilder>(),
-    std::make_shared<XdgStableSurfaceBuilder>(),
-    std::make_shared<SubsurfaceBuilder>(std::make_pair(0, 0)),
-    std::make_shared<SubsurfaceBuilder>(std::make_pair(7, 12)));
+    std::static_pointer_cast<SurfaceBuilder>(std::make_shared<WlShellSurfaceBuilder>()),
+    std::static_pointer_cast<SurfaceBuilder>(std::make_shared<XdgV6SurfaceBuilder>()),
+    std::static_pointer_cast<SurfaceBuilder>(std::make_shared<XdgStableSurfaceBuilder>()),
+    std::static_pointer_cast<SurfaceBuilder>(std::make_shared<SubsurfaceBuilder>(std::make_pair(0, 0))),
+    std::static_pointer_cast<SurfaceBuilder>(std::make_shared<SubsurfaceBuilder>(std::make_pair(7, 12))));
 
 auto const toplevel_surface_types = Values(
-    std::make_shared<WlShellSurfaceBuilder>(),
-    std::make_shared<XdgV6SurfaceBuilder>(),
-    std::make_shared<XdgStableSurfaceBuilder>());
+    std::static_pointer_cast<SurfaceBuilder>(std::make_shared<WlShellSurfaceBuilder>()),
+    std::static_pointer_cast<SurfaceBuilder>(std::make_shared<XdgV6SurfaceBuilder>()),
+    std::static_pointer_cast<SurfaceBuilder>(std::make_shared<XdgStableSurfaceBuilder>()));
 
 auto const xdg_stable_surface_type = Values(
-    std::make_shared<XdgStableSurfaceBuilder>());
+    std::static_pointer_cast<SurfaceBuilder>(std::make_shared<XdgStableSurfaceBuilder>()));
 
 // TODO: popup surfaces
 
