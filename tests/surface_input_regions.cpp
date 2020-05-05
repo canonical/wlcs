@@ -869,10 +869,6 @@ TEST_P(SurfaceInputCombinations, input_seen_after_surface_unmapped_and_remapped)
     std::shared_ptr<InputType> input;
     std::tie(builder, input) = GetParam();
 
-    auto lower = client.create_visible_surface(surface_size.first, surface_size.second);
-    the_server().move_surface_to(lower, top_left.first, top_left.second);
-    struct wl_surface* const lower_wl_surface = lower;
-
     auto upper = builder->build(
         the_server(),
         client,
@@ -890,9 +886,6 @@ TEST_P(SurfaceInputCombinations, input_seen_after_surface_unmapped_and_remapped)
     device->to_position({top_left.first + 1, top_left.second + 1});
     client.roundtrip();
 
-    EXPECT_THAT(input->current_surface(client), Ne(lower_wl_surface))
-        << input << " seen by lower surface when " << builder << " should be in the way";
-
     EXPECT_THAT(input->current_surface(client), Eq(upper_wl_surface))
         << input << " not seen by " << builder << " after it was unmapped and remapped";
 }
@@ -904,10 +897,6 @@ TEST_P(SurfaceInputCombinations, input_seen_by_subsurface_after_parent_unmapped_
     std::shared_ptr<SurfaceBuilder> builder;
     std::shared_ptr<InputType> input;
     std::tie(builder, input) = GetParam();
-
-    auto lower = client.create_visible_surface(surface_size.first, surface_size.second);
-    the_server().move_surface_to(lower, top_left.first - 100, top_left.second);
-    struct wl_surface* const lower_wl_surface = lower;
 
     auto parent = builder->build(
         the_server(),
@@ -934,9 +923,6 @@ TEST_P(SurfaceInputCombinations, input_seen_by_subsurface_after_parent_unmapped_
     auto const device = input->create_device(the_server());
     device->to_position({top_left.first - 90, top_left.second + 10});
     client.roundtrip();
-
-    EXPECT_THAT(input->current_surface(client), Ne(lower_wl_surface))
-        << input << " seen by lower surface when subsurface should be in the way";
 
     EXPECT_THAT(input->current_surface(client), Ne(parent_wl_surface))
         << input << " seen by " << builder << " when it should be seen by it's subsurface";
