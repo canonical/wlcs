@@ -243,7 +243,15 @@ struct InputType
     struct Device
     {
         virtual ~Device() = default;
-        virtual void to_position(std::pair<int, int> position) = 0;
+        virtual void drag_or_move_to_position(std::pair<int, int> position) = 0;
+        virtual void down() = 0; ///< does nothing for touches
+        virtual void up() = 0;
+
+        void to_position(std::pair<int, int> position)
+        {
+            up();
+            drag_or_move_to_position(position);
+        }
     };
 
     virtual auto create_device(wlcs::Server& server) -> std::unique_ptr<Device> = 0;
@@ -269,12 +277,31 @@ struct PointerInput : InputType
         {
         }
 
-        void to_position(std::pair<int, int> position) override
+        void drag_or_move_to_position(std::pair<int, int> position) override
         {
             pointer.move_to(position.first, position.second);
         }
 
+        void down() override
+        {
+            if (!button_down)
+            {
+                pointer.left_button_down();
+                button_down = true;
+            }
+        }
+
+        void up() override
+        {
+            if (button_down)
+            {
+                pointer.left_button_up();
+                button_down = false;
+            }
+        }
+
         wlcs::Pointer pointer;
+        bool button_down = false;
     };
 
     auto create_device(wlcs::Server& server) -> std::unique_ptr<Device> override
@@ -307,15 +334,27 @@ struct TouchInput : InputType
         {
         }
 
-        void to_position(std::pair<int, int> position) override
+        void drag_or_move_to_position(std::pair<int, int> position) override
         {
             if (is_down)
             {
-                touch.up();
+                touch.move_to(position.first, position.second);
             }
-
-            touch.down_at(position.first, position.second);
+            else
+            {
+                touch.down_at(position.first, position.second);
+            }
             is_down = true;
+        }
+
+        void down() override
+        {
+        }
+
+        void up() override
+        {
+            touch.up();
+            is_down = false;
         }
 
         wlcs::Touch touch;
