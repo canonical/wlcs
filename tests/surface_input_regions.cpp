@@ -945,6 +945,44 @@ TEST_P(SurfaceInputCombinations, input_seen_by_subsurface_after_parent_unmapped_
         << input << " not seen by subsurface after parent was unmapped and remapped";
 }
 
+TEST_P(SurfaceInputCombinations, input_seen_after_dragged_off_surface)
+{
+    auto const top_left = std::make_pair(200, 49);
+    wlcs::Client client{the_server()};
+    std::shared_ptr<SurfaceBuilder> builder;
+    std::shared_ptr<InputType> input;
+    std::tie(builder, input) = GetParam();
+
+    auto other = client.create_visible_surface(98, 98);
+    the_server().move_surface_to(other, top_left.first - 100, top_left.second);
+    struct wl_surface* const other_wl_surface = other;
+
+    auto main = builder->build(
+        the_server(),
+        client,
+        top_left,
+        surface_size);
+    struct wl_surface* const main_wl_surface = *main;
+    client.roundtrip();
+
+    auto const device = input->create_device(the_server());
+    device->to_position({top_left.first + 5, top_left.second + 5});
+    device->down();
+    client.roundtrip();
+
+    ASSERT_THAT(input->current_surface(client), Eq(main_wl_surface))
+        << input << " not seen by " << builder << " (precondition failed)";
+
+    device->drag_or_move_to_position({top_left.first - 5, top_left.second + 5});
+    client.roundtrip();
+
+    EXPECT_THAT(input->current_surface(client), Ne(other_wl_surface))
+        << input << " seen by 2nd surface event though it was dragged from first";
+
+    EXPECT_THAT(input->current_surface(client), Eq(main_wl_surface))
+        << input << " not seen by " << builder << " after being dragged away";
+}
+
 // Will only be instantiated with toplevel surfaces
 class ToplevelInputCombinations :
     public wlcs::InProcessServer,
