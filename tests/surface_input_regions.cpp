@@ -953,8 +953,8 @@ TEST_P(SurfaceInputCombinations, input_seen_after_dragged_off_surface)
     std::shared_ptr<InputType> input;
     std::tie(builder, input) = GetParam();
 
-    auto other = client.create_visible_surface(98, 98);
-    the_server().move_surface_to(other, top_left.first - 100, top_left.second);
+    auto other = client.create_visible_surface(100, 100);
+    the_server().move_surface_to(other, top_left.first - 102, top_left.second);
     struct wl_surface* const other_wl_surface = other;
 
     auto main = builder->build(
@@ -977,10 +977,52 @@ TEST_P(SurfaceInputCombinations, input_seen_after_dragged_off_surface)
     client.roundtrip();
 
     EXPECT_THAT(input->current_surface(client), Ne(other_wl_surface))
-        << input << " seen by 2nd surface event though it was dragged from first";
+        << input << " seen by second surface event though it was dragged from first";
 
     EXPECT_THAT(input->current_surface(client), Eq(main_wl_surface))
         << input << " not seen by " << builder << " after being dragged away";
+}
+
+TEST_P(SurfaceInputCombinations, input_seen_by_second_surface_after_drag_off_first_and_up)
+{
+    auto const top_left = std::make_pair(200, 49);
+    wlcs::Client client{the_server()};
+    std::shared_ptr<SurfaceBuilder> builder;
+    std::shared_ptr<InputType> input;
+    std::tie(builder, input) = GetParam();
+
+    auto other = builder->build(
+        the_server(),
+        client,
+        std::make_pair(top_left.first - 102, top_left.second),
+        std::make_pair(100, 100));
+    struct wl_surface* const other_wl_surface = *other;
+
+    auto main = builder->build(
+        the_server(),
+        client,
+        top_left,
+        surface_size);
+    struct wl_surface* const main_wl_surface = *main;
+    client.roundtrip();
+
+    auto const device = input->create_device(the_server());
+    device->to_position({top_left.first + 5, top_left.second + 5});
+    device->down();
+    client.roundtrip();
+
+    device->drag_or_move_to_position({top_left.first - 80, top_left.second + 5});
+    client.roundtrip();
+
+    device->up();
+    device->drag_or_move_to_position({top_left.first - 80, top_left.second + 5});
+    client.roundtrip();
+
+    EXPECT_THAT(input->current_surface(client), Ne(main_wl_surface))
+        << input << " seen by first " << builder << " after being up";
+
+    EXPECT_THAT(input->current_surface(client), Eq(other_wl_surface))
+        << input << " not seen by second " << builder << " after being up";
 }
 
 // Will only be instantiated with toplevel surfaces
