@@ -235,3 +235,26 @@ TEST_F(XdgSurfaceStableTest, is_activated_when_buffer_sent_on_first_commit)
 
     EXPECT_THAT(state.activated, Eq(true));
 }
+
+TEST_F(XdgSurfaceStableTest, configured_with_size_when_initially_maximized)
+{
+    wlcs::Client client{the_server()};
+    wlcs::Surface surface{client};
+    wlcs::XdgSurfaceStable xdg_surface{client, surface};
+    wlcs::XdgToplevelStable toplevel{xdg_surface};
+
+    wlcs::XdgToplevelStable::State state{0, 0, nullptr};
+    xdg_surface.add_configure_notification([&](uint32_t serial)
+        {
+            xdg_surface_ack_configure(xdg_surface, serial);
+        });
+    toplevel.add_configure_notification([&](int32_t width, int32_t height, struct wl_array *states)
+        {
+            state = wlcs::XdgToplevelStable::State{width, height, states};
+        });
+    xdg_toplevel_set_maximized(toplevel);
+    client.roundtrip();
+
+    EXPECT_THAT(state.width, Gt(0));
+    EXPECT_THAT(state.height, Gt(0));
+}
