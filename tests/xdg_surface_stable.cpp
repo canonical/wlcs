@@ -69,15 +69,14 @@ TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_existing_
 
     wlcs::WlProxy<xdg_wm_base> const xdg_wm_base{client};
 
-    // We need some way of assigning a role to a wl_surface. wl_subcompositor is as good a way as any.
-    wlcs::WlProxy<wl_subcompositor> const subcompositor{client};
-
     // We need a parent for the subsurface
     auto const parent = client.create_visible_surface(300, 300);
 
     wlcs::WlProxy<wl_surface> const surface{wl_compositor_create_surface(client.compositor())};
-    // It doesn't matter that we leak the wl_subsurface; that'll be cleaned up in client destruction.
-    wl_subcompositor_get_subsurface(subcompositor, surface, parent);
+
+    // We need some way of assigning a role to a wl_surface. wl_subcompositor is as good a way as any.
+    wlcs::WlProxy<wl_subsurface> const subsurface{wl_subcompositor_get_subsurface(client.subcompositor(), surface, parent)};
+
     client.roundtrip();
 
     try
