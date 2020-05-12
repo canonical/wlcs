@@ -855,58 +855,23 @@ public:
 
     void* bind_if_supported(wl_interface const& to_bind, uint32_t min_version) const
     {
-        wl_registry* temp_registry = wl_display_get_registry(display);
-
-        struct InterfaceResult
+        auto const global = globals.find(to_bind.name);
+        if (global != globals.end() && global->second.version >= min_version)
         {
-            void* bound_interface;
-            std::string const& interface;
-            wl_interface const* to_bind;
-            uint32_t min_version;
-        } result{nullptr, to_bind.name, &to_bind, min_version};
-
-        wl_registry_listener const listener{
-            [](
-                void* ctx,
-                wl_registry* registry,
-                uint32_t id,
-                char const* interface,
-                uint32_t version)
-            {
-                auto request = static_cast<InterfaceResult*>(ctx);
-
-                if (request->interface == interface && version >= request->min_version)
-                {
-                    request->bound_interface = wl_registry_bind(registry, id, request->to_bind, version);
-                }
-            },
-            [](auto, auto, auto) {}
-        };
-
-        wl_registry_add_listener(
-            temp_registry,
-            &listener,
-            &result);
-
-        wl_display_roundtrip(display);
-
-        wl_registry_destroy(temp_registry);
-
-        if (result.bound_interface == nullptr)
-        {
-            if (supported_extensions &&
-                (supported_extensions->count(to_bind.name) == 0 ||
-                 supported_extensions->at(to_bind.name) < min_version))
-            {
-                BOOST_THROW_EXCEPTION((ExtensionExpectedlyNotSupported{to_bind.name, min_version}));
-            }
-            else
-            {
-                BOOST_THROW_EXCEPTION((std::runtime_error{"Failed to acquire interface"}));
-            }
+            return wl_registry_bind(registry, global->second.id, &to_bind, global->second.version);
         }
-
-        return result.bound_interface;
+        else if (
+            supported_extensions &&
+            (supported_extensions->count(to_bind.name) == 0 ||
+             supported_extensions->at(to_bind.name) < min_version))
+        {
+            BOOST_THROW_EXCEPTION((ExtensionExpectedlyNotSupported{to_bind.name, min_version}));
+        }
+        else
+        {
+            BOOST_THROW_EXCEPTION((std::runtime_error{
+                "Failed to bind to " + std::string{to_bind.name} + " version " + std::to_string(min_version)}));
+        }
     }
 
     void dispatch_until(
@@ -1377,6 +1342,8 @@ private:
         using namespace std::literals::string_literals;
 
         auto me = static_cast<Impl*>(ctx);
+        me->global_type_names[id] = interface;
+        me->globals[interface] = Global{id, version};
 
         if ("wl_shm"s == interface)
         {
@@ -1430,9 +1397,15 @@ private:
         }
     }
 
-    static void global_removed(void*, wl_registry*, uint32_t)
+    static void global_removed(void* ctx, wl_registry*, uint32_t id)
     {
-        // TODO: Remove our globals
+        auto me = static_cast<Impl*>(ctx);
+        auto const name = me->global_type_names.find(id);
+        if (name != me->global_type_names.end())
+        {
+            me->globals.erase(name->second);
+            me->global_type_names.erase(name);
+        }
     }
 
     constexpr static wl_registry_listener registry_listener = {
@@ -1454,6 +1427,14 @@ private:
     struct zxdg_shell_v6* xdg_shell_v6 = nullptr;
     std::vector<std::function<void()>> destruction_callbacks;
     struct xdg_wm_base* xdg_shell_stable = nullptr;
+
+    struct Global
+    {
+        uint32_t id;
+        uint32_t version;
+    };
+    std::map<std::string, Global> globals;
+    std::map<uint32_t, std::string> global_type_names;
 
     struct SurfaceLocation
     {
