@@ -6,9 +6,14 @@
 #include "wl_proxy.h"
 #include "in_process_server.h"
 
+// We have to be inside the wlcs namespace due to GCC bug 56480 (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480)
+// The namespace can be moved to each declaration once we drop 16.04
+namespace wlcs
+{
+
 #define GLOBAL_DEFAULT_DESTROY_PROXY_CONSTRUCTOR(name) \
     template<> \
-    wlcs::WlProxy<name>::WlProxy(Client const& client) \
+    WlProxy<name>::WlProxy(Client const& client) \
         : WlProxy(client.bind_if_supported(name##_interface, name ##_destroy)) \
     { \
     }
@@ -24,7 +29,7 @@ GLOBAL_DEFAULT_DESTROY_PROXY_CONSTRUCTOR(zwlr_layer_shell_v1)
 
 #define DEFAULT_DESTROY_PROXY_CONSTRUCTOR(name) \
     template<> \
-    wlcs::WlProxy<name>::WlProxy(name* proxy) \
+    WlProxy<name>::WlProxy(name* proxy) \
         : proxy{proxy}, \
           destroy{name##_destroy} \
     { \
@@ -33,5 +38,7 @@ GLOBAL_DEFAULT_DESTROY_PROXY_CONSTRUCTOR(zwlr_layer_shell_v1)
 DEFAULT_DESTROY_PROXY_CONSTRUCTOR(wl_surface)
 DEFAULT_DESTROY_PROXY_CONSTRUCTOR(wl_subsurface)
 DEFAULT_DESTROY_PROXY_CONSTRUCTOR(zwlr_layer_surface_v1)
+
+}
 
 #undef DEFAULT_DESTROY_PROXY_CONSTRUCTOR
