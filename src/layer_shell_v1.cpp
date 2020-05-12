@@ -25,14 +25,15 @@ wlcs::LayerSurfaceV1::LayerSurfaceV1(
     wl_output* output,
     const char *_namespace)
     : client{client},
-      layer_shell{client}
+      layer_shell{client},
+      layer_surface{
+          zwlr_layer_shell_v1_get_layer_surface(
+          layer_shell,
+          surface,
+          output,
+          layer,
+          _namespace)}
 {
-    layer_surface = zwlr_layer_shell_v1_get_layer_surface(
-        layer_shell,
-        surface,
-        output,
-        layer,
-        _namespace);
     static struct zwlr_layer_surface_v1_listener const listener {
         [](void* data,
             struct zwlr_layer_surface_v1 *zwlr_layer_surface_v1,
@@ -54,11 +55,6 @@ wlcs::LayerSurfaceV1::LayerSurfaceV1(
             }
     };
     zwlr_layer_surface_v1_add_listener(layer_surface, &listener, this);
-}
-
-wlcs::LayerSurfaceV1::~LayerSurfaceV1()
-{
-    zwlr_layer_surface_v1_destroy(layer_surface);
 }
 
 void wlcs::LayerSurfaceV1::dispatch_until_configure()

@@ -47,7 +47,6 @@ public:
         const char *_namespace = "wlcs");
     LayerSurfaceV1(LayerSurfaceV1 const&) = delete;
     LayerSurfaceV1& operator=(LayerSurfaceV1 const&) = delete;
-    ~LayerSurfaceV1();
 
     operator zwlr_layer_surface_v1*() const { return layer_surface; }
 
@@ -58,7 +57,7 @@ public:
 private:
     wlcs::Client& client;
     WlProxy<zwlr_layer_shell_v1> layer_shell;
-    zwlr_layer_surface_v1* layer_surface;
+    WlProxy<zwlr_layer_surface_v1> layer_surface;
     int last_width_ = -1;
     int last_height_ = -1;
     int configure_count = 0;
