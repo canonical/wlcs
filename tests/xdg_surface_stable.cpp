@@ -67,10 +67,10 @@ TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_existing_
 {
     wlcs::Client client{the_server()};
 
-    auto const xdg_wm_base = client.bind_if_supported<struct xdg_wm_base>(xdg_wm_base_interface, xdg_wm_base_destroy);
+    wlcs::WlProxy<xdg_wm_base> const xdg_wm_base{client};
 
     // We need some way of assigning a role to a wl_surface. wl_subcompositor is as good a way as any.
-    auto const subcompositor = client.bind_if_supported<struct wl_subcompositor>(wl_subcompositor_interface, wl_subcompositor_destroy);
+    wlcs::WlProxy<wl_subcompositor> const subcompositor{client};
 
     // We need a parent for the subsurface
     auto const parent = client.create_visible_surface(300, 300);
@@ -100,7 +100,7 @@ TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_attached_
 {
     wlcs::Client client{the_server()};
 
-    auto const xdg_wm_base = client.bind_if_supported<struct xdg_wm_base>(xdg_wm_base_interface, xdg_wm_base_destroy);
+    wlcs::WlProxy<xdg_wm_base> const xdg_wm_base{client};
 
     auto const surface = wlcs::wrap_proxy(wl_compositor_create_surface(client.compositor()), wl_surface_destroy);
     wlcs::ShmBuffer buffer{client, 300, 300};
@@ -126,7 +126,7 @@ TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_committed
 {
     wlcs::Client client{the_server()};
 
-    auto const xdg_wm_base = client.bind_if_supported<struct xdg_wm_base>(xdg_wm_base_interface, xdg_wm_base_destroy);
+    wlcs::WlProxy<xdg_wm_base> const xdg_wm_base{client};
 
     auto const surface = wlcs::wrap_proxy(wl_compositor_create_surface(client.compositor()), wl_surface_destroy);
     wlcs::ShmBuffer buffer{client, 300, 300};
@@ -153,7 +153,7 @@ TEST_F(XdgSurfaceStableTest, attaching_buffer_to_unconfigured_xdg_surface_is_an_
 {
     wlcs::Client client{the_server()};
 
-    auto const xdg_wm_base = client.bind_if_supported<struct xdg_wm_base>(xdg_wm_base_interface, xdg_wm_base_destroy);
+    wlcs::WlProxy<xdg_wm_base> const xdg_wm_base{client};
 
     auto const surface = wlcs::wrap_proxy(wl_compositor_create_surface(client.compositor()), wl_surface_destroy);
     wlcs::ShmBuffer buffer{client, 300, 300};

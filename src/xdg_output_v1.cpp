@@ -23,7 +23,7 @@ struct wlcs::XdgOutputManagerV1::Impl
 {
     Impl(Client& client)
         : client{client},
-          manager{client.bind_if_supported<zxdg_output_manager_v1>(zxdg_output_manager_v1_interface, zxdg_output_manager_v1_destroy)}
+          manager{client}
     {
     }
 

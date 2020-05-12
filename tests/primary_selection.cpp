@@ -36,9 +36,7 @@ struct SourceApp : Client
     // Can't use "using Client::Client;" because Xenial
     explicit SourceApp(Server& server) : Client{server} {}
 
-    WlProxy<zwp_primary_selection_device_manager_v1> const manager{bind_if_supported(
-            zwp_primary_selection_device_manager_v1_interface,
-            zwp_primary_selection_device_manager_v1_destroy)};
+    WlProxy<zwp_primary_selection_device_manager_v1> const manager{*this};
     PrimarySelectionSource source{manager};
     PrimarySelectionDevice device{manager, seat()};
 
@@ -59,9 +57,7 @@ struct SinkApp : Client
 {
     explicit SinkApp(Server& server) : Client{server} { roundtrip(); }
 
-    WlProxy<zwp_primary_selection_device_manager_v1> const manager{bind_if_supported(
-            zwp_primary_selection_device_manager_v1_interface,
-            zwp_primary_selection_device_manager_v1_destroy)};
+    WlProxy<zwp_primary_selection_device_manager_v1> const manager{*this};
     PrimarySelectionDevice device{manager, seat()};
 };
 
