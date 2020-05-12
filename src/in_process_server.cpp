@@ -24,7 +24,6 @@
 #include "wlcs/touch.h"
 #include "xdg_shell_v6.h"
 #include "xdg_shell_stable.h"
-#include "layer_shell_v1.h"
 #include "generated/wayland-client.h"
 #include "generated/xdg-shell-unstable-v6-client.h"
 #include "generated/xdg-shell-client.h"
@@ -661,7 +660,6 @@ public:
         if (touch) wl_touch_destroy(touch);
         if (xdg_shell_v6) zxdg_shell_v6_destroy(xdg_shell_v6);
         if (xdg_shell_stable) xdg_wm_base_destroy(xdg_shell_stable);
-        if (layer_shell_v1) zwlr_layer_shell_v1_destroy(layer_shell_v1);
         for (auto const& output: outputs)
             wl_output_destroy(output->current.output);
         for (auto const& callback: destruction_callbacks)
@@ -781,16 +779,6 @@ public:
     xdg_wm_base* the_xdg_shell_stable() const
     {
         return xdg_shell_stable;
-    }
-
-    zwlr_layer_shell_v1* the_layer_shell_v1() const
-    {
-        if (layer_shell_v1)
-            return layer_shell_v1;
-        else
-            BOOST_THROW_EXCEPTION(std::runtime_error{
-                "zwlr_layer_shell_v1 not supported by server; "
-                "Consider using CheckInterfaceExpected to disable this test when protocol not suppoeted"});
     }
 
     wl_surface* window_under_cursor() const
@@ -1440,11 +1428,6 @@ private:
             me->xdg_shell_stable = static_cast<struct xdg_wm_base*>(
                 wl_registry_bind(registry, id, &xdg_wm_base_interface, version));
         }
-        else if ("zwlr_layer_shell_v1"s == interface)
-        {
-            me->layer_shell_v1 = static_cast<struct zwlr_layer_shell_v1*>(
-                wl_registry_bind(registry, id, &zwlr_layer_shell_v1_interface, version));
-        }
     }
 
     static void global_removed(void*, wl_registry*, uint32_t)
@@ -1471,7 +1454,6 @@ private:
     struct zxdg_shell_v6* xdg_shell_v6 = nullptr;
     std::vector<std::function<void()>> destruction_callbacks;
     struct xdg_wm_base* xdg_shell_stable = nullptr;
-    struct zwlr_layer_shell_v1* layer_shell_v1 = nullptr;
 
     struct SurfaceLocation
     {
@@ -1594,11 +1576,6 @@ zxdg_shell_v6* wlcs::Client::xdg_shell_v6() const
 xdg_wm_base* wlcs::Client::xdg_shell_stable() const
 {
     return impl->the_xdg_shell_stable();
-}
-
-zwlr_layer_shell_v1* wlcs::Client::layer_shell_v1() const
-{
-    return impl->the_layer_shell_v1();
 }
 
 wl_surface* wlcs::Client::window_under_cursor() const

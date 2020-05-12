@@ -56,8 +56,9 @@ public:
     auto last_height() const -> int { return last_height_; }
 
 private:
-    zwlr_layer_surface_v1* layer_surface;
     wlcs::Client& client;
+    WlProxy<zwlr_layer_shell_v1> layer_shell;
+    zwlr_layer_surface_v1* layer_surface;
     int last_width_ = -1;
     int last_height_ = -1;
     int configure_count = 0;

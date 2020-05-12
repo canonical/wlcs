@@ -24,10 +24,11 @@ wlcs::LayerSurfaceV1::LayerSurfaceV1(
     zwlr_layer_shell_v1_layer layer,
     wl_output* output,
     const char *_namespace)
-    : client{client}
+    : client{client},
+      layer_shell{client}
 {
     layer_surface = zwlr_layer_shell_v1_get_layer_surface(
-        client.layer_shell_v1(),
+        layer_shell,
         surface,
         output,
         layer,
