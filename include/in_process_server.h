@@ -198,6 +198,49 @@ struct OutputState
     std::experimental::optional<int> scale;
 };
 
+/// A wrapper for any wl_proxy type
+/// NOTE: the destroyer must be specified because the individual destroyers do more than just wl_proxy_destroy
+template<typename T>
+class WlProxy
+{
+public:
+    WlProxy(T* const proxy, void(* const destroy)(T*))
+        : proxy{proxy},
+          destroy{destroy}
+    {
+    }
+
+    WlProxy(WlProxy&&) = default;
+
+    ~WlProxy()
+    {
+        destroy(proxy);
+    }
+
+    WlProxy(WlProxy const&) = delete;
+    auto operator=(WlProxy const&) -> bool = delete;
+
+    operator T*() const
+    {
+        return proxy;
+    }
+
+    auto wl_proxy() const -> struct wl_proxy*
+    {
+        return static_cast<struct wl_proxy*>(proxy);
+    }
+
+private:
+    T* const proxy;
+    void(* const destroy)(T*);
+};
+
+template<typename T>
+auto wrap_proxy(T* const proxy, void(* const destroy)(T*)) -> WlProxy<T>
+{
+    return WlProxy<T>{proxy, destroy};
+}
+
 class Client
 {
 public:
@@ -250,13 +293,26 @@ public:
     void add_pointer_motion_notification(PointerMotionNotifier const& on_motion);
     void add_pointer_button_notification(PointerButtonNotifier const& on_button);
 
-    void* acquire_interface(std::string const& name, wl_interface const* interface, uint32_t version);
-
     void dispatch_until(
         std::function<bool()> const& predicate,
         std::chrono::seconds timeout = std::chrono::seconds{10});
 
+    auto bind_if_supported(wl_interface const& interface, uint32_t min_version) -> void*;
+
+    template<typename GLOBAL>
+    auto bind_if_supported(wl_interface const& interface, void(* destroy)(GLOBAL*)) -> WlProxy<GLOBAL>
+    {
+        return wrap_proxy(static_cast<GLOBAL*>(bind_if_supported(interface, 1)), destroy);
+    }
+
+    template<typename GLOBAL>
+    auto bind_if_supported(wl_interface const& interface, void(* destroy)(GLOBAL*), uint32_t min_version) -> WlProxy<GLOBAL>
+    {
+        return WlProxy<GLOBAL>{static_cast<GLOBAL*>(bind_if_supported(interface, min_version)), destroy};
+    }
+
     void roundtrip();
+
 private:
     class Impl;
     std::unique_ptr<Impl> const impl;

@@ -886,7 +886,7 @@ public:
         button_notifiers.push_back(on_button);
     }
 
-    void* acquire_interface(std::string const& interface, wl_interface const* to_bind, uint32_t version)
+    void* bind_if_supported(wl_interface const& to_bind, uint32_t min_version)
     {
         wl_registry* temp_registry = wl_display_get_registry(display);
 
@@ -895,8 +895,8 @@ public:
             void* bound_interface;
             std::string const& interface;
             wl_interface const* to_bind;
-            uint32_t version;
-        } result{nullptr, interface, to_bind, version};
+            uint32_t min_version;
+        } result{nullptr, to_bind.name, &to_bind, min_version};
 
         wl_registry_listener const listener{
             [](
@@ -908,11 +908,9 @@ public:
             {
                 auto request = static_cast<InterfaceResult*>(ctx);
 
-                if ((request->interface == interface) &&
-                    version >= request->version)
+                if (request->interface == interface && version >= request->min_version)
                 {
-                    request->bound_interface =
-                        wl_registry_bind(registry, id, request->to_bind, version);
+                    request->bound_interface = wl_registry_bind(registry, id, request->to_bind, version);
                 }
             },
             [](auto, auto, auto) {}
@@ -929,12 +927,11 @@ public:
 
         if (result.bound_interface == nullptr)
         {
-            if (
-                supported_extensions &&
-                (supported_extensions->count(interface.c_str()) == 0 ||
-                 supported_extensions->at(interface.c_str()) < version))
+            if (supported_extensions &&
+                (supported_extensions->count(to_bind.name) == 0 ||
+                 supported_extensions->at(to_bind.name) < min_version))
             {
-                BOOST_THROW_EXCEPTION((ExtensionExpectedlyNotSupported{interface.c_str(), version}));
+                BOOST_THROW_EXCEPTION((ExtensionExpectedlyNotSupported{to_bind.name, min_version}));
             }
             else
             {
@@ -1708,12 +1705,9 @@ void wlcs::Client::roundtrip()
     impl->server_roundtrip();
 }
 
-void* wlcs::Client::acquire_interface(
-    std::string const& name,
-    wl_interface const* interface,
-    uint32_t version)
+void* wlcs::Client::bind_if_supported(wl_interface const& interface, uint32_t min_version)
 {
-    return impl->acquire_interface(name, interface, version);
+    return impl->bind_if_supported(interface, min_version);
 }
 
 class wlcs::Surface::Impl
@@ -1994,5 +1988,6 @@ void wlcs::ShmBuffer::add_release_listener(std::function<bool()> const &on_relea
 
 wlcs::CheckInterfaceExpected::CheckInterfaceExpected(Server& server, wl_interface const& interface) : Client{server}
 {
-    acquire_interface(interface.name, &interface, interface.version);
+    wl_proxy* const proxy = static_cast<wl_proxy*>(bind_if_supported(interface, 1));
+    wl_proxy_destroy(proxy);
 }

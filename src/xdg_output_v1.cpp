@@ -23,21 +23,12 @@ struct wlcs::XdgOutputManagerV1::Impl
 {
     Impl(Client& client)
         : client{client},
-          manager{static_cast<struct zxdg_output_manager_v1*>(
-              client.acquire_interface(
-                  zxdg_output_manager_v1_interface.name,
-                  &zxdg_output_manager_v1_interface,
-                  zxdg_output_manager_v1_interface.version))}
+          manager{client.bind_if_supported<zxdg_output_manager_v1>(zxdg_output_manager_v1_interface, zxdg_output_manager_v1_destroy)}
     {
-    }
-
-    ~Impl()
-    {
-        zxdg_output_manager_v1_destroy(manager);
     }
 
     Client& client;
-    zxdg_output_manager_v1* const manager;
+    WlProxy<zxdg_output_manager_v1> const manager;
 };
 
 wlcs::XdgOutputManagerV1::XdgOutputManagerV1(Client& client)
