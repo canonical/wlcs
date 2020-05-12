@@ -41,9 +41,14 @@ public:
     {
     }
 
-    WlProxy(Client const& /*client*/)
+    WlProxy()
         : proxy{nullptr},
           destroy{nullptr}
+    {
+    }
+
+    WlProxy(Client const& /*client*/)
+        : WlProxy()
     {
         std::string const current_function = BOOST_CURRENT_FUNCTION;
         BOOST_THROW_EXCEPTION(std::runtime_error(
@@ -52,8 +57,7 @@ public:
     }
 
     WlProxy(T* /*proxy*/)
-        : proxy{nullptr},
-          destroy{nullptr}
+        : WlProxy()
     {
         std::string const current_function = BOOST_CURRENT_FUNCTION;
         BOOST_THROW_EXCEPTION(std::runtime_error(
@@ -65,19 +69,29 @@ public:
 
     ~WlProxy()
     {
-        destroy(proxy);
+        if (destroy && proxy)
+            destroy(proxy);
     }
 
     WlProxy(WlProxy const&) = delete;
     auto operator=(WlProxy const&) -> bool = delete;
 
+    operator bool() const
+    {
+        return proxy != nullptr;
+    }
+
     operator T*() const
     {
+        if (!proxy)
+            BOOST_THROW_EXCEPTION(std::runtime_error("Attempted to use null WlProxy"));
         return proxy;
     }
 
     auto wl_proxy() const -> struct wl_proxy*
     {
+        if (!proxy)
+            BOOST_THROW_EXCEPTION(std::runtime_error("Attempted to get proxy from null WlProxy"));
         return static_cast<struct wl_proxy*>(proxy);
     }
 
