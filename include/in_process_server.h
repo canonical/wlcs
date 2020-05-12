@@ -19,8 +19,6 @@
 #ifndef WLCS_IN_PROCESS_SERVER_H_
 #define WLCS_IN_PROCESS_SERVER_H_
 
-#include "generated/gtk-primary-selection-client.h"
-#include "generated/primary-selection-unstable-v1-client.h"
 #include "generated/wayland-client.h"
 #include "generated/xdg-shell-unstable-v6-client.h"
 #include "generated/xdg-shell-client.h"
@@ -254,10 +252,7 @@ public:
     wl_compositor* compositor() const;
     wl_subcompositor* subcompositor() const;
     wl_shm* shm() const;
-    wl_data_device_manager* data_device_manager() const;
     wl_seat* seat() const;
-    struct zwp_primary_selection_device_manager_v1* primary_selection_device_manager() const;
-    struct gtk_primary_selection_device_manager* gtk_primary_selection_device_manager() const;
 
     void run_on_destruction(std::function<void()> callback);
 

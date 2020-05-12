@@ -40,7 +40,10 @@ struct CCnPSource : Client
     CCnPSource(Server& server) : Client{server} {}
 
     Surface const surface{create_visible_surface(any_width, any_height)};
-    DataSource data{wl_data_device_manager_create_data_source(data_device_manager())};
+    WlProxy<wl_data_device_manager> const manager{bind_if_supported(
+            wl_data_device_manager_interface,
+            wl_data_device_manager_destroy)};
+    DataSource data{wl_data_device_manager_create_data_source(manager)};
 
     void offer(char const* mime_type)
     {
@@ -68,7 +71,10 @@ struct CCnPSink : Client
     // Can't use "using Client::Client;" because Xenial
     CCnPSink(Server& server) : Client{server} {}
 
-    DataDevice sink_data{wl_data_device_manager_get_data_device(data_device_manager(), seat())};
+    WlProxy<wl_data_device_manager> const manager{bind_if_supported(
+            wl_data_device_manager_interface,
+            wl_data_device_manager_destroy)};
+    DataDevice sink_data{wl_data_device_manager_get_data_device(manager, seat())};
     MockDataDeviceListener listener{sink_data};
 
     Surface create_surface_with_focus()

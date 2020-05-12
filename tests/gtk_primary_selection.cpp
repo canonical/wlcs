@@ -36,8 +36,11 @@ struct SourceApp : Client
     // Can't use "using Client::Client;" because Xenial
     explicit SourceApp(Server& server) : Client{server} {}
 
-    GtkPrimarySelectionSource source{gtk_primary_selection_device_manager()};
-    GtkPrimarySelectionDevice device{gtk_primary_selection_device_manager(), seat()};
+    WlProxy<gtk_primary_selection_device_manager> manager{bind_if_supported(
+            gtk_primary_selection_device_manager_interface,
+            gtk_primary_selection_device_manager_destroy)};
+    GtkPrimarySelectionSource source{manager};
+    GtkPrimarySelectionDevice device{manager, seat()};
 
     void set_selection()
     {
@@ -56,7 +59,10 @@ struct SinkApp : Client
 {
     explicit SinkApp(Server& server) : Client{server} { roundtrip(); }
 
-    GtkPrimarySelectionDevice device{gtk_primary_selection_device_manager(), seat()};
+    WlProxy<gtk_primary_selection_device_manager> const manager{bind_if_supported(
+            gtk_primary_selection_device_manager_interface,
+            gtk_primary_selection_device_manager_destroy)};
+    GtkPrimarySelectionDevice device{manager, seat()};
 };
 
 struct GtkPrimarySelection : StartedInProcessServer
