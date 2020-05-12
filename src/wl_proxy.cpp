@@ -5,57 +5,30 @@
 #include "wl_proxy.h"
 #include "in_process_server.h"
 
-template<>
-wlcs::WlProxy<
-    wl_subcompositor>::WlProxy(Client const& client) : WlProxy(client.bind_if_supported(
-    wl_subcompositor_interface,
-    wl_subcompositor_destroy))
-{
-}
+#define GLOBAL_DEFAULT_DESTROY_PROXY_CONSTRUCTOR(name) \
+    template<> \
+    wlcs::WlProxy<name>::WlProxy(Client const& client) \
+        : WlProxy(client.bind_if_supported(name##_interface, name ##_destroy)) \
+    { \
+    }
 
-template<>
-wlcs::WlProxy<
-    wl_data_device_manager>::WlProxy(Client const& client) : WlProxy(client.bind_if_supported(
-    wl_data_device_manager_interface,
-    wl_data_device_manager_destroy))
-{
-}
+GLOBAL_DEFAULT_DESTROY_PROXY_CONSTRUCTOR(wl_subcompositor)
+GLOBAL_DEFAULT_DESTROY_PROXY_CONSTRUCTOR(wl_data_device_manager)
+GLOBAL_DEFAULT_DESTROY_PROXY_CONSTRUCTOR(xdg_wm_base)
+GLOBAL_DEFAULT_DESTROY_PROXY_CONSTRUCTOR(zwp_primary_selection_device_manager_v1)
+GLOBAL_DEFAULT_DESTROY_PROXY_CONSTRUCTOR(zxdg_output_manager_v1)
+GLOBAL_DEFAULT_DESTROY_PROXY_CONSTRUCTOR(gtk_primary_selection_device_manager)
 
-template<>
-wlcs::WlProxy<
-    xdg_wm_base>::WlProxy(Client const& client) : WlProxy(client.bind_if_supported(
-    xdg_wm_base_interface,
-    xdg_wm_base_destroy))
-{
-}
+#undef GLOBAL_DEFAULT_DESTROY_PROXY_CONSTRUCTOR
 
-template<>
-wlcs::WlProxy<
-    zwp_primary_selection_device_manager_v1>::WlProxy(Client const& client) : WlProxy(client.bind_if_supported(
-    zwp_primary_selection_device_manager_v1_interface,
-    zwp_primary_selection_device_manager_v1_destroy))
-{
-}
+#define DEFAULT_DESTROY_PROXY_CONSTRUCTOR(name) \
+    template<> \
+    wlcs::WlProxy<name>::WlProxy(name* proxy) \
+        : proxy{proxy}, \
+          destroy{name##_destroy} \
+    { \
+    }
 
-template<>
-wlcs::WlProxy<
-    zxdg_output_manager_v1>::WlProxy(Client const& client) : WlProxy(client.bind_if_supported(
-    zxdg_output_manager_v1_interface,
-    zxdg_output_manager_v1_destroy))
-{
-}
+DEFAULT_DESTROY_PROXY_CONSTRUCTOR(wl_surface)
 
-template<>
-wlcs::WlProxy<
-    gtk_primary_selection_device_manager>::WlProxy(Client const& client) : WlProxy(client.bind_if_supported(
-    gtk_primary_selection_device_manager_interface,
-    gtk_primary_selection_device_manager_destroy))
-{
-}
-
-template<>
-wlcs::WlProxy<wl_surface>::WlProxy(wl_surface* proxy)
-    : proxy{proxy},
-      destroy{wl_surface_destroy}
-{
-}
+#undef DEFAULT_DESTROY_PROXY_CONSTRUCTOR
