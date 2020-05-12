@@ -135,6 +135,7 @@ set(
   include/wlcs/pointer.h
   include/wlcs/touch.h
   include/helpers.h
+  include/wl_proxy.h
   include/in_process_server.h
   include/primary_selection.h
   include/xdg_shell_v6.h

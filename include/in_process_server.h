@@ -32,6 +32,7 @@
 #include <chrono>
 
 #include "shared_library.h"
+#include "wl_proxy.h"
 
 #include <wayland-client.h>
 
@@ -195,49 +196,6 @@ struct OutputState
     std::experimental::optional<std::pair<int, int>> mode_size;
     std::experimental::optional<int> scale;
 };
-
-/// A wrapper for any wl_proxy type
-/// NOTE: the destroyer must be specified because the individual destroyers do more than just wl_proxy_destroy
-template<typename T>
-class WlProxy
-{
-public:
-    WlProxy(T* const proxy, void(* const destroy)(T*))
-        : proxy{proxy},
-          destroy{destroy}
-    {
-    }
-
-    WlProxy(WlProxy&&) = default;
-
-    ~WlProxy()
-    {
-        destroy(proxy);
-    }
-
-    WlProxy(WlProxy const&) = delete;
-    auto operator=(WlProxy const&) -> bool = delete;
-
-    operator T*() const
-    {
-        return proxy;
-    }
-
-    auto wl_proxy() const -> struct wl_proxy*
-    {
-        return static_cast<struct wl_proxy*>(proxy);
-    }
-
-private:
-    T* const proxy;
-    void(* const destroy)(T*);
-};
-
-template<typename T>
-auto wrap_proxy(T* const proxy, void(* const destroy)(T*)) -> WlProxy<T>
-{
-    return WlProxy<T>{proxy, destroy};
-}
 
 class Client
 {
