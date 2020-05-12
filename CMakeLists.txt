@@ -145,6 +145,7 @@ set(
   src/data_device.cpp
   src/gtk_primary_selection.cpp
   src/helpers.cpp
+  src/wl_proxy.cpp
   src/in_process_server.cpp
   src/xdg_shell_v6.cpp
   src/xdg_shell_stable.cpp

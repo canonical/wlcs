@@ -865,7 +865,7 @@ public:
         button_notifiers.push_back(on_button);
     }
 
-    void* bind_if_supported(wl_interface const& to_bind, uint32_t min_version)
+    void* bind_if_supported(wl_interface const& to_bind, uint32_t min_version) const
     {
         wl_registry* temp_registry = wl_display_get_registry(display);
 
@@ -1651,7 +1651,7 @@ void wlcs::Client::roundtrip()
     impl->server_roundtrip();
 }
 
-void* wlcs::Client::bind_if_supported(wl_interface const& interface, uint32_t min_version)
+void* wlcs::Client::bind_if_supported(wl_interface const& interface, uint32_t min_version) const
 {
     return impl->bind_if_supported(interface, min_version);
 }

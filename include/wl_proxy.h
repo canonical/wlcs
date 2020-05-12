@@ -22,6 +22,9 @@
 #include "boost/throw_exception.hpp"
 #include "boost/current_function.hpp"
 
+#include <string>
+#include <stdexcept>
+
 namespace wlcs
 {
 class Client;
@@ -36,6 +39,16 @@ public:
         : proxy{proxy},
           destroy{destroy}
     {
+    }
+
+    WlProxy(Client const& /*client*/)
+        : proxy{nullptr},
+          destroy{nullptr}
+    {
+        std::string const current_function = BOOST_CURRENT_FUNCTION;
+        BOOST_THROW_EXCEPTION(std::runtime_error(
+            "WlProxy constructed with invalid global type. "
+            "Add " + current_function + " specialization to wl_proxy.cpp"));
     }
 
     WlProxy(WlProxy&&) = default;

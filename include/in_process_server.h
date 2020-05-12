@@ -250,16 +250,16 @@ public:
         std::function<bool()> const& predicate,
         std::chrono::seconds timeout = std::chrono::seconds{10});
 
-    auto bind_if_supported(wl_interface const& interface, uint32_t min_version) -> void*;
+    auto bind_if_supported(wl_interface const& interface, uint32_t min_version) const -> void*;
 
     template<typename GLOBAL>
-    auto bind_if_supported(wl_interface const& interface, void(* destroy)(GLOBAL*)) -> WlProxy<GLOBAL>
+    auto bind_if_supported(wl_interface const& interface, void(* destroy)(GLOBAL*)) const -> WlProxy<GLOBAL>
     {
         return wrap_proxy(static_cast<GLOBAL*>(bind_if_supported(interface, 1)), destroy);
     }
 
     template<typename GLOBAL>
-    auto bind_if_supported(wl_interface const& interface, void(* destroy)(GLOBAL*), uint32_t min_version) -> WlProxy<GLOBAL>
+    auto bind_if_supported(wl_interface const& interface, void(* destroy)(GLOBAL*), uint32_t min_version) const -> WlProxy<GLOBAL>
     {
         return WlProxy<GLOBAL>{static_cast<GLOBAL*>(bind_if_supported(interface, min_version)), destroy};
     }
