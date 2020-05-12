@@ -255,7 +255,7 @@ public:
     template<typename GLOBAL>
     auto bind_if_supported(wl_interface const& interface, void(* destroy)(GLOBAL*)) const -> WlProxy<GLOBAL>
     {
-        return wrap_proxy(static_cast<GLOBAL*>(bind_if_supported(interface, 1)), destroy);
+        return WlProxy<GLOBAL>(static_cast<GLOBAL*>(bind_if_supported(interface, 1)), destroy);
     }
 
     template<typename GLOBAL>

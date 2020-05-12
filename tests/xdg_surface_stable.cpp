@@ -75,7 +75,7 @@ TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_existing_
     // We need a parent for the subsurface
     auto const parent = client.create_visible_surface(300, 300);
 
-    auto const surface = wlcs::wrap_proxy(wl_compositor_create_surface(client.compositor()), wl_surface_destroy);
+    wlcs::WlProxy<wl_surface> const surface{wl_compositor_create_surface(client.compositor())};
     // It doesn't matter that we leak the wl_subsurface; that'll be cleaned up in client destruction.
     wl_subcompositor_get_subsurface(subcompositor, surface, parent);
     client.roundtrip();
@@ -102,7 +102,7 @@ TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_attached_
 
     wlcs::WlProxy<xdg_wm_base> const xdg_wm_base{client};
 
-    auto const surface = wlcs::wrap_proxy(wl_compositor_create_surface(client.compositor()), wl_surface_destroy);
+    wlcs::WlProxy<wl_surface> const surface{wl_compositor_create_surface(client.compositor())};
     wlcs::ShmBuffer buffer{client, 300, 300};
     wl_surface_attach(surface, buffer, 0, 0);
     client.roundtrip();
@@ -128,7 +128,7 @@ TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_committed
 
     wlcs::WlProxy<xdg_wm_base> const xdg_wm_base{client};
 
-    auto const surface = wlcs::wrap_proxy(wl_compositor_create_surface(client.compositor()), wl_surface_destroy);
+    wlcs::WlProxy<wl_surface> const surface{wl_compositor_create_surface(client.compositor())};
     wlcs::ShmBuffer buffer{client, 300, 300};
     wl_surface_attach(surface, buffer, 0, 0);
     wl_surface_commit(surface);
@@ -155,7 +155,7 @@ TEST_F(XdgSurfaceStableTest, attaching_buffer_to_unconfigured_xdg_surface_is_an_
 
     wlcs::WlProxy<xdg_wm_base> const xdg_wm_base{client};
 
-    auto const surface = wlcs::wrap_proxy(wl_compositor_create_surface(client.compositor()), wl_surface_destroy);
+    wlcs::WlProxy<wl_surface> const surface{wl_compositor_create_surface(client.compositor())};
     wlcs::ShmBuffer buffer{client, 300, 300};
     client.roundtrip();
 

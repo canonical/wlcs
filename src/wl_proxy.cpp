@@ -52,3 +52,10 @@ wlcs::WlProxy<
     gtk_primary_selection_device_manager_destroy))
 {
 }
+
+template<>
+wlcs::WlProxy<wl_surface>::WlProxy(wl_surface* proxy)
+    : proxy{proxy},
+      destroy{wl_surface_destroy}
+{
+}

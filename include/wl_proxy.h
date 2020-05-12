@@ -51,6 +51,16 @@ public:
             "Add " + current_function + " specialization to wl_proxy.cpp"));
     }
 
+    WlProxy(T* /*proxy*/)
+        : proxy{nullptr},
+          destroy{nullptr}
+    {
+        std::string const current_function = BOOST_CURRENT_FUNCTION;
+        BOOST_THROW_EXCEPTION(std::runtime_error(
+            "WlProxy constructed with invalid object type. "
+            "Add " + current_function + " specialization to wl_proxy.cpp"));
+    }
+
     WlProxy(WlProxy&&) = default;
 
     ~WlProxy()
@@ -75,12 +85,6 @@ private:
     T* const proxy;
     void(* const destroy)(T*);
 };
-
-template<typename T>
-auto wrap_proxy(T* const proxy, void(* const destroy)(T*)) -> WlProxy<T>
-{
-    return WlProxy<T>{proxy, destroy};
-}
 }
 
 #endif // WLCS_WL_PROXY_H_
