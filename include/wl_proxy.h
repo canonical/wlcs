@@ -47,13 +47,18 @@ public:
     {
     }
 
-    WlProxy(Client const& /*client*/)
+    WlProxy(Client const& /*client*/, uint32_t /*min_version*/)
         : WlProxy()
     {
         std::string const current_function = BOOST_CURRENT_FUNCTION;
         BOOST_THROW_EXCEPTION(std::runtime_error(
             "WlProxy constructed with invalid global type. "
             "Add " + current_function + " specialization to wl_proxy.cpp"));
+    }
+
+    WlProxy(Client const& client)
+        : WlProxy(client, 1)
+    {
     }
 
     WlProxy(T* /*proxy*/)
@@ -65,8 +70,6 @@ public:
             "Add " + current_function + " specialization to wl_proxy.cpp"));
     }
 
-    WlProxy(WlProxy&&) = default;
-
     ~WlProxy()
     {
         if (destroy && proxy)
@@ -74,6 +77,7 @@ public:
     }
 
     WlProxy(WlProxy const&) = delete;
+    WlProxy(WlProxy&&) = delete;
     auto operator=(WlProxy const&) -> bool = delete;
 
     operator bool() const

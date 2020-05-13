@@ -13,8 +13,9 @@ namespace wlcs
 
 #define GLOBAL_DEFAULT_DESTROY_PROXY_CONSTRUCTOR(name) \
     template<> \
-    WlProxy<name>::WlProxy(Client const& client) \
-        : WlProxy(client.bind_if_supported(name##_interface, name ##_destroy)) \
+    WlProxy<name>::WlProxy(Client const& client, uint32_t min_version) \
+        : proxy{static_cast<name*>(client.bind_if_supported(name##_interface, min_version))}, \
+          destroy{name ##_destroy} \
     { \
     }
 
