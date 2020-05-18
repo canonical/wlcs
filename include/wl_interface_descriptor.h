@@ -31,6 +31,8 @@ namespace wlcs
 template<typename WlType>
 struct WlInterfaceDescriptor
 {
+    // Needed because apparently GCC < 10 can't compare a constexpr wl_interface const* const to nullptr in constexpr context?!
+    static constexpr bool const has_specialisation = false;
     static constexpr wl_interface const* const interface = nullptr;
     static constexpr void (* const destructor)(WlType*) = nullptr;
 };
@@ -47,6 +49,7 @@ struct WlInterfaceDescriptor
     template<> \
     struct WlInterfaceDescriptor<name> \
     { \
+        static constexpr bool const has_specialisation = true; \
         static constexpr wl_interface const* const interface = &name##_interface; \
         static constexpr void(* const destructor)(name*) = &name##_destroy; \
     };

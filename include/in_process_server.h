@@ -65,6 +65,7 @@ void send_release_if_supported(wl_output* to_destroy)
 template<>
 struct WlInterfaceDescriptor<wl_output>
 {
+    static constexpr bool const has_specialisation = true;
     static constexpr wl_interface const* const interface = &wl_output_interface;
     static constexpr void (* const destructor)(wl_output*) = &send_release_if_supported;
 };

@@ -92,7 +92,7 @@ template<typename WlType>
 auto wrap_wl_object(WlType* proxy) -> WlHandle<WlType>
 {
     static_assert(
-        WlInterfaceDescriptor<WlType>::interface != nullptr,
+        WlInterfaceDescriptor<WlType>::has_specialisation,
         "Missing specialisation for WlInterfaceDescriptor");
     return WlHandle<WlType>{proxy};
 }
