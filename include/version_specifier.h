@@ -20,7 +20,6 @@
 #define WLCS_VERSION_SPECIFIER_H_
 
 #include <cstdint>
-#include <optional>
 #include <experimental/optional>
 
 namespace wlcs
