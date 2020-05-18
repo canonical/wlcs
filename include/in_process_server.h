@@ -32,7 +32,7 @@
 #include <chrono>
 
 #include "shared_library.h"
-#include "wl_proxy.h"
+#include "wl_handle.h"
 
 #include <wayland-client.h>
 
@@ -44,6 +44,31 @@ struct zwlr_layer_shell_v1;
 
 namespace wlcs
 {
+class VersionSpecifier;
+
+WLCS_CREATE_INTERFACE_DESCRIPTOR(wl_surface)
+WLCS_CREATE_INTERFACE_DESCRIPTOR(wl_subsurface)
+
+/* We need a manually-specified descriptor for wl_output,
+ * as wl_output only has a destructor for version >= 3
+ */
+namespace
+{
+void send_release_if_supported(wl_output* to_destroy)
+{
+    if (wl_output_get_version(to_destroy) >= WL_OUTPUT_RELEASE_SINCE_VERSION)
+    {
+        wl_output_release(to_destroy);
+    }
+}
+}
+template<>
+struct WlInterfaceDescriptor<wl_output>
+{
+    static constexpr wl_interface const* const interface = &wl_output_interface;
+    static constexpr void (* const destructor)(wl_output*) = &send_release_if_supported;
+};
+
 
 class Pointer
 {
@@ -249,7 +274,14 @@ public:
         std::function<bool()> const& predicate,
         std::chrono::seconds timeout = std::chrono::seconds{10});
 
-    auto bind_if_supported(wl_interface const& interface, uint32_t min_version) const -> void*;
+    template<typename WlType>
+    auto bind_if_supported(VersionSpecifier const& version) -> WlHandle<WlType>
+    {
+        return wrap_wl_object(
+            static_cast<WlType*>(bind_if_supported(*WlInterfaceDescriptor<WlType>::interface, version)));
+    }
+
+    auto bind_if_supported(wl_interface const& interface, VersionSpecifier const& version) const -> void*;
 
     void roundtrip();
 
@@ -299,7 +331,7 @@ private:
 class ExtensionExpectedlyNotSupported : public std::runtime_error
 {
 public:
-    ExtensionExpectedlyNotSupported(char const* extension, uint32_t version);
+    ExtensionExpectedlyNotSupported(char const* extension, VersionSpecifier const& version);
 };
 
 class Timeout : public std::runtime_error
@@ -330,14 +362,6 @@ public:
     void SetUp() override {}
     void TearDown() override {}
 };
-
-// Check the server expects to support an interface
-class CheckInterfaceExpected : private Client
-{
-public:
-    CheckInterfaceExpected(Server& server, wl_interface const& interface);
-};
-
 }
 
 #endif //WLCS_IN_PROCESS_SERVER_H_

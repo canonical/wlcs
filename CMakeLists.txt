@@ -135,17 +135,18 @@ set(
   include/wlcs/pointer.h
   include/wlcs/touch.h
   include/helpers.h
-  include/wl_proxy.h
+  include/wl_handle.h
   include/in_process_server.h
   include/primary_selection.h
   include/xdg_shell_v6.h
   include/xdg_shell_stable.h
   include/xdg_output_v1.h
+  include/version_specifier.h
+  include/wl_interface_descriptor.h
 
   src/data_device.cpp
   src/gtk_primary_selection.cpp
   src/helpers.cpp
-  src/wl_proxy.cpp
   src/in_process_server.cpp
   src/xdg_shell_v6.cpp
   src/xdg_shell_stable.cpp
@@ -158,6 +159,7 @@ set(
   src/termcolor.hpp
   src/thread_proxy.h
   src/xdg_output_v1.cpp
+  src/version_specifier.cpp
 
   ${PROTOCOL_SOURCES}
 

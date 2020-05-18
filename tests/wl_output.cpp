@@ -18,6 +18,7 @@
 
 #include "helpers.h"
 #include "in_process_server.h"
+#include "version_specifier.h"
 
 #include <gmock/gmock.h>
 
@@ -46,9 +47,8 @@ TEST_F(WlOutputTest, wl_output_release)
 
     {
         // Acquire *any* wl_output; we don't care which
-        WlProxy<wl_output> const output{
-            static_cast<wl_output*>(client.bind_if_supported(wl_output_interface, WL_OUTPUT_RELEASE_SINCE_VERSION)),
-            wl_output_release};
+        auto const output =
+            client.bind_if_supported<wl_output>(wlcs::AtLeastVersion{WL_OUTPUT_RELEASE_SINCE_VERSION});
         client.roundtrip();
     }
     // output is now released

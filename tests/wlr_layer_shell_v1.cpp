@@ -78,7 +78,6 @@ public:
         return std::make_pair(layer_surface.last_width(), layer_surface.last_height());
     }
 
-    wlcs::CheckInterfaceExpected expect_layer_shell_supported{the_server(), zwlr_layer_shell_v1_interface};
     wlcs::Client client;
     wlcs::Surface surface;
     wlcs::LayerSurfaceV1 layer_surface;
@@ -285,7 +284,6 @@ public:
     {
     }
 
-    wlcs::CheckInterfaceExpected expect_layer_shell_supported{the_server(), zwlr_layer_shell_v1_interface};
     static const int width{200}, height{100};
     wlcs::Client client;
 };

@@ -21,9 +21,12 @@
 
 #include "in_process_server.h"
 #include "generated/xdg-shell-client.h"
+#include "wl_interface_descriptor.h"
+#include "wl_handle.h"
 
 namespace wlcs
 {
+WLCS_CREATE_INTERFACE_DESCRIPTOR(xdg_wm_base)
 
 class XdgSurfaceStable
 {

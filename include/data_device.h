@@ -20,6 +20,8 @@
 #define WLCS_DATA_DEVICE_H
 
 #include "active_listeners.h"
+#include "wl_interface_descriptor.h"
+#include "wl_handle.h"
 
 #include <wayland-client.h>
 
@@ -27,6 +29,8 @@
 
 namespace wlcs
 {
+WLCS_CREATE_INTERFACE_DESCRIPTOR(wl_data_device_manager)
+
 class DataSource
 {
 public:

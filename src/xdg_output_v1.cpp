@@ -17,18 +17,20 @@
  */
 
 #include "xdg_output_v1.h"
+#include "wl_handle.h"
+#include "version_specifier.h"
 #include <boost/throw_exception.hpp>
 
 struct wlcs::XdgOutputManagerV1::Impl
 {
     Impl(Client& client)
         : client{client},
-          manager{client}
+          manager{client.bind_if_supported<zxdg_output_manager_v1>(wlcs::AtLeastVersion{1})}
     {
     }
 
     Client& client;
-    WlProxy<zxdg_output_manager_v1> const manager;
+    WlHandle<zxdg_output_manager_v1> const manager;
 };
 
 wlcs::XdgOutputManagerV1::XdgOutputManagerV1(Client& client)

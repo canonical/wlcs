@@ -28,11 +28,14 @@
 #include "helpers.h"
 #include "in_process_server.h"
 #include "xdg_shell_stable.h"
+#include "wl_handle.h"
+#include "version_specifier.h"
 
 #include <gmock/gmock.h>
 
 using namespace testing;
 using XdgSurfaceStableTest = wlcs::InProcessServer;
+using wlcs::AtLeastVersion;
 
 TEST_F(XdgSurfaceStableTest, supports_xdg_shell_stable_protocol)
 {
@@ -67,15 +70,16 @@ TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_existing_
 {
     wlcs::Client client{the_server()};
 
-    wlcs::WlProxy<xdg_wm_base> const xdg_wm_base{client};
+    auto const xdg_wm_base = client.bind_if_supported<struct xdg_wm_base>(AtLeastVersion{1});
 
     // We need a parent for the subsurface
     auto const parent = client.create_visible_surface(300, 300);
 
-    wlcs::WlProxy<wl_surface> const surface{wl_compositor_create_surface(client.compositor())};
+    wlcs::WlHandle<wl_surface> const surface{wl_compositor_create_surface(client.compositor())};
 
     // We need some way of assigning a role to a wl_surface. wl_subcompositor is as good a way as any.
-    wlcs::WlProxy<wl_subsurface> const subsurface{wl_subcompositor_get_subsurface(client.subcompositor(), surface, parent)};
+    auto const subsurface =
+        wlcs::wrap_wl_object<wl_subsurface>(wl_subcompositor_get_subsurface(client.subcompositor(), surface, parent));
 
     client.roundtrip();
 
@@ -99,9 +103,9 @@ TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_attached_
 {
     wlcs::Client client{the_server()};
 
-    wlcs::WlProxy<xdg_wm_base> const xdg_wm_base{client};
+    auto const xdg_wm_base = client.bind_if_supported<struct xdg_wm_base>(AtLeastVersion{1});
 
-    wlcs::WlProxy<wl_surface> const surface{wl_compositor_create_surface(client.compositor())};
+    wlcs::WlHandle<wl_surface> const surface{wl_compositor_create_surface(client.compositor())};
     wlcs::ShmBuffer buffer{client, 300, 300};
     wl_surface_attach(surface, buffer, 0, 0);
     client.roundtrip();
@@ -125,9 +129,9 @@ TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_committed
 {
     wlcs::Client client{the_server()};
 
-    wlcs::WlProxy<xdg_wm_base> const xdg_wm_base{client};
+    auto const xdg_wm_base = client.bind_if_supported<struct xdg_wm_base>(AtLeastVersion{1});
 
-    wlcs::WlProxy<wl_surface> const surface{wl_compositor_create_surface(client.compositor())};
+    wlcs::WlHandle<wl_surface> const surface{wl_compositor_create_surface(client.compositor())};
     wlcs::ShmBuffer buffer{client, 300, 300};
     wl_surface_attach(surface, buffer, 0, 0);
     wl_surface_commit(surface);
@@ -152,9 +156,9 @@ TEST_F(XdgSurfaceStableTest, attaching_buffer_to_unconfigured_xdg_surface_is_an_
 {
     wlcs::Client client{the_server()};
 
-    wlcs::WlProxy<xdg_wm_base> const xdg_wm_base{client};
+    auto const xdg_wm_base = client.bind_if_supported<struct xdg_wm_base>(AtLeastVersion{1});
 
-    wlcs::WlProxy<wl_surface> const surface{wl_compositor_create_surface(client.compositor())};
+    wlcs::WlHandle<wl_surface> const surface{wl_compositor_create_surface(client.compositor())};
     wlcs::ShmBuffer buffer{client, 300, 300};
     client.roundtrip();
 

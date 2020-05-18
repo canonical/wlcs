@@ -22,6 +22,8 @@
 #include "generated/gtk-primary-selection-client.h"
 
 #include "active_listeners.h"
+#include "wl_interface_descriptor.h"
+#include "wl_handle.h"
 
 #include <memory>
 #include <mutex>
@@ -29,6 +31,8 @@
 
 namespace wlcs
 {
+WLCS_CREATE_INTERFACE_DESCRIPTOR(gtk_primary_selection_device_manager)
+
     class GtkPrimarySelectionSource
     {
     public:

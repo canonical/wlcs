@@ -18,6 +18,7 @@
 
 #include "in_process_server.h"
 #include "thread_proxy.h"
+#include "version_specifier.h"
 #include "wlcs/display_server.h"
 #include "helpers.h"
 #include "wlcs/pointer.h"
@@ -55,14 +56,14 @@ public:
     }
 };
 
-wlcs::ExtensionExpectedlyNotSupported::ExtensionExpectedlyNotSupported(char const* extension, uint32_t version)
+wlcs::ExtensionExpectedlyNotSupported::ExtensionExpectedlyNotSupported(char const* extension, VersionSpecifier const& version)
     : std::runtime_error{
         std::string{"Extension: "} +
-        extension + " version " + std::to_string(version) +
+        extension + " version " + version.describe() +
         " not supported by compositor under test."}
 {
     auto const skip_reason =
-        std::string{"Missing extension: "} + extension + " v" + std::to_string(version);
+        std::string{"Missing extension: "} + extension + version.describe();
     ::testing::Test::RecordProperty("wlcs-skip-test", skip_reason);
 }
 
@@ -853,25 +854,51 @@ public:
         button_notifiers.push_back(on_button);
     }
 
-    void* bind_if_supported(wl_interface const& to_bind, uint32_t min_version) const
+    void* bind_if_supported(wl_interface const& to_bind, VersionSpecifier const& version) const
     {
+        std::experimental::optional<bool> expected_to_be_supported{};
+
+        if (supported_extensions)
+        {
+            expected_to_be_supported =
+                supported_extensions->count(to_bind.name) &&
+                version.select_version(supported_extensions->at(to_bind.name));
+        }
+
+        /* TODO: Mark tests using globals which exist, but are listed as unsupported as
+         * may-fail.
+         * This should help incrementally implementing a protocol, while getting test
+         * feedback.
+         */
         auto const global = globals.find(to_bind.name);
-        if (global != globals.end() && global->second.version >= min_version)
+        if (global != globals.end())
         {
-            return wl_registry_bind(registry, global->second.id, &to_bind, global->second.version);
-        }
-        else if (
-            supported_extensions &&
-            (supported_extensions->count(to_bind.name) == 0 ||
-             supported_extensions->at(to_bind.name) < min_version))
-        {
-            BOOST_THROW_EXCEPTION((ExtensionExpectedlyNotSupported{to_bind.name, min_version}));
-        }
-        else
-        {
+            auto const version_to_bind = version.select_version(global->second.version);
+            if (version_to_bind)
+            {
+                auto global_proxy = wl_registry_bind(registry, global->second.id, &to_bind, version_to_bind.value());
+                if (!global_proxy)
+                {
+                    throw_wayland_error(display);
+                }
+                return global_proxy;
+            }
+            else if (!expected_to_be_supported.value_or(true))
+            {
+                // We didn't expect to find the needed version of this extension anyway…
+                BOOST_THROW_EXCEPTION((ExtensionExpectedlyNotSupported{to_bind.name, version}));
+            }
+
             BOOST_THROW_EXCEPTION((std::runtime_error{
-                "Failed to bind to " + std::string{to_bind.name} + " version " + std::to_string(min_version)}));
+                "Failed to bind to " + std::string{to_bind.name} + " version " + version.describe()}));
         }
+        else if (!expected_to_be_supported.value_or(true))
+        {
+            // We didn't expect to find this extension anyway…
+            BOOST_THROW_EXCEPTION((ExtensionExpectedlyNotSupported{to_bind.name, version}));
+        }
+        BOOST_THROW_EXCEPTION((std::runtime_error{
+            "Failed to bind to " + std::string{to_bind.name} + " version " + version.describe()}));
     }
 
     void dispatch_until(
@@ -1609,9 +1636,9 @@ void wlcs::Client::roundtrip()
     impl->server_roundtrip();
 }
 
-void* wlcs::Client::bind_if_supported(wl_interface const& interface, uint32_t min_version) const
+void* wlcs::Client::bind_if_supported(wl_interface const& interface, VersionSpecifier const& version) const
 {
-    return impl->bind_if_supported(interface, min_version);
+    return impl->bind_if_supported(interface, version);
 }
 
 class wlcs::Surface::Impl
@@ -1888,10 +1915,4 @@ wlcs::ShmBuffer::operator wl_buffer*() const
 void wlcs::ShmBuffer::add_release_listener(std::function<bool()> const &on_release)
 {
     impl->add_release_listener(on_release);
-}
-
-wlcs::CheckInterfaceExpected::CheckInterfaceExpected(Server& server, wl_interface const& interface) : Client{server}
-{
-    wl_proxy* const proxy = static_cast<wl_proxy*>(bind_if_supported(interface, 1));
-    wl_proxy_destroy(proxy);
 }

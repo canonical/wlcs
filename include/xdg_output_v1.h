@@ -23,11 +23,14 @@
 #include "generated/xdg-output-unstable-v1-client.h"
 
 #include "in_process_server.h"
+#include "wl_interface_descriptor.h"
+#include "wl_handle.h"
 
 #include <memory>
 
 namespace wlcs
 {
+WLCS_CREATE_INTERFACE_DESCRIPTOR(zxdg_output_manager_v1)
 
 class XdgOutputManagerV1
 {

@@ -19,6 +19,7 @@
 #include "gtk_primary_selection.h"
 
 #include "in_process_server.h"
+#include "version_specifier.h"
 
 #include <gmock/gmock.h>
 #include <sys/socket.h>
@@ -36,7 +37,8 @@ struct SourceApp : Client
     // Can't use "using Client::Client;" because Xenial
     explicit SourceApp(Server& server) : Client{server} {}
 
-    WlProxy<gtk_primary_selection_device_manager> manager{*this};
+    WlHandle<gtk_primary_selection_device_manager> manager{
+        this->bind_if_supported<gtk_primary_selection_device_manager>(wlcs::AtLeastVersion{1})};
     GtkPrimarySelectionSource source{manager};
     GtkPrimarySelectionDevice device{manager, seat()};
 
@@ -57,13 +59,13 @@ struct SinkApp : Client
 {
     explicit SinkApp(Server& server) : Client{server} { roundtrip(); }
 
-    WlProxy<gtk_primary_selection_device_manager> const manager{*this};
+    WlHandle<gtk_primary_selection_device_manager> const manager{
+        this->bind_if_supported<gtk_primary_selection_device_manager>(AtLeastVersion{1})};
     GtkPrimarySelectionDevice device{manager, seat()};
 };
 
 struct GtkPrimarySelection : StartedInProcessServer
 {
-    CheckInterfaceExpected must_be_first{the_server(), gtk_primary_selection_device_manager_interface};
     SourceApp   source_app{the_server()};
     SinkApp     sink_app{the_server()};
 
