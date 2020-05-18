@@ -121,9 +121,6 @@ TEST_F(SelfTest, acquiring_unsupported_extension_is_xfail)
 
     Client client{the_server()};
 
-/*    struct compile_error {};
-    client.bind_if_supported<compile_error>(wlcs::AtLeastVersion{1});
-*/
     wl_interface unsupported_interface = wl_shell_interface;
     unsupported_interface.name = "wlcs_non_existent_extension";
     client.bind_if_supported(unsupported_interface, wlcs::AtLeastVersion{1});
