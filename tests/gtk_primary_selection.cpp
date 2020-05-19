@@ -38,7 +38,7 @@ struct SourceApp : Client
     explicit SourceApp(Server& server) : Client{server} {}
 
     WlHandle<gtk_primary_selection_device_manager> manager{
-        this->bind_if_supported<gtk_primary_selection_device_manager>(wlcs::AtLeastVersion{1})};
+        this->bind_if_supported<gtk_primary_selection_device_manager>(AnyVersion)};
     GtkPrimarySelectionSource source{manager};
     GtkPrimarySelectionDevice device{manager, seat()};
 
@@ -60,7 +60,7 @@ struct SinkApp : Client
     explicit SinkApp(Server& server) : Client{server} { roundtrip(); }
 
     WlHandle<gtk_primary_selection_device_manager> const manager{
-        this->bind_if_supported<gtk_primary_selection_device_manager>(AtLeastVersion{1})};
+        this->bind_if_supported<gtk_primary_selection_device_manager>(AnyVersion)};
     GtkPrimarySelectionDevice device{manager, seat()};
 };
 

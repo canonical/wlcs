@@ -123,7 +123,7 @@ TEST_F(SelfTest, acquiring_unsupported_extension_is_xfail)
 
     wl_interface unsupported_interface = wl_shell_interface;
     unsupported_interface.name = "wlcs_non_existent_extension";
-    client.bind_if_supported(unsupported_interface, wlcs::AtLeastVersion{1});
+    client.bind_if_supported(unsupported_interface, AnyVersion);
 
     FAIL() << "We should have (x)failed at acquiring the interface";
 }
@@ -140,7 +140,7 @@ TEST_F(SelfTest, acquiring_unsupported_extension_version_is_xfail)
 
     Client client{the_server()};
 
-    client.bind_if_supported(wl_shell_interface, wlcs::AtLeastVersion{wl_shell_interface.version + 1u});
+    client.bind_if_supported(wl_shell_interface, AtLeastVersion{wl_shell_interface.version + 1u});
 
     FAIL() << "We should have (x)failed at acquiring the interface";
 }

@@ -25,7 +25,7 @@ struct wlcs::XdgOutputManagerV1::Impl
 {
     Impl(Client& client)
         : client{client},
-          manager{client.bind_if_supported<zxdg_output_manager_v1>(wlcs::AtLeastVersion{1})}
+          manager{client.bind_if_supported<zxdg_output_manager_v1>(AnyVersion)}
     {
     }
 

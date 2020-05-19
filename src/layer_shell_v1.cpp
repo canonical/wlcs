@@ -27,7 +27,7 @@ wlcs::LayerSurfaceV1::LayerSurfaceV1(
     wl_output* output,
     const char *_namespace)
     : client{client},
-      layer_shell{client.bind_if_supported<zwlr_layer_shell_v1>(wlcs::AtLeastVersion{1})},
+      layer_shell{client.bind_if_supported<zwlr_layer_shell_v1>(AnyVersion)},
       layer_surface{wrap_wl_object<zwlr_layer_surface_v1>(
           zwlr_layer_shell_v1_get_layer_surface(
           layer_shell,

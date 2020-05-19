@@ -35,7 +35,7 @@
 
 using namespace testing;
 using XdgSurfaceStableTest = wlcs::InProcessServer;
-using wlcs::AtLeastVersion;
+using wlcs::AnyVersion;
 
 TEST_F(XdgSurfaceStableTest, supports_xdg_shell_stable_protocol)
 {
@@ -70,7 +70,7 @@ TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_existing_
 {
     wlcs::Client client{the_server()};
 
-    auto const xdg_wm_base = client.bind_if_supported<struct xdg_wm_base>(AtLeastVersion{1});
+    auto const xdg_wm_base = client.bind_if_supported<struct xdg_wm_base>(AnyVersion);
 
     // We need a parent for the subsurface
     auto const parent = client.create_visible_surface(300, 300);
@@ -103,7 +103,7 @@ TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_attached_
 {
     wlcs::Client client{the_server()};
 
-    auto const xdg_wm_base = client.bind_if_supported<struct xdg_wm_base>(AtLeastVersion{1});
+    auto const xdg_wm_base = client.bind_if_supported<struct xdg_wm_base>(AnyVersion);
 
     wlcs::WlHandle<wl_surface> const surface{wl_compositor_create_surface(client.compositor())};
     wlcs::ShmBuffer buffer{client, 300, 300};
@@ -129,7 +129,7 @@ TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_committed
 {
     wlcs::Client client{the_server()};
 
-    auto const xdg_wm_base = client.bind_if_supported<struct xdg_wm_base>(AtLeastVersion{1});
+    auto const xdg_wm_base = client.bind_if_supported<struct xdg_wm_base>(AnyVersion);
 
     wlcs::WlHandle<wl_surface> const surface{wl_compositor_create_surface(client.compositor())};
     wlcs::ShmBuffer buffer{client, 300, 300};
@@ -156,7 +156,7 @@ TEST_F(XdgSurfaceStableTest, attaching_buffer_to_unconfigured_xdg_surface_is_an_
 {
     wlcs::Client client{the_server()};
 
-    auto const xdg_wm_base = client.bind_if_supported<struct xdg_wm_base>(AtLeastVersion{1});
+    auto const xdg_wm_base = client.bind_if_supported<struct xdg_wm_base>(AnyVersion);
 
     wlcs::WlHandle<wl_surface> const surface{wl_compositor_create_surface(client.compositor())};
     wlcs::ShmBuffer buffer{client, 300, 300};

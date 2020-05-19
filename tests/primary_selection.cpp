@@ -38,7 +38,7 @@ struct SourceApp : Client
     explicit SourceApp(Server& server) : Client{server} {}
 
     WlHandle<zwp_primary_selection_device_manager_v1> const manager{
-        this->bind_if_supported<zwp_primary_selection_device_manager_v1>(wlcs::AtLeastVersion{1})};
+        this->bind_if_supported<zwp_primary_selection_device_manager_v1>(AnyVersion)};
     PrimarySelectionSource source{manager};
     PrimarySelectionDevice device{manager, seat()};
 
@@ -60,7 +60,7 @@ struct SinkApp : Client
     explicit SinkApp(Server& server) : Client{server} { roundtrip(); }
 
     WlHandle<zwp_primary_selection_device_manager_v1> const manager{
-        this->bind_if_supported<zwp_primary_selection_device_manager_v1>(wlcs::AtLeastVersion{1})};
+        this->bind_if_supported<zwp_primary_selection_device_manager_v1>(AnyVersion)};
     PrimarySelectionDevice device{manager, seat()};
 };
 
