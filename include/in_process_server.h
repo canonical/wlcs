@@ -60,6 +60,10 @@ void send_release_if_supported(wl_output* to_destroy)
     {
         wl_output_release(to_destroy);
     }
+    else
+    {
+        wl_output_destroy(to_destroy);
+    }
 }
 }
 template<>
