@@ -79,7 +79,7 @@ TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_existing_
 
     // We need some way of assigning a role to a wl_surface. wl_subcompositor is as good a way as any.
     auto const subsurface =
-        wlcs::wrap_wl_object<wl_subsurface>(wl_subcompositor_get_subsurface(client.subcompositor(), surface, parent));
+        wlcs::wrap_wl_object(wl_subcompositor_get_subsurface(client.subcompositor(), surface, parent));
 
     client.roundtrip();
 
