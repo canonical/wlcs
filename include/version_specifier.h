@@ -37,7 +37,7 @@ public:
 class ExactlyVersion : public VersionSpecifier
 {
 public:
-    explicit ExactlyVersion(uint32_t version);
+    explicit ExactlyVersion(uint32_t version) noexcept;
 
     auto select_version(uint32_t max_version) const -> std::experimental::optional<uint32_t> override;
     auto describe() const -> std::string override;
@@ -48,7 +48,7 @@ private:
 class AtLeastVersion : public VersionSpecifier
 {
 public:
-    explicit AtLeastVersion(uint32_t version);
+    explicit AtLeastVersion(uint32_t version) noexcept;
 
     auto select_version(uint32_t max_version) const -> std::experimental::optional<uint32_t> override;
     auto describe() const -> std::string override;

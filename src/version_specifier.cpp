@@ -20,7 +20,7 @@
 
 using std::experimental::optional;
 
-wlcs::ExactlyVersion::ExactlyVersion(uint32_t version)
+wlcs::ExactlyVersion::ExactlyVersion(uint32_t version) noexcept
     : version{version}
 {
 }
@@ -39,7 +39,7 @@ auto wlcs::ExactlyVersion::describe() const -> std::string
     return std::string{"= "} + std::to_string(version);
 }
 
-wlcs::AtLeastVersion::AtLeastVersion(uint32_t version)
+wlcs::AtLeastVersion::AtLeastVersion(uint32_t version) noexcept
     : version{version}
 {
 }
