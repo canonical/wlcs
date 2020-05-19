@@ -55,7 +55,7 @@ auto wlcs::AtLeastVersion::select_version(uint32_t max_version) const -> optiona
 
 auto wlcs::AtLeastVersion::describe() const -> std::string
 {
-    return std::string{">="} + std::to_string(version);
+    return std::string{">= "} + std::to_string(version);
 }
 
 wlcs::VersionSpecifier const& wlcs::AnyVersion = wlcs::AtLeastVersion{1};
