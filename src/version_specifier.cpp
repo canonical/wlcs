@@ -57,3 +57,5 @@ auto wlcs::AtLeastVersion::describe() const -> std::string
 {
     return std::string{">="} + std::to_string(version);
 }
+
+wlcs::VersionSpecifier const& wlcs::AnyVersion = wlcs::AtLeastVersion{1};

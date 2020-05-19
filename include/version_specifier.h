@@ -55,6 +55,8 @@ public:
 private:
     uint32_t const version;
 };
+
+extern VersionSpecifier const& AnyVersion;
 }
 
 #endif //WLCS_VERSION_SPECIFIER_H_
