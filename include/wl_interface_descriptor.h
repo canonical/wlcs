@@ -44,6 +44,9 @@ struct WlInterfaceDescriptor
  * This will use the standard Wayland conventions of
  * name - name_interface - name_destroy
  * (eg: wl_surface - wl_surface_interface - wl_surface_destroy)
+ *
+ * If an interface requires special handling, a manual specialisation can be
+ * provided (for example, see wl_output handling in in_process_server.h)
  */
 #define WLCS_CREATE_INTERFACE_DESCRIPTOR(name) \
     template<> \
