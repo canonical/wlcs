@@ -65,7 +65,7 @@ public:
 
     operator T*() const
     {
-        // This is a precondition failure, but as this is a test-suite lets be generous and make it fail hard and fast
+        // This is a precondition failure, but as this is a test-suite let's be generous and make it fail hard and fast
         if (!owns_wl_object)
         {
             std::abort();
@@ -75,7 +75,7 @@ public:
 
     auto wl_proxy() const -> struct wl_proxy*
     {
-        // This is a precondition failure, but as this is a test-suite lets be generous and make it fail hard and fast
+        // This is a precondition failure, but as this is a test-suite let's be generous and make it fail hard and fast
         if (!owns_wl_object)
         {
             std::abort();
