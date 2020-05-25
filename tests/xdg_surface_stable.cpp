@@ -75,7 +75,7 @@ TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_existing_
     // We need a parent for the subsurface
     auto const parent = client.create_visible_surface(300, 300);
 
-    wlcs::WlHandle<wl_surface> const surface{wl_compositor_create_surface(client.compositor())};
+    auto const surface = wlcs::wrap_wl_object(wl_compositor_create_surface(client.compositor()));
 
     // We need some way of assigning a role to a wl_surface. wl_subcompositor is as good a way as any.
     auto const subsurface =
@@ -105,7 +105,7 @@ TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_attached_
 
     auto const xdg_wm_base = client.bind_if_supported<struct xdg_wm_base>(AnyVersion);
 
-    wlcs::WlHandle<wl_surface> const surface{wl_compositor_create_surface(client.compositor())};
+    auto const surface = wlcs::wrap_wl_object(wl_compositor_create_surface(client.compositor()));
     wlcs::ShmBuffer buffer{client, 300, 300};
     wl_surface_attach(surface, buffer, 0, 0);
     client.roundtrip();
@@ -131,7 +131,7 @@ TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_committed
 
     auto const xdg_wm_base = client.bind_if_supported<struct xdg_wm_base>(AnyVersion);
 
-    wlcs::WlHandle<wl_surface> const surface{wl_compositor_create_surface(client.compositor())};
+    auto const surface = wlcs::wrap_wl_object(wl_compositor_create_surface(client.compositor()));
     wlcs::ShmBuffer buffer{client, 300, 300};
     wl_surface_attach(surface, buffer, 0, 0);
     wl_surface_commit(surface);
@@ -158,7 +158,7 @@ TEST_F(XdgSurfaceStableTest, attaching_buffer_to_unconfigured_xdg_surface_is_an_
 
     auto const xdg_wm_base = client.bind_if_supported<struct xdg_wm_base>(AnyVersion);
 
-    wlcs::WlHandle<wl_surface> const surface{wl_compositor_create_surface(client.compositor())};
+    auto const surface = wlcs::wrap_wl_object(wl_compositor_create_surface(client.compositor()));
     wlcs::ShmBuffer buffer{client, 300, 300};
     client.roundtrip();
 
