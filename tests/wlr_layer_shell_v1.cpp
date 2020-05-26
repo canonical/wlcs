@@ -30,14 +30,6 @@ using Rect = std::pair<Vec2, Vec2>;
 
 namespace
 {
-
-class LayerShellTest
-    : public wlcs::StartedInProcessServer
-{
-private:
-    wlcs::CheckInterfaceExpected expect_layer_shell_supported{the_server(), zwlr_layer_shell_v1_interface};
-};
-
 class LayerSurfaceTest: public wlcs::StartedInProcessServer
 {
 public:
@@ -86,7 +78,6 @@ public:
         return std::make_pair(layer_surface.last_width(), layer_surface.last_height());
     }
 
-    wlcs::CheckInterfaceExpected expect_layer_shell_supported{the_server(), zwlr_layer_shell_v1_interface};
     wlcs::Client client;
     wlcs::Surface surface;
     wlcs::LayerSurfaceV1 layer_surface;
@@ -293,19 +284,10 @@ public:
     {
     }
 
-    wlcs::CheckInterfaceExpected expect_layer_shell_supported{the_server(), zwlr_layer_shell_v1_interface};
     static const int width{200}, height{100};
     wlcs::Client client;
 };
 
-}
-
-TEST_F(LayerShellTest, supports_layer_shell_protocol)
-{
-    wlcs::Client client{the_server()};
-    ASSERT_THAT(client.layer_shell_v1(), NotNull());
-    wlcs::Surface surface{client};
-    wlcs::LayerSurfaceV1 layer_surface{client, surface};
 }
 
 TEST_F(LayerSurfaceTest, can_open_layer_surface)

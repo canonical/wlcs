@@ -19,8 +19,6 @@
 #ifndef WLCS_IN_PROCESS_SERVER_H_
 #define WLCS_IN_PROCESS_SERVER_H_
 
-#include "generated/gtk-primary-selection-client.h"
-#include "generated/primary-selection-unstable-v1-client.h"
 #include "generated/wayland-client.h"
 #include "generated/xdg-shell-unstable-v6-client.h"
 #include "generated/xdg-shell-client.h"
@@ -34,6 +32,7 @@
 #include <chrono>
 
 #include "shared_library.h"
+#include "wl_handle.h"
 
 #include <wayland-client.h>
 
@@ -45,6 +44,36 @@ struct zwlr_layer_shell_v1;
 
 namespace wlcs
 {
+class VersionSpecifier;
+
+WLCS_CREATE_INTERFACE_DESCRIPTOR(wl_surface)
+WLCS_CREATE_INTERFACE_DESCRIPTOR(wl_subsurface)
+
+/* We need a manually-specified descriptor for wl_output,
+ * as wl_output only has a destructor for version >= 3
+ */
+namespace
+{
+void send_release_if_supported(wl_output* to_destroy)
+{
+    if (wl_output_get_version(to_destroy) >= WL_OUTPUT_RELEASE_SINCE_VERSION)
+    {
+        wl_output_release(to_destroy);
+    }
+    else
+    {
+        wl_output_destroy(to_destroy);
+    }
+}
+}
+template<>
+struct WlInterfaceDescriptor<wl_output>
+{
+    static constexpr bool const has_specialisation = true;
+    static constexpr wl_interface const* const interface = &wl_output_interface;
+    static constexpr void (* const destructor)(wl_output*) = &send_release_if_supported;
+};
+
 
 class Pointer
 {
@@ -211,10 +240,7 @@ public:
     wl_compositor* compositor() const;
     wl_subcompositor* subcompositor() const;
     wl_shm* shm() const;
-    wl_data_device_manager* data_device_manager() const;
     wl_seat* seat() const;
-    struct zwp_primary_selection_device_manager_v1* primary_selection_device_manager() const;
-    struct gtk_primary_selection_device_manager* gtk_primary_selection_device_manager() const;
 
     void run_on_destruction(std::function<void()> callback);
 
@@ -231,7 +257,6 @@ public:
     wl_shell* shell() const;
     zxdg_shell_v6* xdg_shell_v6() const;
     xdg_wm_base* xdg_shell_stable() const;
-    zwlr_layer_shell_v1* layer_shell_v1() const;
     wl_surface* window_under_cursor() const;
     wl_surface* touched_window() const;
     std::pair<wl_fixed_t, wl_fixed_t> pointer_position() const;
@@ -250,13 +275,21 @@ public:
     void add_pointer_motion_notification(PointerMotionNotifier const& on_motion);
     void add_pointer_button_notification(PointerButtonNotifier const& on_button);
 
-    void* acquire_interface(std::string const& name, wl_interface const* interface, uint32_t version);
-
     void dispatch_until(
         std::function<bool()> const& predicate,
         std::chrono::seconds timeout = std::chrono::seconds{10});
 
+    template<typename WlType>
+    auto bind_if_supported(VersionSpecifier const& version) -> WlHandle<WlType>
+    {
+        return wrap_wl_object(
+            static_cast<WlType*>(bind_if_supported(*WlInterfaceDescriptor<WlType>::interface, version)));
+    }
+
+    auto bind_if_supported(wl_interface const& interface, VersionSpecifier const& version) const -> void*;
+
     void roundtrip();
+
 private:
     class Impl;
     std::unique_ptr<Impl> const impl;
@@ -303,7 +336,7 @@ private:
 class ExtensionExpectedlyNotSupported : public std::runtime_error
 {
 public:
-    ExtensionExpectedlyNotSupported(char const* extension, uint32_t version);
+    ExtensionExpectedlyNotSupported(char const* extension, VersionSpecifier const& version);
 };
 
 class Timeout : public std::runtime_error
@@ -334,14 +367,6 @@ public:
     void SetUp() override {}
     void TearDown() override {}
 };
-
-// Check the server expects to support an interface
-class CheckInterfaceExpected : private Client
-{
-public:
-    CheckInterfaceExpected(Server& server, wl_interface const& interface);
-};
-
 }
 
 #endif //WLCS_IN_PROCESS_SERVER_H_

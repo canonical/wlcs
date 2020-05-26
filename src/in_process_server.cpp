@@ -18,14 +18,13 @@
 
 #include "in_process_server.h"
 #include "thread_proxy.h"
+#include "version_specifier.h"
 #include "wlcs/display_server.h"
 #include "helpers.h"
 #include "wlcs/pointer.h"
 #include "wlcs/touch.h"
 #include "xdg_shell_v6.h"
 #include "xdg_shell_stable.h"
-#include "layer_shell_v1.h"
-#include "generated/primary-selection-unstable-v1-client.h"
 #include "generated/wayland-client.h"
 #include "generated/xdg-shell-unstable-v6-client.h"
 #include "generated/xdg-shell-client.h"
@@ -57,14 +56,14 @@ public:
     }
 };
 
-wlcs::ExtensionExpectedlyNotSupported::ExtensionExpectedlyNotSupported(char const* extension, uint32_t version)
+wlcs::ExtensionExpectedlyNotSupported::ExtensionExpectedlyNotSupported(char const* extension, VersionSpecifier const& version)
     : std::runtime_error{
         std::string{"Extension: "} +
-        extension + " version " + std::to_string(version) +
+        extension + " version " + version.describe() +
         " not supported by compositor under test."}
 {
     auto const skip_reason =
-        std::string{"Missing extension: "} + extension + " v" + std::to_string(version);
+        std::string{"Missing extension: "} + extension + version.describe();
     ::testing::Test::RecordProperty("wlcs-skip-test", skip_reason);
 }
 
@@ -660,14 +659,8 @@ public:
         if (seat) wl_seat_destroy(seat);
         if (pointer) wl_pointer_destroy(pointer);
         if (touch) wl_touch_destroy(touch);
-        if (gtk_primary_selection_device_manager_)
-            gtk_primary_selection_device_manager_destroy(gtk_primary_selection_device_manager_);
-        if (primary_selection_device_manager)
-            zwp_primary_selection_device_manager_v1_destroy(primary_selection_device_manager);
-        if (data_device_manager) wl_data_device_manager_destroy(data_device_manager);
         if (xdg_shell_v6) zxdg_shell_v6_destroy(xdg_shell_v6);
         if (xdg_shell_stable) xdg_wm_base_destroy(xdg_shell_stable);
-        if (layer_shell_v1) zwlr_layer_shell_v1_destroy(layer_shell_v1);
         for (auto const& output: outputs)
             wl_output_destroy(output->current.output);
         for (auto const& callback: destruction_callbacks)
@@ -694,21 +687,6 @@ public:
     struct wl_shm* wl_shm() const
     {
         return shm;
-    }
-
-    struct wl_data_device_manager* wl_data_device_manager() const
-    {
-        return data_device_manager;
-    }
-
-    struct zwp_primary_selection_device_manager_v1* zwp_primary_selection_device_manager() const
-    {
-        return primary_selection_device_manager;
-    }
-
-    struct gtk_primary_selection_device_manager* gtk_primary_selection_device_manager() const
-    {
-        return gtk_primary_selection_device_manager_;
     }
 
     struct wl_seat* wl_seat() const
@@ -804,16 +782,6 @@ public:
         return xdg_shell_stable;
     }
 
-    zwlr_layer_shell_v1* the_layer_shell_v1() const
-    {
-        if (layer_shell_v1)
-            return layer_shell_v1;
-        else
-            BOOST_THROW_EXCEPTION(std::runtime_error{
-                "zwlr_layer_shell_v1 not supported by server; "
-                "Consider using CheckInterfaceExpected to disable this test when protocol not suppoeted"});
-    }
-
     wl_surface* window_under_cursor() const
     {
         if (pointer_events_pending())
@@ -886,63 +854,51 @@ public:
         button_notifiers.push_back(on_button);
     }
 
-    void* acquire_interface(std::string const& interface, wl_interface const* to_bind, uint32_t version)
+    void* bind_if_supported(wl_interface const& to_bind, VersionSpecifier const& version) const
     {
-        wl_registry* temp_registry = wl_display_get_registry(display);
+        std::experimental::optional<bool> expected_to_be_supported{};
 
-        struct InterfaceResult
+        if (supported_extensions)
         {
-            void* bound_interface;
-            std::string const& interface;
-            wl_interface const* to_bind;
-            uint32_t version;
-        } result{nullptr, interface, to_bind, version};
-
-        wl_registry_listener const listener{
-            [](
-                void* ctx,
-                wl_registry* registry,
-                uint32_t id,
-                char const* interface,
-                uint32_t version)
-            {
-                auto request = static_cast<InterfaceResult*>(ctx);
-
-                if ((request->interface == interface) &&
-                    version >= request->version)
-                {
-                    request->bound_interface =
-                        wl_registry_bind(registry, id, request->to_bind, version);
-                }
-            },
-            [](auto, auto, auto) {}
-        };
-
-        wl_registry_add_listener(
-            temp_registry,
-            &listener,
-            &result);
-
-        wl_display_roundtrip(display);
-
-        wl_registry_destroy(temp_registry);
-
-        if (result.bound_interface == nullptr)
-        {
-            if (
-                supported_extensions &&
-                (supported_extensions->count(interface.c_str()) == 0 ||
-                 supported_extensions->at(interface.c_str()) < version))
-            {
-                BOOST_THROW_EXCEPTION((ExtensionExpectedlyNotSupported{interface.c_str(), version}));
-            }
-            else
-            {
-                BOOST_THROW_EXCEPTION((std::runtime_error{"Failed to acquire interface"}));
-            }
+            expected_to_be_supported =
+                supported_extensions->count(to_bind.name) &&
+                version.select_version(supported_extensions->at(to_bind.name));
         }
 
-        return result.bound_interface;
+        /* TODO: Mark tests using globals which exist, but are listed as unsupported as
+         * may-fail.
+         * This should help incrementally implementing a protocol, while getting test
+         * feedback.
+         */
+        auto const global = globals.find(to_bind.name);
+        if (global != globals.end())
+        {
+            auto const version_to_bind = version.select_version(global->second.version);
+            if (version_to_bind)
+            {
+                auto global_proxy = wl_registry_bind(registry, global->second.id, &to_bind, version_to_bind.value());
+                if (!global_proxy)
+                {
+                    throw_wayland_error(display);
+                }
+                return global_proxy;
+            }
+            else if (!expected_to_be_supported.value_or(true))
+            {
+                // We didn't expect to find the needed version of this extension anyway…
+                BOOST_THROW_EXCEPTION((ExtensionExpectedlyNotSupported{to_bind.name, version}));
+            }
+
+            BOOST_THROW_EXCEPTION((std::runtime_error{
+                "Failed to bind to " + std::string{to_bind.name} + " version " + version.describe()}));
+        }
+        else if (!expected_to_be_supported.value_or(true))
+        {
+            // We didn't expect to find this extension anyway…
+            BOOST_THROW_EXCEPTION((ExtensionExpectedlyNotSupported{to_bind.name, version}));
+        }
+        BOOST_THROW_EXCEPTION((std::runtime_error{
+            "Failed to bind to " + std::string{to_bind.name} + " version " + version.describe()}));
     }
 
     void dispatch_until(
@@ -1413,6 +1369,8 @@ private:
         using namespace std::literals::string_literals;
 
         auto me = static_cast<Impl*>(ctx);
+        me->global_type_names[id] = interface;
+        me->globals[interface] = Global{id, version};
 
         if ("wl_shm"s == interface)
         {
@@ -1443,21 +1401,6 @@ private:
             // Ensure we receive the initial seat events.
             me->server_roundtrip();
         }
-        else if ("wl_data_device_manager"s == interface)
-        {
-            me->data_device_manager = static_cast<struct wl_data_device_manager*>(
-                wl_registry_bind(registry, id, &wl_data_device_manager_interface, version));
-        }
-        else if ("zwp_primary_selection_device_manager_v1"s == interface)
-        {
-            me->primary_selection_device_manager = static_cast<struct zwp_primary_selection_device_manager_v1*>(
-                wl_registry_bind(registry, id, &zwp_primary_selection_device_manager_v1_interface, version));
-        }
-        else if ("gtk_primary_selection_device_manager"s == interface)
-        {
-            me->gtk_primary_selection_device_manager_ = static_cast<struct gtk_primary_selection_device_manager*>(
-                    wl_registry_bind(registry, id, &gtk_primary_selection_device_manager_interface, version));
-        }
         else if ("wl_output"s == interface)
         {
             auto wl_output = static_cast<struct wl_output*>(
@@ -1479,16 +1422,17 @@ private:
             me->xdg_shell_stable = static_cast<struct xdg_wm_base*>(
                 wl_registry_bind(registry, id, &xdg_wm_base_interface, version));
         }
-        else if ("zwlr_layer_shell_v1"s == interface)
-        {
-            me->layer_shell_v1 = static_cast<struct zwlr_layer_shell_v1*>(
-                wl_registry_bind(registry, id, &zwlr_layer_shell_v1_interface, version));
-        }
     }
 
-    static void global_removed(void*, wl_registry*, uint32_t)
+    static void global_removed(void* ctx, wl_registry*, uint32_t id)
     {
-        // TODO: Remove our globals
+        auto me = static_cast<Impl*>(ctx);
+        auto const name = me->global_type_names.find(id);
+        if (name != me->global_type_names.end())
+        {
+            me->globals.erase(name->second);
+            me->global_type_names.erase(name);
+        }
     }
 
     constexpr static wl_registry_listener registry_listener = {
@@ -1507,13 +1451,17 @@ private:
     struct wl_seat* seat = nullptr;
     struct wl_pointer* pointer = nullptr;
     struct wl_touch* touch = nullptr;
-    struct wl_data_device_manager* data_device_manager = nullptr;
     struct zxdg_shell_v6* xdg_shell_v6 = nullptr;
     std::vector<std::function<void()>> destruction_callbacks;
     struct xdg_wm_base* xdg_shell_stable = nullptr;
-    struct zwlr_layer_shell_v1* layer_shell_v1 = nullptr;
-    struct zwp_primary_selection_device_manager_v1* primary_selection_device_manager = nullptr;
-    struct gtk_primary_selection_device_manager* gtk_primary_selection_device_manager_ = nullptr;
+
+    struct Global
+    {
+        uint32_t id;
+        uint32_t version;
+    };
+    std::map<std::string, Global> globals;
+    std::map<uint32_t, std::string> global_type_names;
 
     struct SurfaceLocation
     {
@@ -1565,21 +1513,6 @@ wl_subcompositor* wlcs::Client::subcompositor() const
 wl_shm* wlcs::Client::shm() const
 {
     return impl->wl_shm();
-}
-
-struct wl_data_device_manager* wlcs::Client::data_device_manager() const
-{
-    return impl->wl_data_device_manager();
-}
-
-struct zwp_primary_selection_device_manager_v1* wlcs::Client::primary_selection_device_manager() const
-{
-    return impl->zwp_primary_selection_device_manager();
-}
-
-struct gtk_primary_selection_device_manager* wlcs::Client::gtk_primary_selection_device_manager() const
-{
-    return impl->gtk_primary_selection_device_manager();
 }
 
 wl_seat* wlcs::Client::seat() const
@@ -1653,11 +1586,6 @@ xdg_wm_base* wlcs::Client::xdg_shell_stable() const
     return impl->the_xdg_shell_stable();
 }
 
-zwlr_layer_shell_v1* wlcs::Client::layer_shell_v1() const
-{
-    return impl->the_layer_shell_v1();
-}
-
 wl_surface* wlcs::Client::window_under_cursor() const
 {
     return impl->window_under_cursor();
@@ -1708,12 +1636,9 @@ void wlcs::Client::roundtrip()
     impl->server_roundtrip();
 }
 
-void* wlcs::Client::acquire_interface(
-    std::string const& name,
-    wl_interface const* interface,
-    uint32_t version)
+void* wlcs::Client::bind_if_supported(wl_interface const& interface, VersionSpecifier const& version) const
 {
-    return impl->acquire_interface(name, interface, version);
+    return impl->bind_if_supported(interface, version);
 }
 
 class wlcs::Surface::Impl
@@ -1990,9 +1915,4 @@ wlcs::ShmBuffer::operator wl_buffer*() const
 void wlcs::ShmBuffer::add_release_listener(std::function<bool()> const &on_release)
 {
     impl->add_release_listener(on_release);
-}
-
-wlcs::CheckInterfaceExpected::CheckInterfaceExpected(Server& server, wl_interface const& interface) : Client{server}
-{
-    acquire_interface(interface.name, &interface, interface.version);
 }

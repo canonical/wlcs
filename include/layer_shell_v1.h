@@ -20,6 +20,7 @@
 #define WLCS_LAYER_SHELL_V1_H
 
 #include "in_process_server.h"
+#include "wl_handle.h"
 
 // Because _someone_ *cough*ddevault*cough* thought it would be a great idea to name an argument "namespace"
 #ifdef __clang__
@@ -35,6 +36,8 @@
 
 namespace wlcs
 {
+WLCS_CREATE_INTERFACE_DESCRIPTOR(zwlr_layer_shell_v1)
+WLCS_CREATE_INTERFACE_DESCRIPTOR(zwlr_layer_surface_v1)
 
 class LayerSurfaceV1
 {
@@ -47,7 +50,6 @@ public:
         const char *_namespace = "wlcs");
     LayerSurfaceV1(LayerSurfaceV1 const&) = delete;
     LayerSurfaceV1& operator=(LayerSurfaceV1 const&) = delete;
-    ~LayerSurfaceV1();
 
     operator zwlr_layer_surface_v1*() const { return layer_surface; }
 
@@ -56,8 +58,9 @@ public:
     auto last_height() const -> int { return last_height_; }
 
 private:
-    zwlr_layer_surface_v1* layer_surface;
     wlcs::Client& client;
+    WlHandle<zwlr_layer_shell_v1> layer_shell;
+    WlHandle<zwlr_layer_surface_v1> layer_surface;
     int last_width_ = -1;
     int last_height_ = -1;
     int configure_count = 0;

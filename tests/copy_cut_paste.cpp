@@ -19,6 +19,8 @@
 #include "data_device.h"
 #include "helpers.h"
 #include "in_process_server.h"
+#include "wl_handle.h"
+#include "version_specifier.h"
 
 #include <gmock/gmock.h>
 
@@ -40,7 +42,9 @@ struct CCnPSource : Client
     CCnPSource(Server& server) : Client{server} {}
 
     Surface const surface{create_visible_surface(any_width, any_height)};
-    DataSource data{wl_data_device_manager_create_data_source(data_device_manager())};
+    WlHandle<wl_data_device_manager> const manager{
+        this->bind_if_supported<wl_data_device_manager>(AnyVersion)};
+    DataSource data{wl_data_device_manager_create_data_source(manager)};
 
     void offer(char const* mime_type)
     {
@@ -68,7 +72,9 @@ struct CCnPSink : Client
     // Can't use "using Client::Client;" because Xenial
     CCnPSink(Server& server) : Client{server} {}
 
-    DataDevice sink_data{wl_data_device_manager_get_data_device(data_device_manager(), seat())};
+    WlHandle<wl_data_device_manager> const manager{
+        this->bind_if_supported<wl_data_device_manager>(AnyVersion)};
+    DataDevice sink_data{wl_data_device_manager_get_data_device(manager, seat())};
     MockDataDeviceListener listener{sink_data};
 
     Surface create_surface_with_focus()

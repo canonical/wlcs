@@ -17,6 +17,8 @@
  */
 
 #include "layer_shell_v1.h"
+#include "in_process_server.h"
+#include "version_specifier.h"
 
 wlcs::LayerSurfaceV1::LayerSurfaceV1(
     wlcs::Client& client,
@@ -24,14 +26,16 @@ wlcs::LayerSurfaceV1::LayerSurfaceV1(
     zwlr_layer_shell_v1_layer layer,
     wl_output* output,
     const char *_namespace)
-    : client{client}
+    : client{client},
+      layer_shell{client.bind_if_supported<zwlr_layer_shell_v1>(AnyVersion)},
+      layer_surface{wrap_wl_object(
+          zwlr_layer_shell_v1_get_layer_surface(
+          layer_shell,
+          surface,
+          output,
+          layer,
+          _namespace))}
 {
-    layer_surface = zwlr_layer_shell_v1_get_layer_surface(
-        client.layer_shell_v1(),
-        surface,
-        output,
-        layer,
-        _namespace);
     static struct zwlr_layer_surface_v1_listener const listener {
         [](void* data,
             struct zwlr_layer_surface_v1 *zwlr_layer_surface_v1,
@@ -53,11 +57,6 @@ wlcs::LayerSurfaceV1::LayerSurfaceV1(
             }
     };
     zwlr_layer_surface_v1_add_listener(layer_surface, &listener, this);
-}
-
-wlcs::LayerSurfaceV1::~LayerSurfaceV1()
-{
-    zwlr_layer_surface_v1_destroy(layer_surface);
 }
 
 void wlcs::LayerSurfaceV1::dispatch_until_configure()

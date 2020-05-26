@@ -20,6 +20,7 @@
 #include "helpers.h"
 #include "gtest_helpers.h"
 #include "in_process_server.h"
+#include "version_specifier.h"
 
 #include <gmock/gmock.h>
 
@@ -105,7 +106,7 @@ TEST_F(SelfTest, xfail_failure_is_noted)
 
 TEST_F(SelfTest, expected_missing_extension_is_xfail)
 {
-    throw wlcs::ExtensionExpectedlyNotSupported("xdg_not_really_an_extension", 1);
+    throw wlcs::ExtensionExpectedlyNotSupported("xdg_not_really_an_extension", wlcs::AtLeastVersion{1});
 }
 
 TEST_F(SelfTest, acquiring_unsupported_extension_is_xfail)
@@ -118,12 +119,11 @@ TEST_F(SelfTest, acquiring_unsupported_extension_is_xfail)
         FAIL() << "Requires unsupported feature from module under test";
     }
 
-    auto unsupported_extension =
-        std::string{"wlcs_non_existent_extension"} + extension_list->begin()->first;
-
     Client client{the_server()};
 
-    client.acquire_interface(unsupported_extension, &wl_buffer_interface, 1);
+    wl_interface unsupported_interface = wl_shell_interface;
+    unsupported_interface.name = "wlcs_non_existent_extension";
+    client.bind_if_supported(unsupported_interface, AnyVersion);
 
     FAIL() << "We should have (x)failed at acquiring the interface";
 }
@@ -138,10 +138,9 @@ TEST_F(SelfTest, acquiring_unsupported_extension_version_is_xfail)
         FAIL() << "Requires unsupported feature from module under test";
     }
 
-    auto const unsupported_extension_version = extension_list->begin()->second + 1;
     Client client{the_server()};
 
-    client.acquire_interface(extension_list->begin()->first, &wl_buffer_interface, unsupported_extension_version);
+    client.bind_if_supported(wl_shell_interface, AtLeastVersion{wl_shell_interface.version + 1u});
 
     FAIL() << "We should have (x)failed at acquiring the interface";
 }

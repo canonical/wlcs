@@ -18,6 +18,7 @@
 
 #include "helpers.h"
 #include "in_process_server.h"
+#include "version_specifier.h"
 
 #include <gmock/gmock.h>
 
@@ -44,9 +45,13 @@ TEST_F(WlOutputTest, wl_output_release)
 {
     wlcs::Client client{the_server()};
 
-    // Acquire *any* wl_output; we don't care which
-    auto output = static_cast<wl_output*>(client.acquire_interface(wl_output_interface.name, &wl_output_interface, WL_OUTPUT_RELEASE_SINCE_VERSION));
-    client.roundtrip();
-    wl_output_release(output);
+    {
+        // Acquire *any* wl_output; we don't care which
+        auto const output =
+            client.bind_if_supported<wl_output>(wlcs::AtLeastVersion{WL_OUTPUT_RELEASE_SINCE_VERSION});
+        client.roundtrip();
+    }
+    // output is now released
+
     client.roundtrip();
 }

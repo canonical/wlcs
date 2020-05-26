@@ -19,6 +19,7 @@
 #include "primary_selection.h"
 
 #include "in_process_server.h"
+#include "version_specifier.h"
 
 #include <gmock/gmock.h>
 #include <sys/socket.h>
@@ -36,8 +37,10 @@ struct SourceApp : Client
     // Can't use "using Client::Client;" because Xenial
     explicit SourceApp(Server& server) : Client{server} {}
 
-    PrimarySelectionSource source{primary_selection_device_manager()};
-    PrimarySelectionDevice device{primary_selection_device_manager(), seat()};
+    WlHandle<zwp_primary_selection_device_manager_v1> const manager{
+        this->bind_if_supported<zwp_primary_selection_device_manager_v1>(AnyVersion)};
+    PrimarySelectionSource source{manager};
+    PrimarySelectionDevice device{manager, seat()};
 
     void set_selection()
     {
@@ -56,12 +59,13 @@ struct SinkApp : Client
 {
     explicit SinkApp(Server& server) : Client{server} { roundtrip(); }
 
-    PrimarySelectionDevice device{primary_selection_device_manager(), seat()};
+    WlHandle<zwp_primary_selection_device_manager_v1> const manager{
+        this->bind_if_supported<zwp_primary_selection_device_manager_v1>(AnyVersion)};
+    PrimarySelectionDevice device{manager, seat()};
 };
 
 struct PrimarySelection : StartedInProcessServer
 {
-    CheckInterfaceExpected must_be_first{the_server(), zwp_primary_selection_device_manager_v1_interface};
     SourceApp   source_app{the_server()};
     SinkApp     sink_app{the_server()};
 
