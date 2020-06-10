@@ -17,18 +17,194 @@
  */
 
 #include "helpers.h"
+#include "version_specifier.h"
 #include "in_process_server.h"
-#include "foreign_toplevel_management_v1.h"
 #include "xdg_shell_stable.h"
+#include "generated/wlr-foreign-toplevel-management-unstable-v1-client.h"
 
 #include <gmock/gmock.h>
 #include <boost/throw_exception.hpp>
 
 using namespace testing;
 
+namespace wlcs
+{
+WLCS_CREATE_INTERFACE_DESCRIPTOR(zwlr_foreign_toplevel_manager_v1)
+WLCS_CREATE_INTERFACE_DESCRIPTOR(zwlr_foreign_toplevel_handle_v1)
+}
+
 namespace
 {
 int const w = 10, h = 15;
+
+class ForeignToplevelHandle
+{
+public:
+    ForeignToplevelHandle(zwlr_foreign_toplevel_handle_v1* handle);
+    ForeignToplevelHandle(ForeignToplevelHandle const&) = delete;
+    ForeignToplevelHandle& operator=(ForeignToplevelHandle const&) = delete;
+
+    auto is_dirty() const { return dirty_; }
+    auto title() const { return title_; }
+    auto app_id() const { return app_id_; }
+    auto outputs() const -> std::vector<wl_output*> const& { return outputs_; }
+    auto maximized() const { return maximized_; }
+    auto minimized() const { return minimized_; }
+    auto activated() const { return activated_; }
+    auto fullscreen() const { return fullscreen_; }
+    auto destroied() const { return destroyed_; }
+
+    operator zwlr_foreign_toplevel_handle_v1*() const { return handle; }
+    wlcs::WlHandle<zwlr_foreign_toplevel_handle_v1> const handle;
+
+private:
+    static auto get_self(void* data) -> ForeignToplevelHandle*
+    {
+        return static_cast<ForeignToplevelHandle*>(data);
+    }
+
+    bool dirty_{false};
+    std::experimental::optional<std::string> title_;
+    std::experimental::optional<std::string> app_id_;
+    std::vector<wl_output*> outputs_;
+    bool maximized_{false}, minimized_{false}, activated_{false}, fullscreen_{false};
+
+    bool destroyed_{false};
+};
+
+ForeignToplevelHandle::ForeignToplevelHandle(zwlr_foreign_toplevel_handle_v1* handle)
+    : handle{handle}
+{
+    static zwlr_foreign_toplevel_handle_v1_listener const listener = {
+        [] /* title */ (
+            void* data,
+            zwlr_foreign_toplevel_handle_v1*,
+            char const* title)
+            {
+                auto self = get_self(data);
+                self->title_ = title;
+                self->dirty_ = true;
+            },
+        [] /* app_id */ (
+            void* data,
+            zwlr_foreign_toplevel_handle_v1*,
+            char const* app_id)
+            {
+                auto self = get_self(data);
+                self->app_id_ = app_id;
+                self->dirty_ = true;
+            },
+        [] /* output_enter */ (
+            void* data,
+            zwlr_foreign_toplevel_handle_v1*,
+            wl_output* output)
+            {
+                auto self = get_self(data);
+                self->outputs_.push_back(output);
+                self->dirty_ = true;
+            },
+        [] /* output_leave */ (
+            void* data,
+            zwlr_foreign_toplevel_handle_v1*,
+            wl_output* output)
+            {
+                auto self = get_self(data);
+                std::remove(
+                    self->outputs_.begin(),
+                    self->outputs_.end(),
+                    output);
+                self->dirty_ = true;
+            },
+        [] /*state */ (
+            void* data,
+            zwlr_foreign_toplevel_handle_v1*,
+            wl_array* state)
+            {
+                auto self = get_self(data);
+
+                self->maximized_ = false;
+                self->minimized_ = false;
+                self->activated_ = false;
+                self->fullscreen_ = false;
+
+                for (auto item = static_cast<zwlr_foreign_toplevel_handle_v1_state*>(state->data);
+                    (char*)item < static_cast<char*>(state->data) + state->size;
+                    item++)
+                {
+                    switch (*item)
+                    {
+                    case ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_MAXIMIZED:
+                        self->maximized_ = true;
+                        break;
+
+                    case ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_MINIMIZED:
+                        self->minimized_ = true;
+                        break;
+
+                    case ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_ACTIVATED:
+                        self->activated_ = true;
+                        break;
+
+                    case ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_FULLSCREEN:
+                        self->fullscreen_ = true;
+                        break;
+                    }
+                }
+                self->dirty_ = true;
+            },
+        [] /* done */ (
+            void* data,
+            zwlr_foreign_toplevel_handle_v1*)
+            {
+                auto self = get_self(data);
+                self->dirty_ = false;
+            },
+        [] /* closed */ (
+            void* data,
+            zwlr_foreign_toplevel_handle_v1*)
+            {
+                auto self = get_self(data);
+                self->destroyed_ = true;
+                self->dirty_ = false;
+            }
+    };
+    zwlr_foreign_toplevel_handle_v1_add_listener(handle, &listener, this);
+}
+
+class ForeignToplevelManager
+{
+public:
+    ForeignToplevelManager(wlcs::Client& client);
+
+    auto toplevels() const -> std::vector<std::unique_ptr<ForeignToplevelHandle>> const& { return toplevels_; }
+
+    wlcs::WlHandle<zwlr_foreign_toplevel_manager_v1> const manager;
+
+private:
+    std::vector<std::unique_ptr<ForeignToplevelHandle>> toplevels_;
+};
+
+ForeignToplevelManager::ForeignToplevelManager(wlcs::Client& client)
+    : manager{client.bind_if_supported<zwlr_foreign_toplevel_manager_v1>(wlcs::AnyVersion)}
+{
+    static zwlr_foreign_toplevel_manager_v1_listener const listener = {
+        +[] /* toplevel */ (
+            void* data,
+            zwlr_foreign_toplevel_manager_v1*,
+            zwlr_foreign_toplevel_handle_v1* toplevel)
+            {
+                auto self = static_cast<ForeignToplevelManager*>(data);
+                auto handle = std::make_unique<ForeignToplevelHandle>(toplevel);
+                self->toplevels_.push_back(std::move(handle));
+            },
+        +[] /* finished */ (
+            void* /*data*/,
+            zwlr_foreign_toplevel_manager_v1 *)
+            {
+            }
+    };
+    zwlr_foreign_toplevel_manager_v1_add_listener(manager, &listener, this);
+}
 
 class ForeignToplevelManagerTest
     : public wlcs::StartedInProcessServer
@@ -48,7 +224,7 @@ public:
     {
     }
 
-    auto toplevel() -> wlcs::ForeignToplevelHandle const&
+    auto toplevel() -> ForeignToplevelHandle const&
     {
         if (manager.toplevels().empty())
             BOOST_THROW_EXCEPTION(std::runtime_error("Manager does not know about any toplevels"));
@@ -60,9 +236,9 @@ public:
         return *manager.toplevels()[0];
     }
 
-    auto toplevel(std::string const& app_id) -> wlcs::ForeignToplevelHandle const&
+    auto toplevel(std::string const& app_id) -> ForeignToplevelHandle const&
     {
-        std::experimental::optional<wlcs::ForeignToplevelHandle const*> match;
+        std::experimental::optional<ForeignToplevelHandle const*> match;
         for (auto const& i : manager.toplevels())
         {
             if (i->app_id() == app_id)
@@ -81,7 +257,7 @@ public:
     }
 
     wlcs::Client client;
-    wlcs::ForeignToplevelManager manager;
+    ForeignToplevelManager manager;
     wlcs::Surface surface;
     wlcs::XdgSurfaceStable xdg_surface;
     wlcs::XdgToplevelStable xdg_toplevel;
@@ -91,7 +267,7 @@ public:
 TEST_F(ForeignToplevelManagerTest, does_not_detect_toplevels_when_test_creates_none)
 {
     wlcs::Client client{the_server()};
-    wlcs::ForeignToplevelManager manager{client};
+    ForeignToplevelManager manager{client};
     client.roundtrip();
     ASSERT_THAT(manager.toplevels().size(), Eq(0u));
 }
@@ -102,7 +278,7 @@ TEST_F(ForeignToplevelManagerTest, detects_toplevel_from_same_client)
 
     auto surface{client.create_visible_surface(w, h)};
 
-    wlcs::ForeignToplevelManager manager{client};
+    ForeignToplevelManager manager{client};
     client.roundtrip();
     ASSERT_THAT(manager.toplevels().size(), Eq(1u));
 }
@@ -114,7 +290,7 @@ TEST_F(ForeignToplevelManagerTest, detects_toplevel_from_different_client)
 
     auto surface{foreign_client.create_visible_surface(w, h)};
 
-    wlcs::ForeignToplevelManager manager{observer_client};
+    ForeignToplevelManager manager{observer_client};
     observer_client.roundtrip();
     ASSERT_THAT(manager.toplevels().size(), Eq(1u));
 }
@@ -123,7 +299,7 @@ TEST_F(ForeignToplevelManagerTest, detects_toplevel_created_after_manager)
 {
     wlcs::Client client{the_server()};
 
-    wlcs::ForeignToplevelManager manager{client};
+    ForeignToplevelManager manager{client};
     client.roundtrip();
     ASSERT_THAT(manager.toplevels().size(), Eq(0u));
 
@@ -141,7 +317,7 @@ TEST_F(ForeignToplevelManagerTest, detects_multiple_toplevels_from_multiple_clie
     auto foreign_surface{foreign_client.create_visible_surface(w, h)};
     auto observer_surface{observer_client.create_visible_surface(w, h)};
 
-    wlcs::ForeignToplevelManager manager{observer_client};
+    ForeignToplevelManager manager{observer_client};
     observer_client.roundtrip();
     ASSERT_THAT(manager.toplevels().size(), Eq(2u));
 }
@@ -150,7 +326,7 @@ TEST_F(ForeignToplevelManagerTest, detects_toplevel_closed)
 {
     wlcs::Client client{the_server()};
 
-    wlcs::ForeignToplevelManager manager{client};
+    ForeignToplevelManager manager{client};
     client.roundtrip();
     EXPECT_THAT(manager.toplevels().size(), Eq(0u));
 

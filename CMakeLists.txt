@@ -145,7 +145,6 @@ set(
   include/version_specifier.h
   include/wl_interface_descriptor.h
   include/layer_shell_v1.h
-  include/foreign_toplevel_management_v1.h
 
   src/data_device.cpp
   src/gtk_primary_selection.cpp
@@ -154,7 +153,6 @@ set(
   src/xdg_shell_v6.cpp
   src/xdg_shell_stable.cpp
   src/layer_shell_v1.cpp
-  src/foreign_toplevel_management_v1.cpp
   src/main.cpp
   src/primary_selection.cpp
   src/shared_library.cpp
