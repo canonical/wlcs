@@ -1,3 +1,12 @@
+wlcs (1.1.0+dfsg-5) unstable; urgency=medium
+
+  * debian/control:
+    + Fix plural form of suite in SYNOPSIS. (Closes: #962015).
+  * debian/rules:
+    + Set WLCS_BUILD_ASAN to OFF on mipsel and mips64el architectures.
+
+ -- Mike Gabriel <sunweaver@debian.org>  Tue, 14 Jul 2020 00:45:24 +0200
+
 wlcs (1.1.0+dfsg-4) unstable; urgency=medium
 
   * debian/rules:
