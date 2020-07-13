@@ -24,6 +24,10 @@ ifneq ($(filter mipsel mips64el alpha hppa ia64 m68k powerpc riscv64 sh4, $(DEB_
   WITH_UBSAN = -DWLCS_BUILD_UBSAN=OFF
 endif
 
+ifneq ($(filter mipsel mips64el, $(DEB_HOST_ARCH)),)
+  WITH_ASAN = -DWLCS_BUILD_ASAN=OFF
+endif
+
 COMMON_CONFIGURE_OPTIONS =\
   $(WITH_ASAN) \
   $(WITH_UBSAN) \
