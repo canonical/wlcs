@@ -143,6 +143,7 @@ set(
   include/xdg_output_v1.h
   include/version_specifier.h
   include/wl_interface_descriptor.h
+  include/surface_builder.h
 
   src/data_device.cpp
   src/gtk_primary_selection.cpp
@@ -160,6 +161,7 @@ set(
   src/thread_proxy.h
   src/xdg_output_v1.cpp
   src/version_specifier.cpp
+  src/surface_builder.cpp
 
   ${PROTOCOL_SOURCES}
 
