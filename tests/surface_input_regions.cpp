@@ -18,6 +18,7 @@
 
 #include "helpers.h"
 #include "in_process_server.h"
+#include "surface_builder.h"
 
 #include <gmock/gmock.h>
 
@@ -103,137 +104,10 @@ std::ostream& operator<<(std::ostream& out, RegionWithTestPoints const& param)
     return out << param.region.name << " " << param.name;
 }
 
-struct SurfaceBuilder
-{
-    SurfaceBuilder(std::string const& name) : name{name} {}
-    virtual ~SurfaceBuilder() = default;
-
-    virtual auto build(
-        wlcs::Server& server,
-        wlcs::Client& client,
-        std::pair<int, int> position,
-        std::pair<int, int> size) const -> std::unique_ptr<wlcs::Surface> = 0;
-
-    std::string const name;
-};
-
-std::ostream& operator<<(std::ostream& out, std::shared_ptr<SurfaceBuilder> const& param)
-{
-    return out << param->name;
-}
-
-struct WlShellSurfaceBuilder : SurfaceBuilder
-{
-    WlShellSurfaceBuilder() : SurfaceBuilder{"wl_shell_surface"} {}
-
-    auto build(
-        wlcs::Server& server,
-        wlcs::Client& client,
-        std::pair<int, int> position,
-        std::pair<int, int> size) const -> std::unique_ptr<wlcs::Surface> override
-    {
-        auto surface = std::make_unique<wlcs::Surface>(
-            client.create_wl_shell_surface(size.first, size.second));
-        server.move_surface_to(*surface, position.first, position.second);
-        return surface;
-    }
-};
-
-struct XdgV6SurfaceBuilder : SurfaceBuilder
-{
-    XdgV6SurfaceBuilder() : SurfaceBuilder{"zxdg_surface_v6"} {}
-
-    auto build(
-        wlcs::Server& server,
-        wlcs::Client& client,
-        std::pair<int, int> position,
-        std::pair<int, int> size) const -> std::unique_ptr<wlcs::Surface> override
-    {
-        auto surface = std::make_unique<wlcs::Surface>(
-            client.create_xdg_shell_v6_surface(size.first, size.second));
-        server.move_surface_to(*surface, position.first, position.second);
-        return surface;
-    }
-};
-
-struct XdgStableSurfaceBuilder : SurfaceBuilder
-{
-    XdgStableSurfaceBuilder() : SurfaceBuilder{"xdg_surface (stable)"} {}
-
-    auto build(
-        wlcs::Server& server,
-        wlcs::Client& client,
-        std::pair<int, int> position,
-        std::pair<int, int> size) const -> std::unique_ptr<wlcs::Surface> override
-    {
-        auto surface = std::make_unique<wlcs::Surface>(
-            client.create_xdg_shell_stable_surface(size.first, size.second));
-        server.move_surface_to(*surface, position.first, position.second);
-        return surface;
-    }
-};
-
-struct SubsurfaceBuilder : SurfaceBuilder
-{
-    SubsurfaceBuilder(std::pair<int, int> offset)
-        : SurfaceBuilder{
-            "subsurface (offset " +
-            std::to_string(offset.first) +
-            ", " +
-            std::to_string(offset.second) +
-            ")"},
-          offset{offset}
-    {
-    }
-
-    auto build(
-        wlcs::Server& server,
-        wlcs::Client& client,
-        std::pair<int, int> position,
-        std::pair<int, int> size) const -> std::unique_ptr<wlcs::Surface> override
-    {
-        auto main_surface = std::make_shared<wlcs::Surface>(
-            client.create_visible_surface(80, 50));
-        server.move_surface_to(
-            *main_surface,
-            position.first - offset.first,
-            position.second - offset.second);
-        client.run_on_destruction(
-            [main_surface]() mutable
-            {
-                main_surface.reset();
-            });
-        auto subsurface = std::make_unique<wlcs::Subsurface>(wlcs::Subsurface::create_visible(
-            *main_surface,
-            offset.first, offset.second,
-            size.first, size.second));
-        // if subsurface is sync, tests would have to commit the parent to modify it
-        // this is inconvenient to do in a generic way, so we make it desync
-        wl_subsurface_set_desync(*subsurface);
-        return subsurface;
-    }
-
-    std::pair<int, int> offset;
-};
-
-// All this pointer casting nonsense is only to make 16.04 GCC happy
-
-auto const all_surface_types = Values(
-    std::static_pointer_cast<SurfaceBuilder>(std::make_shared<WlShellSurfaceBuilder>()),
-    std::static_pointer_cast<SurfaceBuilder>(std::make_shared<XdgV6SurfaceBuilder>()),
-    std::static_pointer_cast<SurfaceBuilder>(std::make_shared<XdgStableSurfaceBuilder>()),
-    std::static_pointer_cast<SurfaceBuilder>(std::make_shared<SubsurfaceBuilder>(std::make_pair(0, 0))),
-    std::static_pointer_cast<SurfaceBuilder>(std::make_shared<SubsurfaceBuilder>(std::make_pair(7, 12))));
-
-auto const toplevel_surface_types = Values(
-    std::static_pointer_cast<SurfaceBuilder>(std::make_shared<WlShellSurfaceBuilder>()),
-    std::static_pointer_cast<SurfaceBuilder>(std::make_shared<XdgV6SurfaceBuilder>()),
-    std::static_pointer_cast<SurfaceBuilder>(std::make_shared<XdgStableSurfaceBuilder>()));
-
+auto const all_surface_types = ValuesIn(wlcs::SurfaceBuilder::all_surface_types());
+auto const toplevel_surface_types = ValuesIn(wlcs::SurfaceBuilder::toplevel_surface_types());
 auto const xdg_stable_surface_type = Values(
-    std::static_pointer_cast<SurfaceBuilder>(std::make_shared<XdgStableSurfaceBuilder>()));
-
-// TODO: popup surfaces
+    std::static_pointer_cast<wlcs::SurfaceBuilder>(std::make_shared<wlcs::XdgStableSurfaceBuilder>()));
 
 struct InputType
 {
@@ -388,7 +262,7 @@ class RegionSurfaceInputCombinations :
     public wlcs::InProcessServer,
     public testing::WithParamInterface<std::tuple<
         RegionWithTestPoints,
-        std::shared_ptr<SurfaceBuilder>,
+        std::shared_ptr<wlcs::SurfaceBuilder>,
         std::shared_ptr<InputType>>>
 {
 };
@@ -547,7 +421,7 @@ TEST_P(RegionSurfaceInputCombinations, input_inside_region_seen)
     auto const top_left = std::make_pair(64, 49);
     wlcs::Client client{the_server()};
     RegionWithTestPoints region;
-    std::shared_ptr<SurfaceBuilder> builder;
+    std::shared_ptr<wlcs::SurfaceBuilder> builder;
     std::shared_ptr<InputType> input;
 
     std::tie(region, builder, input) = GetParam();
@@ -581,7 +455,7 @@ TEST_P(RegionSurfaceInputCombinations, input_not_seen_after_leaving_region)
     auto const top_left = std::make_pair(64, 49);
     wlcs::Client client{the_server()};
     RegionWithTestPoints region;
-    std::shared_ptr<SurfaceBuilder> builder;
+    std::shared_ptr<wlcs::SurfaceBuilder> builder;
     std::shared_ptr<InputType> input;
     std::tie(region, builder, input) = GetParam();
 
@@ -610,7 +484,7 @@ TEST_P(RegionSurfaceInputCombinations, input_not_seen_after_leaving_region)
 class SurfaceInputCombinations :
     public wlcs::InProcessServer,
     public testing::WithParamInterface<std::tuple<
-        std::shared_ptr<SurfaceBuilder>,
+        std::shared_ptr<wlcs::SurfaceBuilder>,
         std::shared_ptr<InputType>>>
 {
 };
@@ -619,7 +493,7 @@ TEST_P(SurfaceInputCombinations, input_not_seen_in_region_after_null_buffer_comm
 {
     auto const top_left = std::make_pair(64, 49);
     wlcs::Client client{the_server()};
-    std::shared_ptr<SurfaceBuilder> builder;
+    std::shared_ptr<wlcs::SurfaceBuilder> builder;
     std::shared_ptr<InputType> input;
     std::tie(builder, input) = GetParam();
 
@@ -648,7 +522,7 @@ TEST_P(SurfaceInputCombinations, input_not_seen_in_surface_without_region_after_
 {
     auto const top_left = std::make_pair(64, 49);
     wlcs::Client client{the_server()};
-    std::shared_ptr<SurfaceBuilder> builder;
+    std::shared_ptr<wlcs::SurfaceBuilder> builder;
     std::shared_ptr<InputType> input;
     std::tie(builder, input) = GetParam();
 
@@ -674,7 +548,7 @@ TEST_P(SurfaceInputCombinations, input_not_seen_over_empty_region)
 {
     auto const top_left = std::make_pair(64, 49);
     wlcs::Client client{the_server()};
-    std::shared_ptr<SurfaceBuilder> builder;
+    std::shared_ptr<wlcs::SurfaceBuilder> builder;
     std::shared_ptr<InputType> input;
     std::tie(builder, input) = GetParam();
 
@@ -704,7 +578,7 @@ TEST_P(SurfaceInputCombinations, input_hits_parent_after_falling_through_subsurf
     auto const top_left = std::make_pair(64, 49);
     auto const input_offset = std::make_pair(4, 4);
     wlcs::Client client{the_server()};
-    std::shared_ptr<SurfaceBuilder> builder;
+    std::shared_ptr<wlcs::SurfaceBuilder> builder;
     std::shared_ptr<InputType> input;
     std::tie(builder, input) = GetParam();
 
@@ -742,7 +616,7 @@ TEST_P(SurfaceInputCombinations, unmapping_parent_stops_subsurface_getting_input
 {
     auto const top_left = std::make_pair(64, 49);
     wlcs::Client client{the_server()};
-    std::shared_ptr<SurfaceBuilder> builder;
+    std::shared_ptr<wlcs::SurfaceBuilder> builder;
     std::shared_ptr<InputType> input;
     std::tie(builder, input) = GetParam();
 
@@ -779,7 +653,7 @@ TEST_P(SurfaceInputCombinations, input_falls_through_subsurface_when_unmapped)
 {
     auto const top_left = std::make_pair(200, 49);
     wlcs::Client client{the_server()};
-    std::shared_ptr<SurfaceBuilder> builder;
+    std::shared_ptr<wlcs::SurfaceBuilder> builder;
     std::shared_ptr<InputType> input;
     std::tie(builder, input) = GetParam();
 
@@ -824,7 +698,7 @@ TEST_P(SurfaceInputCombinations, input_falls_through_subsurface_when_parent_unma
 {
     auto const top_left = std::make_pair(200, 49);
     wlcs::Client client{the_server()};
-    std::shared_ptr<SurfaceBuilder> builder;
+    std::shared_ptr<wlcs::SurfaceBuilder> builder;
     std::shared_ptr<InputType> input;
     std::tie(builder, input) = GetParam();
 
@@ -870,7 +744,7 @@ TEST_P(SurfaceInputCombinations, input_seen_after_surface_unmapped_and_remapped)
     auto const top_left = std::make_pair(200, 49);
     auto const input_offset = std::make_pair(4, 4);
     wlcs::Client client{the_server()};
-    std::shared_ptr<SurfaceBuilder> builder;
+    std::shared_ptr<wlcs::SurfaceBuilder> builder;
     std::shared_ptr<InputType> input;
     std::tie(builder, input) = GetParam();
 
@@ -904,7 +778,7 @@ TEST_P(SurfaceInputCombinations, input_seen_by_subsurface_after_parent_unmapped_
     auto const input_offset = std::make_pair(-90, 10);
     auto const subsurface_offset = std::make_pair(-100, 0);
     wlcs::Client client{the_server()};
-    std::shared_ptr<SurfaceBuilder> builder;
+    std::shared_ptr<wlcs::SurfaceBuilder> builder;
     std::shared_ptr<InputType> input;
     std::tie(builder, input) = GetParam();
 
@@ -950,7 +824,7 @@ TEST_P(SurfaceInputCombinations, input_seen_after_dragged_off_surface)
     auto const top_left = std::make_pair(200, 49);
     auto const input_offset = std::make_pair(-5, 5);
     wlcs::Client client{the_server()};
-    std::shared_ptr<SurfaceBuilder> builder;
+    std::shared_ptr<wlcs::SurfaceBuilder> builder;
     std::shared_ptr<InputType> input;
     std::tie(builder, input) = GetParam();
 
@@ -988,7 +862,7 @@ TEST_P(SurfaceInputCombinations, input_seen_by_second_surface_after_drag_off_fir
 {
     auto const top_left = std::make_pair(200, 49);
     wlcs::Client client{the_server()};
-    std::shared_ptr<SurfaceBuilder> builder;
+    std::shared_ptr<wlcs::SurfaceBuilder> builder;
     std::shared_ptr<InputType> input;
     std::tie(builder, input) = GetParam();
 
@@ -1030,7 +904,7 @@ TEST_P(SurfaceInputCombinations, input_seen_by_second_surface_after_drag_off_fir
 class ToplevelInputCombinations :
     public wlcs::InProcessServer,
     public testing::WithParamInterface<std::tuple<
-        std::shared_ptr<SurfaceBuilder>,
+        std::shared_ptr<wlcs::SurfaceBuilder>,
         std::shared_ptr<InputType>>>
 {
 };
@@ -1039,7 +913,7 @@ TEST_P(ToplevelInputCombinations, input_falls_through_surface_without_region_aft
 {
     auto const top_left = std::make_pair(64, 49);
     wlcs::Client client{the_server()};
-    std::shared_ptr<SurfaceBuilder> builder;
+    std::shared_ptr<wlcs::SurfaceBuilder> builder;
     std::shared_ptr<InputType> input;
     std::tie(builder, input) = GetParam();
 
