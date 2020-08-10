@@ -13,7 +13,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Authored by: Christopher William Wold <william.wold@canonical.com>
+ * Authored by: Christopher James Halse Rogers <christopher.halse.rogers@canonical.com>
+ *              William Wold <william.wold@canonical.com>
  */
 
 #ifndef WLCS_WL_PROXY_H_
