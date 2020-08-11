@@ -1,0 +1,34 @@
+summary: Build (on Debian)
+systems: [debian-*]
+
+execute: |
+    # Grab builds of Mir git master
+    add-apt-repository ppa:mir-team/dev
+
+    apt-get update
+
+    apt install --yes \
+        dpkg-dev \
+        libwayland-dev \
+        cmake \
+        clang \
+        g++ \
+        pkg-config \
+        libgtest-dev \
+        google-mock \
+        libboost-dev \
+        mir-test-tools
+
+    # Check that we build…
+    cd $SPREAD_PATH
+    cd $(mktemp --directory)
+    cmake -DCMAKE_C_FLAGS="-D_FORTIFY_SOURCE=2" -DCMAKE_CXX_FLAGS="-D_FORTIFY_SOURCE=2" $SPREAD_PATH
+    make -j$(nproc)
+
+    # …and run the Mir tests, but don't fail on them, unless we fail with a signal
+    # TODO: Store the set of passing tests in the Travis cache, and fail if a test which
+    #       previously passed now fails.
+    ./wlcs /usr/lib/$(dpkg-architecture -qDEB_HOST_MULTIARCH)/mir/miral_wlcs_integration.so || {
+        test $? -lt 128 -o $? -gt 165
+    }
+

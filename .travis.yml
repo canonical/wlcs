@@ -43,6 +43,7 @@ env:
   - SYSTEM=ubuntu-20.04 VARIANT=gcc
   - SYSTEM=ubuntu-devel VARIANT=gcc
   - SYSTEM=ubuntu-devel VARIANT=clang
+  - SYSTEM=debian-sid VARIANT=gcc
   - SYSTEM=fedora-31 VARIANT=gcc
   - SYSTEM=fedora-32 VARIANT=gcc
   - SYSTEM=alpine-3.11 VARIANT=gcc

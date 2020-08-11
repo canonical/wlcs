@@ -9,6 +9,8 @@ backends:
             - ubuntu-20.04
             - ubuntu-devel:
                 image: ubuntu-daily:devel/amd64
+            - debian-sid:
+                image: debian-cloud-testing/debian-sid
             - fedora-31
             - fedora-32
             - alpine-3.11
