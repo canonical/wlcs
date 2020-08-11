@@ -39,9 +39,8 @@ env:
   - DEBFULLNAME="Mir CI Bot"
   - DEBEMAIL="mir-ci-bot@canonical.com"
   jobs:
-  - SYSTEM=ubuntu-16.04 VARIANT=gcc
   - SYSTEM=ubuntu-18.04 VARIANT=gcc
-  - SYSTEM=ubuntu-19.10 VARIANT=gcc
+  - SYSTEM=ubuntu-20.10 VARIANT=gcc
   - SYSTEM=ubuntu-devel VARIANT=gcc
   - SYSTEM=ubuntu-devel VARIANT=clang
   - SYSTEM=fedora-31 VARIANT=gcc
@@ -55,7 +54,7 @@ jobs:
   include:
   - &ppa-upload
     stage: upload to ppa:mir-team
-    env: RELEASE=16.04
+    env: RELEASE=18.04
     git:
       depth: false
     before_install: &decrypt-bot-data
@@ -77,9 +76,7 @@ jobs:
         - python-paramiko
         - libdistro-info-perl
   - <<: *ppa-upload
-    env: RELEASE=18.04
-  - <<: *ppa-upload
-    env: RELEASE=19.10
+    env: RELEASE=20.04
   - <<: *ppa-upload
     env: RELEASE=devel
 
