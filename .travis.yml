@@ -44,8 +44,8 @@ env:
   - SYSTEM=ubuntu-19.10 VARIANT=gcc
   - SYSTEM=ubuntu-devel VARIANT=gcc
   - SYSTEM=ubuntu-devel VARIANT=clang
-  - SYSTEM=fedora-30 VARIANT=gcc
   - SYSTEM=fedora-31 VARIANT=gcc
+  - SYSTEM=fedora-32 VARIANT=gcc
   - SYSTEM=alpine-3.11 VARIANT=gcc
 
 script:
