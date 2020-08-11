@@ -40,7 +40,7 @@ env:
   - DEBEMAIL="mir-ci-bot@canonical.com"
   jobs:
   - SYSTEM=ubuntu-18.04 VARIANT=gcc
-  - SYSTEM=ubuntu-20.10 VARIANT=gcc
+  - SYSTEM=ubuntu-20.04 VARIANT=gcc
   - SYSTEM=ubuntu-devel VARIANT=gcc
   - SYSTEM=ubuntu-devel VARIANT=clang
   - SYSTEM=fedora-31 VARIANT=gcc
