@@ -17,6 +17,7 @@
  */
 
 #include "input_method.h"
+#include <gmock/gmock.h>
 
 auto wlcs::InputMethod::all_input_methods() -> std::vector<std::shared_ptr<InputMethod>>
 {
@@ -33,27 +34,21 @@ struct wlcs::PointerInputMethod::Pointer : Device
     {
     }
 
-    void drag_or_move_to_position(std::pair<int, int> position) override
-    {
-        pointer.move_to(position.first, position.second);
-    }
-
-    void down() override
-    {
-        if (!button_down)
-        {
-            pointer.left_button_down();
-            button_down = true;
-        }
-    }
-
-    void up() override
+    void move_to(std::pair<int, int> position) override
     {
         if (button_down)
         {
             pointer.left_button_up();
-            button_down = false;
         }
+        pointer.move_to(position.first, position.second);
+        pointer.left_button_down();
+        button_down = true;
+    }
+
+    void drag_to(std::pair<int, int> position) override
+    {
+        ASSERT_THAT(button_down, testing::Eq(true)) << "Called drag_to() while pointer is in the \"up\" state";
+        pointer.move_to(position.first, position.second);
     }
 
     wlcs::Pointer pointer;
@@ -85,27 +80,21 @@ struct wlcs::TouchInputMethod::Touch : Device
     {
     }
 
-    void drag_or_move_to_position(std::pair<int, int> position) override
+    void move_to(std::pair<int, int> position) override
     {
         if (is_down)
         {
-            touch.move_to(position.first, position.second);
+            touch.up();
+
         }
-        else
-        {
-            touch.down_at(position.first, position.second);
-        }
+        touch.down_at(position.first, position.second);
         is_down = true;
     }
 
-    void down() override
+    void drag_to(std::pair<int, int> position) override
     {
-    }
-
-    void up() override
-    {
-        touch.up();
-        is_down = false;
+        ASSERT_THAT(is_down, testing::Eq(true)) << "Called drag_to() while touch is in the \"up\" state";
+        touch.move_to(position.first, position.second);
     }
 
     wlcs::Touch touch;

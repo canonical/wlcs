@@ -289,7 +289,7 @@ TEST_P(RegionSurfaceInputCombinations, input_inside_region_seen)
     struct wl_surface* const wl_surface = *surface;
 
     auto const device = input->create_device(the_server());
-    device->to_position({
+    device->move_to({
         top_left.first + region.on_surface.first,
         top_left.second + region.on_surface.second});
     client.roundtrip();
@@ -322,11 +322,11 @@ TEST_P(RegionSurfaceInputCombinations, input_not_seen_after_leaving_region)
     struct wl_surface* const wl_surface = *surface;
 
     auto const device = input->create_device(the_server());
-    device->to_position({
+    device->move_to({
         top_left.first + region.on_surface.first,
         top_left.second + region.on_surface.second});
     client.roundtrip();
-    device->to_position({
+    device->move_to({
         top_left.first + region.off_surface.first,
         top_left.second + region.off_surface.second});
     client.roundtrip();
@@ -365,7 +365,7 @@ TEST_P(SurfaceInputCombinations, input_not_seen_in_region_after_null_buffer_comm
     client.roundtrip();
 
     auto const device = input->create_device(the_server());
-    device->to_position(top_left);
+    device->move_to(top_left);
     client.roundtrip();
 
     EXPECT_THAT(input->current_surface(client), Ne(wl_surface))
@@ -391,7 +391,7 @@ TEST_P(SurfaceInputCombinations, input_not_seen_in_surface_without_region_after_
     client.roundtrip();
 
     auto const device = input->create_device(the_server());
-    device->to_position(top_left);
+    device->move_to(top_left);
     client.roundtrip();
 
     EXPECT_THAT(input->current_surface(client), Ne(wl_surface))
@@ -420,7 +420,7 @@ TEST_P(SurfaceInputCombinations, input_not_seen_over_empty_region)
     client.roundtrip();
 
     auto const device = input->create_device(the_server());
-    device->to_position({top_left.first + 4, top_left.second + 4});
+    device->move_to({top_left.first + 4, top_left.second + 4});
     client.roundtrip();
 
     EXPECT_THAT(input->current_surface(client), Ne(wl_surface))
@@ -453,7 +453,7 @@ TEST_P(SurfaceInputCombinations, input_hits_parent_after_falling_through_subsurf
     region.apply_to_surface(client, sub_wl_surface);
 
     auto const device = input->create_device(the_server());
-    device->to_position({top_left.first + input_offset.first, top_left.second + input_offset.second});
+    device->move_to({top_left.first + input_offset.first, top_left.second + input_offset.second});
     client.roundtrip();
 
     EXPECT_THAT(input->current_surface(client), Ne(sub_wl_surface))
@@ -493,7 +493,7 @@ TEST_P(SurfaceInputCombinations, unmapping_parent_stops_subsurface_getting_input
     client.roundtrip();
 
     auto const device = input->create_device(the_server());
-    device->to_position({top_left.first + 4, top_left.second + 4});
+    device->move_to({top_left.first + 4, top_left.second + 4});
     client.roundtrip();
 
     EXPECT_THAT(input->current_surface(client), Ne(parent_wl_surface))
@@ -535,7 +535,7 @@ TEST_P(SurfaceInputCombinations, input_falls_through_subsurface_when_unmapped)
     client.roundtrip();
 
     auto const device = input->create_device(the_server());
-    device->to_position({top_left.first - 90, top_left.second + 10});
+    device->move_to({top_left.first - 90, top_left.second + 10});
     client.roundtrip();
 
     EXPECT_THAT(input->current_surface(client), Ne(sub_wl_surface))
@@ -580,7 +580,7 @@ TEST_P(SurfaceInputCombinations, input_falls_through_subsurface_when_parent_unma
     client.roundtrip();
 
     auto const device = input->create_device(the_server());
-    device->to_position({top_left.first - 90, top_left.second + 10});
+    device->move_to({top_left.first - 90, top_left.second + 10});
     client.roundtrip();
 
     EXPECT_THAT(input->current_surface(client), Ne(sub_wl_surface))
@@ -616,7 +616,7 @@ TEST_P(SurfaceInputCombinations, input_seen_after_surface_unmapped_and_remapped)
     surface->attach_visible_buffer(surface_size.first, surface_size.second);
 
     auto const device = input->create_device(the_server());
-    device->to_position({top_left.first + input_offset.first, top_left.second + input_offset.second});
+    device->move_to({top_left.first + input_offset.first, top_left.second + input_offset.second});
     client.roundtrip();
 
     EXPECT_THAT(input->current_surface(client), Eq(wl_surface))
@@ -659,7 +659,7 @@ TEST_P(SurfaceInputCombinations, input_seen_by_subsurface_after_parent_unmapped_
     //the_server().move_surface_to(*parent, top_left.first, top_left.second);
 
     auto const device = input->create_device(the_server());
-    device->to_position({top_left.first + input_offset.first, top_left.second + input_offset.second});
+    device->move_to({top_left.first + input_offset.first, top_left.second + input_offset.second});
     client.roundtrip();
 
     EXPECT_THAT(input->current_surface(client), Ne(parent_wl_surface))
@@ -695,11 +695,9 @@ TEST_P(SurfaceInputCombinations, input_seen_after_dragged_off_surface)
     client.roundtrip();
 
     auto const device = input->create_device(the_server());
-    device->to_position({top_left.first + 5, top_left.second + 5});
-    device->down();
+    device->move_to({top_left.first + 5, top_left.second + 5});
     client.roundtrip();
-
-    device->drag_or_move_to_position({top_left.first + input_offset.first, top_left.second + input_offset.second});
+    device->drag_to({top_left.first + input_offset.first, top_left.second + input_offset.second});
     client.roundtrip();
 
     EXPECT_THAT(input->current_surface(client), Ne(other_wl_surface))
@@ -736,15 +734,11 @@ TEST_P(SurfaceInputCombinations, input_seen_by_second_surface_after_drag_off_fir
     client.roundtrip();
 
     auto const device = input->create_device(the_server());
-    device->to_position({top_left.first + 5, top_left.second + 5});
-    device->down();
+    device->move_to({top_left.first + 5, top_left.second + 5});
     client.roundtrip();
-
-    device->drag_or_move_to_position({top_left.first - 80, top_left.second + 5});
+    device->drag_to({top_left.first - 80, top_left.second + 5});
     client.roundtrip();
-
-    device->up();
-    device->drag_or_move_to_position({top_left.first - 80, top_left.second + 5});
+    device->move_to({top_left.first - 80, top_left.second + 5});
     client.roundtrip();
 
     EXPECT_THAT(input->current_surface(client), Ne(main_wl_surface))
@@ -786,7 +780,7 @@ TEST_P(ToplevelInputCombinations, input_falls_through_surface_without_region_aft
     client.roundtrip();
 
     auto const device = input->create_device(the_server());
-    device->to_position(top_left);
+    device->move_to(top_left);
     client.roundtrip();
 
     EXPECT_THAT(input->current_surface(client), Ne(upper_wl_surface))
