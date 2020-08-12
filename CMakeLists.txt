@@ -123,6 +123,7 @@ GENERATE_PROTOCOL(xdg-shell-unstable-v6)
 GENERATE_PROTOCOL(xdg-shell)
 GENERATE_PROTOCOL(wlr-layer-shell-unstable-v1)
 GENERATE_PROTOCOL(xdg-output-unstable-v1)
+GENERATE_PROTOCOL(wlr-foreign-toplevel-management-unstable-v1)
 
 option(WLCS_BUILD_ASAN "Build a test runner with AddressSanitizer annotations" ON)
 option(WLCS_BUILD_TSAN "Build a test runner with ThreadSanitizer annotations" ON)
@@ -143,6 +144,7 @@ set(
   include/xdg_output_v1.h
   include/version_specifier.h
   include/wl_interface_descriptor.h
+  include/layer_shell_v1.h
 
   src/data_device.cpp
   src/gtk_primary_selection.cpp
@@ -180,6 +182,7 @@ set(
   tests/xdg_popup.cpp
   tests/wlr_layer_shell_v1.cpp
   tests/xdg_output_v1.cpp
+  tests/wlr_foreign_toplevel_management_v1.cpp
   tests/self_test.cpp
 )
 
