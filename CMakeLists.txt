@@ -146,6 +146,7 @@ set(
   include/wl_interface_descriptor.h
   include/layer_shell_v1.h
   include/surface_builder.h
+  include/input_method.h
 
   src/data_device.cpp
   src/gtk_primary_selection.cpp
@@ -164,6 +165,7 @@ set(
   src/xdg_output_v1.cpp
   src/version_specifier.cpp
   src/surface_builder.cpp
+  src/input_method.cpp
 
   ${PROTOCOL_SOURCES}
 
