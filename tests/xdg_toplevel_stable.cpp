@@ -254,7 +254,7 @@ TEST_F(XdgToplevelStableTest, pointer_leaves_surface_during_interactive_move)
 
     xdg_toplevel_move(toplevel, client.seat(), last_serial);
     client.dispatch_until([&](){
-            return !button_down;
+            return !client.window_under_cursor();
         });
 }
 
@@ -348,7 +348,7 @@ TEST_F(XdgToplevelStableTest, pointer_leaves_surface_during_interactive_resize)
 
     xdg_toplevel_resize(toplevel, client.seat(), last_serial, XDG_TOPLEVEL_RESIZE_EDGE_TOP_LEFT);
     client.dispatch_until([&](){
-            return !button_down;
+            return !client.window_under_cursor();
         });
 }
 
