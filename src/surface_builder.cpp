@@ -20,22 +20,20 @@
 
 auto wlcs::SurfaceBuilder::all_surface_types() -> std::vector<std::shared_ptr<SurfaceBuilder>>
 {
-    // All this pointer casting nonsense is only to make 16.04 GCC happy
     return {
-        std::static_pointer_cast<SurfaceBuilder>(std::make_shared<WlShellSurfaceBuilder>()),
-        std::static_pointer_cast<SurfaceBuilder>(std::make_shared<XdgV6SurfaceBuilder>()),
-        std::static_pointer_cast<SurfaceBuilder>(std::make_shared<XdgStableSurfaceBuilder>()),
-        std::static_pointer_cast<SurfaceBuilder>(std::make_shared<SubsurfaceBuilder>(std::make_pair(0, 0))),
-        std::static_pointer_cast<SurfaceBuilder>(std::make_shared<SubsurfaceBuilder>(std::make_pair(7, 12)))};
+        std::make_shared<WlShellSurfaceBuilder>(),
+        std::make_shared<XdgV6SurfaceBuilder>(),
+        std::make_shared<XdgStableSurfaceBuilder>(),
+        std::make_shared<SubsurfaceBuilder>(std::make_pair(0, 0)),
+        std::make_shared<SubsurfaceBuilder>(std::make_pair(7, 12))};
 }
 
 auto wlcs::SurfaceBuilder::toplevel_surface_types() -> std::vector<std::shared_ptr<SurfaceBuilder>>
 {
-    // All this pointer casting nonsense is only to make 16.04 GCC happy
     return {
-        std::static_pointer_cast<SurfaceBuilder>(std::make_shared<WlShellSurfaceBuilder>()),
-        std::static_pointer_cast<SurfaceBuilder>(std::make_shared<XdgV6SurfaceBuilder>()),
-        std::static_pointer_cast<SurfaceBuilder>(std::make_shared<XdgStableSurfaceBuilder>())};
+        std::make_shared<WlShellSurfaceBuilder>(),
+        std::make_shared<XdgV6SurfaceBuilder>(),
+        std::make_shared<XdgStableSurfaceBuilder>()};
 }
 
 auto wlcs::WlShellSurfaceBuilder::build(

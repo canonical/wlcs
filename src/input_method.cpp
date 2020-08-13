@@ -21,10 +21,9 @@
 
 auto wlcs::InputMethod::all_input_methods() -> std::vector<std::shared_ptr<InputMethod>>
 {
-    // All this pointer casting nonsense is only to make 16.04 GCC happy
     return {
-        std::static_pointer_cast<InputMethod>(std::make_shared<PointerInputMethod>()),
-        std::static_pointer_cast<InputMethod>(std::make_shared<TouchInputMethod>())};
+        std::make_shared<PointerInputMethod>(),
+        std::make_shared<TouchInputMethod>()};
 }
 
 struct wlcs::PointerInputMethod::Pointer : Device
