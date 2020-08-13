@@ -34,13 +34,12 @@ struct InputMethod
     struct Device
     {
         virtual ~Device() = default;
-        /// 1. Unclicks button or raises touch if currently "down"
-        /// 2. Moves to new positon
-        /// 3. Touches/clicks down at that new position
+        /// Can only be called while decice is up
+        virtual void down_at(std::pair<int, int> position) = 0;
+        /// Can only be called while device is down
         virtual void move_to(std::pair<int, int> position) = 0;
-        /// MUST be called in the "down" state (can not be the first call)
-        /// Moves device to new position while remaining in the "down" state
-        virtual void drag_to(std::pair<int, int> position) = 0;
+        /// Can only be called while device is down
+        virtual void up() = 0;
     };
 
     virtual auto create_device(wlcs::Server& server) -> std::unique_ptr<Device> = 0;

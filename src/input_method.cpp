@@ -33,21 +33,25 @@ struct wlcs::PointerInputMethod::Pointer : Device
     {
     }
 
-    void move_to(std::pair<int, int> position) override
+    void down_at(std::pair<int, int> position) override
     {
-        if (button_down)
-        {
-            pointer.left_button_up();
-        }
+        ASSERT_THAT(button_down, testing::Eq(false)) << "Called down_at() with pointer already down";
         pointer.move_to(position.first, position.second);
         pointer.left_button_down();
         button_down = true;
     }
 
-    void drag_to(std::pair<int, int> position) override
+    void move_to(std::pair<int, int> position) override
     {
-        ASSERT_THAT(button_down, testing::Eq(true)) << "Called drag_to() while pointer is in the \"up\" state";
+        ASSERT_THAT(button_down, testing::Eq(true)) << "Called move_to() with pointer up";
         pointer.move_to(position.first, position.second);
+    }
+
+    void up() override
+    {
+        ASSERT_THAT(button_down, testing::Eq(true)) << "Called up() with pointer already up";
+        pointer.left_button_up();
+        button_down = false;
     }
 
     wlcs::Pointer pointer;
@@ -79,21 +83,24 @@ struct wlcs::TouchInputMethod::Touch : Device
     {
     }
 
-    void move_to(std::pair<int, int> position) override
+    void down_at(std::pair<int, int> position) override
     {
-        if (is_down)
-        {
-            touch.up();
-
-        }
+        ASSERT_THAT(is_down, testing::Eq(false)) << "Called down_at() with touch already down";
         touch.down_at(position.first, position.second);
         is_down = true;
     }
 
-    void drag_to(std::pair<int, int> position) override
+    void move_to(std::pair<int, int> position) override
     {
-        ASSERT_THAT(is_down, testing::Eq(true)) << "Called drag_to() while touch is in the \"up\" state";
+        ASSERT_THAT(is_down, testing::Eq(true)) << "Called move_to() with touch up";
         touch.move_to(position.first, position.second);
+    }
+
+    void up() override
+    {
+        ASSERT_THAT(is_down, testing::Eq(true)) << "Called up() with touch already up";
+        touch.up();
+        is_down = false;
     }
 
     wlcs::Touch touch;
