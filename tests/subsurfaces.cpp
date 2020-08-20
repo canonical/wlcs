@@ -121,7 +121,6 @@ public:
             *this, client, surface_x, surface_y, surface_width, surface_height))},
         subsurface{wlcs::Subsurface::create_visible(main_surface, 0, 0, subsurface_width, subsurface_height)},
         input_device{GetParam().make_input_device(the_server(), client)}
-
     {
         client.roundtrip();
     }
@@ -137,6 +136,33 @@ public:
     wlcs::Client client{the_server()};
     wlcs::Surface main_surface;
     wlcs::Subsurface subsurface;
+    std::unique_ptr<AbstractInputDevice> input_device;
+};
+
+class SubsurfaceMultilevelTest :
+    public wlcs::StartedInProcessServer,
+    public testing::WithParamInterface<SubsurfaceTestParams>
+{
+public:
+    static int const surface_width = 200, surface_height = 300;
+    static int const subsurface_width = 50, subsurface_height = 50;
+    static int const surface_x = 20, surface_y = 30;
+
+    SubsurfaceMultilevelTest():
+        client{the_server()},
+        main_surface{std::move(*GetParam().make_surface(
+            *this, client, surface_x, surface_y, surface_width, surface_height))},
+        parent_subsurface{wlcs::Subsurface::create_visible(main_surface, 0, 0, subsurface_width, subsurface_height)},
+        child_subsurface{wlcs::Subsurface::create_visible(parent_subsurface, 0, 0, subsurface_width, subsurface_height)},
+        input_device{GetParam().make_input_device(the_server(), client)}
+    {
+        client.roundtrip();
+    }
+
+    wlcs::Client client{the_server()};
+    wlcs::Surface main_surface;
+    wlcs::Subsurface parent_subsurface;
+    wlcs::Subsurface child_subsurface;
     std::unique_ptr<AbstractInputDevice> input_device;
 };
 
@@ -165,10 +191,7 @@ TEST_P(SubsurfaceTest, pointer_input_correctly_offset_for_subsurface)
     int const pointer_x = surface_x + 13, pointer_y = surface_y + 24;
     int const subsurface_x = 8, subsurface_y = 17;
 
-    wl_subsurface_set_position(subsurface, subsurface_x, subsurface_y);
-    wl_surface_commit(subsurface);
-    wl_surface_commit(main_surface);
-    client.roundtrip();
+    move_subsurface_to(subsurface_x, subsurface_y);
 
     input_device->to_screen_position(pointer_x, pointer_y);
     client.roundtrip();
@@ -181,19 +204,12 @@ TEST_P(SubsurfaceTest, pointer_input_correctly_offset_for_subsurface)
                     wl_fixed_from_int(pointer_y - surface_y - subsurface_y))));
 }
 
-TEST_P(SubsurfaceTest, sync_subsurface_does_not_move_when_only_parent_committed)
+TEST_P(SubsurfaceTest, sync_subsurface_moves_when_only_parent_committed)
 {
     int const pointer_x = 30, pointer_y = 30;
-    int const subsurface_x_0 = 10, subsurface_y_0 = 10;
-    int const subsurface_x_1 = 20, subsurface_y_1 = 20;
+    int const subsurface_x = 20, subsurface_y = 20;
 
-    wl_subsurface_set_position(subsurface, subsurface_x_0, subsurface_y_0);
-    wl_subsurface_set_sync(subsurface);
-    wl_surface_commit(subsurface);
-    wl_surface_commit(main_surface);
-    client.roundtrip();
-
-    wl_subsurface_set_position(subsurface, subsurface_x_1, subsurface_y_1);
+    wl_subsurface_set_position(subsurface, subsurface_x, subsurface_y);
     wl_surface_commit(main_surface);
     client.roundtrip();
 
@@ -202,29 +218,50 @@ TEST_P(SubsurfaceTest, sync_subsurface_does_not_move_when_only_parent_committed)
 
     EXPECT_THAT(input_device->position_on_window(),
                 Eq(std::make_pair(
-                    wl_fixed_from_int(pointer_x - subsurface_x_0),
-                    wl_fixed_from_int(pointer_y - subsurface_y_0))));
+                    wl_fixed_from_int(pointer_x - subsurface_x),
+                    wl_fixed_from_int(pointer_y - subsurface_y))));
 
     EXPECT_THAT(input_device->position_on_window(),
                 Ne(std::make_pair(
-                    wl_fixed_from_int(pointer_x - subsurface_x_1),
-                    wl_fixed_from_int(pointer_y - subsurface_y_1))))
-        << "Subsurface moved to new location without commit (however parent was committed)";
+                    wl_fixed_from_int(pointer_x),
+                    wl_fixed_from_int(pointer_y))))
+        << "Subsurface did not move after parent commit";
 }
 
-TEST_P(SubsurfaceTest, sync_subsurface_does_not_move_when_only_subsurface_committed)
+TEST_P(SubsurfaceTest, desync_subsurface_moves_when_only_parent_committed)
 {
     int const pointer_x = 30, pointer_y = 30;
-    int const subsurface_x_0 = 10, subsurface_y_0 = 10;
-    int const subsurface_x_1 = 20, subsurface_y_1 = 20;
+    int const subsurface_x = 20, subsurface_y = 20;
 
-    wl_subsurface_set_position(subsurface, subsurface_x_0, subsurface_y_0);
-    wl_subsurface_set_sync(subsurface);
-    wl_surface_commit(subsurface);
+    wl_subsurface_set_position(subsurface, subsurface_x, subsurface_y);
     wl_surface_commit(main_surface);
     client.roundtrip();
 
-    wl_subsurface_set_position(subsurface, subsurface_x_1, subsurface_y_1);
+    input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
+    client.roundtrip();
+
+    EXPECT_THAT(input_device->position_on_window(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(pointer_x - subsurface_x),
+                    wl_fixed_from_int(pointer_y - subsurface_y))));
+
+    EXPECT_THAT(input_device->position_on_window(),
+                Ne(std::make_pair(
+                    wl_fixed_from_int(pointer_x),
+                    wl_fixed_from_int(pointer_y))))
+        << "Subsurface did not move after parent commit";
+}
+
+TEST_P(SubsurfaceTest, subsurface_does_not_move_when_parent_not_committed)
+{
+    int const pointer_x = 30, pointer_y = 30;
+    int const subsurface_x = 20, subsurface_y = 20;
+
+    wl_subsurface_set_desync(subsurface);
+    wl_surface_commit(subsurface);
+    wl_surface_commit(main_surface);
+
+    wl_subsurface_set_position(subsurface, subsurface_x, subsurface_y);
     wl_surface_commit(subsurface);
     client.roundtrip();
 
@@ -233,200 +270,14 @@ TEST_P(SubsurfaceTest, sync_subsurface_does_not_move_when_only_subsurface_commit
 
     EXPECT_THAT(input_device->position_on_window(),
                 Eq(std::make_pair(
-                    wl_fixed_from_int(pointer_x - subsurface_x_0),
-                    wl_fixed_from_int(pointer_y - subsurface_y_0))));
+                    wl_fixed_from_int(pointer_x),
+                    wl_fixed_from_int(pointer_y))));
 
     EXPECT_THAT(input_device->position_on_window(),
                 Ne(std::make_pair(
-                    wl_fixed_from_int(pointer_x - subsurface_x_1),
-                    wl_fixed_from_int(pointer_y - subsurface_y_1))))
+                    wl_fixed_from_int(pointer_x - subsurface_x),
+                    wl_fixed_from_int(pointer_y - subsurface_y))))
         << "Subsurface moved to new location without parent being committed";
-}
-
-TEST_P(SubsurfaceTest, sync_subsurface_does_not_move_when_parent_commit_is_before_subsurface_commit)
-{
-    int const pointer_x = 30, pointer_y = 30;
-    int const subsurface_x_0 = 10, subsurface_y_0 = 10;
-    int const subsurface_x_1 = 20, subsurface_y_1 = 20;
-
-    wl_subsurface_set_position(subsurface, subsurface_x_0, subsurface_y_0);
-    wl_subsurface_set_sync(subsurface);
-    wl_surface_commit(subsurface);
-    wl_surface_commit(main_surface);
-    client.roundtrip();
-
-    wl_subsurface_set_position(subsurface, subsurface_x_1, subsurface_y_1);
-    wl_surface_commit(main_surface);
-    wl_surface_commit(subsurface);
-    client.roundtrip();
-
-    input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
-    client.roundtrip();
-
-    EXPECT_THAT(input_device->position_on_window(),
-                Eq(std::make_pair(
-                    wl_fixed_from_int(pointer_x - subsurface_x_0),
-                    wl_fixed_from_int(pointer_y - subsurface_y_0))));
-
-    EXPECT_THAT(input_device->position_on_window(),
-                Ne(std::make_pair(
-                    wl_fixed_from_int(pointer_x - subsurface_x_1),
-                    wl_fixed_from_int(pointer_y - subsurface_y_1))))
-        << "Subsurface moved to new location without parent being committed after subsurface commit";
-}
-
-TEST_P(SubsurfaceTest, sync_subsurface_moves_after_both_subsurface_and_parent_commit)
-{
-    int const pointer_x = 30, pointer_y = 30;
-    int const subsurface_x_0 = 10, subsurface_y_0 = 10;
-    int const subsurface_x_1 = 20, subsurface_y_1 = 20;
-
-    wl_subsurface_set_position(subsurface, subsurface_x_0, subsurface_y_0);
-    wl_subsurface_set_sync(subsurface);
-    wl_surface_commit(subsurface);
-    wl_surface_commit(main_surface);
-    client.roundtrip();
-
-    wl_subsurface_set_position(subsurface, subsurface_x_1, subsurface_y_1);
-    wl_surface_commit(subsurface);
-    wl_surface_commit(main_surface);
-    client.roundtrip();
-
-    input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
-    client.roundtrip();
-
-    EXPECT_THAT(input_device->position_on_window(),
-                Eq(std::make_pair(
-                    wl_fixed_from_int(pointer_x - subsurface_x_1),
-                    wl_fixed_from_int(pointer_y - subsurface_y_1))));
-
-    EXPECT_THAT(input_device->position_on_window(),
-                Ne(std::make_pair(
-                    wl_fixed_from_int(pointer_x - subsurface_x_0),
-                    wl_fixed_from_int(pointer_y - subsurface_y_0))))
-        << "Subsurface did not move";
-}
-
-TEST_P(SubsurfaceTest, by_default_subsurface_is_sync)
-{
-    int const pointer_x = 30, pointer_y = 30;
-    int const subsurface_x_0 = 10, subsurface_y_0 = 10;
-    int const subsurface_x_1 = 20, subsurface_y_1 = 20;
-
-    wl_subsurface_set_position(subsurface, subsurface_x_0, subsurface_y_0);
-    wl_surface_commit(subsurface);
-    wl_surface_commit(main_surface);
-    client.roundtrip();
-
-    wl_subsurface_set_position(subsurface, subsurface_x_1, subsurface_y_1);
-    wl_surface_commit(subsurface);
-    client.roundtrip();
-
-    input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
-    client.roundtrip();
-
-    EXPECT_THAT(input_device->position_on_window(),
-                Eq(std::make_pair(
-                    wl_fixed_from_int(pointer_x - subsurface_x_0),
-                    wl_fixed_from_int(pointer_y - subsurface_y_0))));
-
-    EXPECT_THAT(input_device->position_on_window(),
-                Ne(std::make_pair(
-                    wl_fixed_from_int(pointer_x - subsurface_x_1),
-                    wl_fixed_from_int(pointer_y - subsurface_y_1))))
-        << "Subsurface moved without parent commit (it should have been 'sync' by default, but is acting as desync)";
-}
-
-TEST_P(SubsurfaceTest, desync_subsurface_does_not_move_before_subsurface_commit)
-{
-    int const pointer_x = 30, pointer_y = 30;
-    int const subsurface_x_0 = 10, subsurface_y_0 = 10;
-    int const subsurface_x_1 = 20, subsurface_y_1 = 20;
-
-    wl_subsurface_set_position(subsurface, subsurface_x_0, subsurface_y_0);
-    wl_subsurface_set_desync(subsurface);
-    wl_surface_commit(subsurface);
-    wl_surface_commit(main_surface);
-    client.roundtrip();
-
-    wl_subsurface_set_position(subsurface, subsurface_x_1, subsurface_y_1);
-    client.roundtrip();
-
-    input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
-    client.roundtrip();
-
-    EXPECT_THAT(input_device->position_on_window(),
-                Eq(std::make_pair(
-                    wl_fixed_from_int(pointer_x - subsurface_x_0),
-                    wl_fixed_from_int(pointer_y - subsurface_y_0))));
-
-    EXPECT_THAT(input_device->position_on_window(),
-                Ne(std::make_pair(
-                    wl_fixed_from_int(pointer_x - subsurface_x_1),
-                    wl_fixed_from_int(pointer_y - subsurface_y_1))))
-        << "Subsurface moved to new location without being committed";
-}
-
-TEST_P(SubsurfaceTest, desync_subsurface_does_not_move_when_only_parent_committed)
-{
-    int const pointer_x = 30, pointer_y = 30;
-    int const subsurface_x_0 = 10, subsurface_y_0 = 10;
-    int const subsurface_x_1 = 20, subsurface_y_1 = 20;
-
-    wl_subsurface_set_position(subsurface, subsurface_x_0, subsurface_y_0);
-    wl_subsurface_set_desync(subsurface);
-    wl_surface_commit(subsurface);
-    wl_surface_commit(main_surface);
-    client.roundtrip();
-
-    wl_subsurface_set_position(subsurface, subsurface_x_1, subsurface_y_1);
-    wl_surface_commit(main_surface);
-    client.roundtrip();
-
-    input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
-    client.roundtrip();
-
-    EXPECT_THAT(input_device->position_on_window(),
-                Eq(std::make_pair(
-                    wl_fixed_from_int(pointer_x - subsurface_x_0),
-                    wl_fixed_from_int(pointer_y - subsurface_y_0))));
-
-    EXPECT_THAT(input_device->position_on_window(),
-                Ne(std::make_pair(
-                    wl_fixed_from_int(pointer_x - subsurface_x_1),
-                    wl_fixed_from_int(pointer_y - subsurface_y_1))))
-        << "Subsurface moved to new location without being committed";
-}
-
-TEST_P(SubsurfaceTest, desync_subsurface_does_move_when_only_subsurface_committed)
-{
-    int const pointer_x = 30, pointer_y = 30;
-    int const subsurface_x_0 = 10, subsurface_y_0 = 10;
-    int const subsurface_x_1 = 20, subsurface_y_1 = 20;
-
-    wl_subsurface_set_position(subsurface, subsurface_x_0, subsurface_y_0);
-    wl_subsurface_set_desync(subsurface);
-    wl_surface_commit(subsurface);
-    wl_surface_commit(main_surface);
-    client.roundtrip();
-
-    wl_subsurface_set_position(subsurface, subsurface_x_1, subsurface_y_1);
-    wl_surface_commit(subsurface);
-    client.roundtrip();
-
-    input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
-    client.roundtrip();
-
-    EXPECT_THAT(input_device->position_on_window(),
-                Eq(std::make_pair(
-                    wl_fixed_from_int(pointer_x - subsurface_x_1),
-                    wl_fixed_from_int(pointer_y - subsurface_y_1))));
-
-    EXPECT_THAT(input_device->position_on_window(),
-                Ne(std::make_pair(
-                    wl_fixed_from_int(pointer_x - subsurface_x_0),
-                    wl_fixed_from_int(pointer_y - subsurface_y_0))))
-        << "Subsurface did not move";
 }
 
 TEST_P(SubsurfaceTest, subsurface_extends_parent_input_region)
@@ -780,6 +631,299 @@ INSTANTIATE_TEST_SUITE_P(
         }
     ));
 
-// TODO: combinations of sync and desync at various levels of the tree
+TEST_P(SubsurfaceMultilevelTest, subsurface_with_sync_parent_does_not_move_when_only_grandparent_committed)
+{
+    int const pointer_x = 30, pointer_y = 30;
+    int const subsurface_x = 20, subsurface_y = 20;
 
+    wl_subsurface_set_position(child_subsurface, subsurface_x, subsurface_y);
+    wl_surface_commit(main_surface);
+    client.roundtrip();
+
+    input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
+    client.roundtrip();
+
+    EXPECT_THAT(input_device->position_on_window(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(pointer_x),
+                    wl_fixed_from_int(pointer_y))));
+
+    EXPECT_THAT(input_device->position_on_window(),
+                Ne(std::make_pair(
+                    wl_fixed_from_int(pointer_x - subsurface_x),
+                    wl_fixed_from_int(pointer_y - subsurface_y))))
+        << "Subsurface moved without parent being committed";
+}
+
+TEST_P(SubsurfaceMultilevelTest, subsurface_with_desync_parent_does_not_move_when_only_grandparent_committed)
+{
+    int const pointer_x = 30, pointer_y = 30;
+    int const subsurface_x = 20, subsurface_y = 20;
+
+    wl_subsurface_set_desync(parent_subsurface);
+    wl_surface_commit(parent_subsurface);
+
+    wl_subsurface_set_position(child_subsurface, subsurface_x, subsurface_y);
+    wl_surface_commit(main_surface);
+    client.roundtrip();
+
+    input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
+    client.roundtrip();
+
+    EXPECT_THAT(input_device->position_on_window(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(pointer_x),
+                    wl_fixed_from_int(pointer_y))));
+
+    EXPECT_THAT(input_device->position_on_window(),
+                Ne(std::make_pair(
+                    wl_fixed_from_int(pointer_x - subsurface_x),
+                    wl_fixed_from_int(pointer_y - subsurface_y))))
+        << "Subsurface moved without parent being committed";
+}
+
+TEST_P(SubsurfaceMultilevelTest, subsurface_with_sync_parent_does_not_move_when_only_parent_committed)
+{
+    int const pointer_x = 30, pointer_y = 30;
+    int const subsurface_x = 20, subsurface_y = 20;
+
+    wl_subsurface_set_position(child_subsurface, subsurface_x, subsurface_y);
+    wl_surface_commit(parent_subsurface);
+    client.roundtrip();
+
+    input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
+    client.roundtrip();
+
+    EXPECT_THAT(input_device->position_on_window(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(pointer_x),
+                    wl_fixed_from_int(pointer_y))));
+
+    EXPECT_THAT(input_device->position_on_window(),
+                Ne(std::make_pair(
+                    wl_fixed_from_int(pointer_x - subsurface_x),
+                    wl_fixed_from_int(pointer_y - subsurface_y))))
+        << "Subsurface of sync parent moved without grandparent being committed";
+}
+
+TEST_P(SubsurfaceMultilevelTest, subsurface_with_desync_parent_moves_when_only_parent_committed)
+{
+    int const pointer_x = 30, pointer_y = 30;
+    int const subsurface_x = 20, subsurface_y = 20;
+
+    wl_subsurface_set_desync(parent_subsurface);
+    wl_surface_commit(parent_subsurface);
+
+    wl_subsurface_set_position(child_subsurface, subsurface_x, subsurface_y);
+    wl_surface_commit(parent_subsurface);
+    client.roundtrip();
+
+    input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
+    client.roundtrip();
+
+    EXPECT_THAT(input_device->position_on_window(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(pointer_x - subsurface_x),
+                    wl_fixed_from_int(pointer_y - subsurface_y))));
+
+    EXPECT_THAT(input_device->position_on_window(),
+                Ne(std::make_pair(
+                    wl_fixed_from_int(pointer_x),
+                    wl_fixed_from_int(pointer_y))))
+        << "Did not move on desync parent commit";
+}
+
+TEST_P(SubsurfaceMultilevelTest, subsurface_does_not_move_when_grandparent_commit_is_before_sync_parent_commit)
+{
+    int const pointer_x = 30, pointer_y = 30;
+    int const subsurface_x = 20, subsurface_y = 20;
+
+    wl_subsurface_set_position(child_subsurface, subsurface_x, subsurface_y);
+    wl_surface_commit(main_surface);
+    wl_surface_commit(parent_subsurface);
+    client.roundtrip();
+
+    input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
+    client.roundtrip();
+
+    EXPECT_THAT(input_device->position_on_window(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(pointer_x),
+                    wl_fixed_from_int(pointer_y))));
+
+    EXPECT_THAT(input_device->position_on_window(),
+                Ne(std::make_pair(
+                    wl_fixed_from_int(pointer_x - subsurface_x),
+                    wl_fixed_from_int(pointer_y - subsurface_y))))
+        << "Subsurface moved when hierarchy commits were in the wrong order";
+}
+
+TEST_P(SubsurfaceMultilevelTest, subsurface_moves_after_both_sync_parent_and_grandparent_commit)
+{
+    int const pointer_x = 30, pointer_y = 30;
+    int const subsurface_x = 20, subsurface_y = 20;
+
+    wl_subsurface_set_position(child_subsurface, subsurface_x, subsurface_y);
+    wl_surface_commit(parent_subsurface);
+    wl_surface_commit(main_surface);
+    client.roundtrip();
+
+    input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
+    client.roundtrip();
+
+    EXPECT_THAT(input_device->position_on_window(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(pointer_x - subsurface_x),
+                    wl_fixed_from_int(pointer_y - subsurface_y))));
+
+    EXPECT_THAT(input_device->position_on_window(),
+                Ne(std::make_pair(
+                    wl_fixed_from_int(pointer_x),
+                    wl_fixed_from_int(pointer_y))))
+        << "Did not move after parent and grandparent both comitted";
+}
+
+TEST_P(SubsurfaceMultilevelTest, by_default_subsurface_is_sync)
+{
+    int const pointer_x = 30, pointer_y = 30;
+    int const subsurface_x = 20, subsurface_y = 20;
+
+    wl_subsurface_set_position(child_subsurface, subsurface_x, subsurface_x);
+    wl_surface_commit(parent_subsurface);
+    client.roundtrip();
+
+    input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
+    client.roundtrip();
+
+    EXPECT_THAT(input_device->position_on_window(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(pointer_x),
+                    wl_fixed_from_int(pointer_y))));
+
+    EXPECT_THAT(input_device->position_on_window(),
+                Ne(std::make_pair(
+                    wl_fixed_from_int(pointer_x - subsurface_x),
+                    wl_fixed_from_int(pointer_y - subsurface_y))))
+        << "Subsurface moved without parent commit (it should have been 'sync' by default, but is acting as desync)";
+}
+
+TEST_P(SubsurfaceMultilevelTest, subsurface_does_not_move_when_only_grandparent_committed)
+{
+    int const pointer_x = 30, pointer_y = 30;
+    int const subsurface_x = 20, subsurface_y = 20;
+
+    wl_subsurface_set_desync(parent_subsurface);
+    wl_surface_commit(parent_subsurface);
+    wl_surface_commit(main_surface);
+    client.roundtrip();
+
+    wl_subsurface_set_position(child_subsurface, subsurface_x, subsurface_y);
+    wl_surface_commit(main_surface);
+    client.roundtrip();
+
+    input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
+    client.roundtrip();
+
+    EXPECT_THAT(input_device->position_on_window(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(pointer_x),
+                    wl_fixed_from_int(pointer_y))));
+
+    EXPECT_THAT(input_device->position_on_window(),
+                Ne(std::make_pair(
+                    wl_fixed_from_int(pointer_x - subsurface_x),
+                    wl_fixed_from_int(pointer_y - subsurface_y))))
+        << "Subsurface moved to new location without parent being committed";
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    WlShellSubsurfaces,
+    SubsurfaceMultilevelTest,
+    testing::Values(
+        SubsurfaceTestParams{
+            "wl_shell_surface",
+            [](wlcs::InProcessServer& server, wlcs::Client& client, int x, int y, int width, int height)
+                -> std::unique_ptr<wlcs::Surface>
+                {
+                    auto surface = client.create_wl_shell_surface(
+                        width,
+                        height);
+                    server.the_server().move_surface_to(surface, x, y);
+                    return std::make_unique<wlcs::Surface>(std::move(surface));
+                },
+            [](wlcs::Server& server, wlcs::Client& client) -> std::unique_ptr<AbstractInputDevice>
+                {
+                    return std::make_unique<PointerInputDevice>(server, client);
+                }
+        }
+    ));
+
+INSTANTIATE_TEST_SUITE_P(
+    XdgShellV6Subsurfaces,
+    SubsurfaceMultilevelTest,
+    testing::Values(
+        SubsurfaceTestParams{
+            "xdg_v6_surface",
+            [](wlcs::InProcessServer& server, wlcs::Client& client, int x, int y, int width, int height)
+                -> std::unique_ptr<wlcs::Surface>
+                {
+                    auto surface = client.create_xdg_shell_v6_surface(
+                        width,
+                        height);
+                    server.the_server().move_surface_to(surface, x, y);
+                    return std::make_unique<wlcs::Surface>(std::move(surface));
+                },
+            [](wlcs::Server& server, wlcs::Client& client) -> std::unique_ptr<AbstractInputDevice>
+                {
+                    return std::make_unique<PointerInputDevice>(server, client);
+                }
+        }
+    ));
+
+INSTANTIATE_TEST_SUITE_P(
+    XdgShellStableSubsurfaces,
+    SubsurfaceMultilevelTest,
+    testing::Values(
+        SubsurfaceTestParams{
+            "xdg_stable_surface",
+            [](wlcs::InProcessServer& server, wlcs::Client& client, int x, int y, int width, int height)
+                -> std::unique_ptr<wlcs::Surface>
+                {
+                    auto surface = client.create_xdg_shell_stable_surface(
+                        width,
+                        height);
+                    server.the_server().move_surface_to(surface, x, y);
+                    return std::make_unique<wlcs::Surface>(std::move(surface));
+                },
+            [](wlcs::Server& server, wlcs::Client& client) -> std::unique_ptr<AbstractInputDevice>
+                {
+                    return std::make_unique<PointerInputDevice>(server, client);
+                }
+        }
+    ));
+
+INSTANTIATE_TEST_SUITE_P(
+    TouchInputSubsurfaces,
+    SubsurfaceMultilevelTest,
+    testing::Values(
+        SubsurfaceTestParams{
+            "touch_input_subsurfaces",
+            [](wlcs::InProcessServer& server, wlcs::Client& client, int x, int y, int width, int height)
+                -> std::unique_ptr<wlcs::Surface>
+                {
+                    auto surface = client.create_xdg_shell_v6_surface(
+                        width,
+                        height);
+                    server.the_server().move_surface_to(surface, x, y);
+                    return std::make_unique<wlcs::Surface>(std::move(surface));
+                },
+            [](wlcs::Server& server, wlcs::Client& client) -> std::unique_ptr<AbstractInputDevice>
+                {
+                    return std::make_unique<TouchInputDevice>(server, client);
+                }
+        }
+    ));
+
+// TODO: combinations of sync and desync at various levels of the tree
 // TODO: "bad_surface" error
+// TODO: seitch to the new surface/input method abstraction
