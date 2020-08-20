@@ -24,6 +24,7 @@
 
 #include <gmock/gmock.h>
 #include <boost/throw_exception.hpp>
+#include <algorithm>
 
 using namespace testing;
 
@@ -52,7 +53,7 @@ public:
     auto minimized() const { return minimized_; }
     auto activated() const { return activated_; }
     auto fullscreen() const { return fullscreen_; }
-    auto destroied() const { return destroyed_; }
+    auto destroyed() const { return destroyed_; }
 
     operator zwlr_foreign_toplevel_handle_v1*() const { return handle; }
     wlcs::WlHandle<zwlr_foreign_toplevel_handle_v1> const handle;
@@ -176,7 +177,17 @@ class ForeignToplevelManager
 public:
     ForeignToplevelManager(wlcs::Client& client);
 
-    auto toplevels() const -> std::vector<std::unique_ptr<ForeignToplevelHandle>> const& { return toplevels_; }
+    auto toplevels() -> std::vector<std::unique_ptr<ForeignToplevelHandle>> const&
+    {
+        toplevels_.erase(
+            std::remove_if(
+                toplevels_.begin(),
+                toplevels_.end(),
+                [](auto const& toplevel) { return toplevel->destroyed(); }),
+            toplevels_.end());
+
+        return toplevels_;
+    }
 
     wlcs::WlHandle<zwlr_foreign_toplevel_manager_v1> const manager;
 
