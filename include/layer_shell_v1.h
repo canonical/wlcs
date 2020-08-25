@@ -52,6 +52,7 @@ public:
     LayerSurfaceV1& operator=(LayerSurfaceV1 const&) = delete;
 
     operator zwlr_layer_surface_v1*() const { return layer_surface; }
+    operator zwlr_layer_shell_v1*() const { return layer_shell; }
 
     void dispatch_until_configure();
     auto last_width() const -> int { return last_width_; }
