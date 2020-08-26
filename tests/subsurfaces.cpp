@@ -813,32 +813,6 @@ TEST_P(SubsurfaceMultilevelTest, by_default_subsurface_is_sync)
         << "Subsurface moved without parent commit (it should have been 'sync' by default, but is acting as desync)";
 }
 
-TEST_P(SubsurfaceMultilevelTest, subsurface_does_not_move_when_only_grandparent_committed)
-{
-    int const pointer_x = 30, pointer_y = 30;
-    int const subsurface_x = 20, subsurface_y = 20;
-
-    wl_subsurface_set_desync(parent_subsurface);
-
-    wl_subsurface_set_position(child_subsurface, subsurface_x, subsurface_y);
-    wl_surface_commit(main_surface);
-    client.roundtrip();
-
-    input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
-    client.roundtrip();
-
-    EXPECT_THAT(input_device->position_on_window(),
-                Eq(std::make_pair(
-                    wl_fixed_from_int(pointer_x),
-                    wl_fixed_from_int(pointer_y))));
-
-    EXPECT_THAT(input_device->position_on_window(),
-                Ne(std::make_pair(
-                    wl_fixed_from_int(pointer_x - subsurface_x),
-                    wl_fixed_from_int(pointer_y - subsurface_y))))
-        << "Subsurface moved to new location without parent being committed";
-}
-
 INSTANTIATE_TEST_SUITE_P(
     WlShellSubsurfaces,
     SubsurfaceMultilevelTest,
