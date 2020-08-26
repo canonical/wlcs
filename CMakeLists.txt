@@ -182,6 +182,7 @@ set(
   tests/surface_input_regions.cpp
   tests/frame_submission.cpp
   tests/primary_selection.cpp
+  tests/relative_pointer.cpp
   tests/subsurfaces.cpp
   tests/xdg_surface_v6.cpp
   tests/xdg_toplevel_v6.cpp

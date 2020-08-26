@@ -782,6 +782,8 @@ public:
         return xdg_shell_stable;
     }
 
+    wl_pointer* the_pointer() const { return pointer; }
+
     wl_surface* window_under_cursor() const
     {
         if (pointer_events_pending())
@@ -1639,6 +1641,11 @@ void wlcs::Client::roundtrip()
 void* wlcs::Client::bind_if_supported(wl_interface const& interface, VersionSpecifier const& version) const
 {
     return impl->bind_if_supported(interface, version);
+}
+
+wl_pointer* wlcs::Client::the_pointer() const
+{
+    return impl->the_pointer();
 }
 
 class wlcs::Surface::Impl

@@ -20,7 +20,6 @@
 #define WLCS_RELATIVE_POINTER_UNSTABLE_V1_H
 
 #include "generated/relative-pointer-unstable-v1-client.h"
-
 #include "wl_interface_descriptor.h"
 #include "wl_handle.h"
 
