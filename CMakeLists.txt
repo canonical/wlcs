@@ -141,6 +141,7 @@ set(
   include/wl_handle.h
   include/in_process_server.h
   include/primary_selection.h
+  include/relative_pointer_unstable_v1.h
   include/xdg_shell_v6.h
   include/xdg_shell_stable.h
   include/xdg_output_v1.h
@@ -160,6 +161,7 @@ set(
   src/main.cpp
   src/primary_selection.cpp
   src/shared_library.cpp
+  src/relative_pointer_unstable_v1.cpp
   src/xfail_supporting_test_listener.h
   src/xfail_supporting_test_listener.cpp
   src/termcolor.hpp
