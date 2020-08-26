@@ -233,6 +233,8 @@ TEST_P(SubsurfaceTest, desync_subsurface_moves_when_only_parent_committed)
     int const pointer_x = 30, pointer_y = 30;
     int const subsurface_x = 20, subsurface_y = 20;
 
+    wl_subsurface_set_desync(subsurface);
+
     wl_subsurface_set_position(subsurface, subsurface_x, subsurface_y);
     // Position is part of parent (main_surface) state, so subsurface does not need to be committed
     wl_surface_commit(main_surface);
