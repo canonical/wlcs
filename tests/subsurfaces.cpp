@@ -128,7 +128,6 @@ public:
     void move_subsurface_to(int x, int y)
     {
         wl_subsurface_set_position(subsurface, x, y);
-        wl_surface_commit(subsurface);
         wl_surface_commit(main_surface);
         client.roundtrip();
     }
@@ -210,6 +209,7 @@ TEST_P(SubsurfaceTest, sync_subsurface_moves_when_only_parent_committed)
     int const subsurface_x = 20, subsurface_y = 20;
 
     wl_subsurface_set_position(subsurface, subsurface_x, subsurface_y);
+    // Position is part of parent (main_surface) state, so subsurface does not need to be committed
     wl_surface_commit(main_surface);
     client.roundtrip();
 
@@ -234,6 +234,7 @@ TEST_P(SubsurfaceTest, desync_subsurface_moves_when_only_parent_committed)
     int const subsurface_x = 20, subsurface_y = 20;
 
     wl_subsurface_set_position(subsurface, subsurface_x, subsurface_y);
+    // Position is part of parent (main_surface) state, so subsurface does not need to be committed
     wl_surface_commit(main_surface);
     client.roundtrip();
 
@@ -258,11 +259,10 @@ TEST_P(SubsurfaceTest, subsurface_does_not_move_when_parent_not_committed)
     int const subsurface_x = 20, subsurface_y = 20;
 
     wl_subsurface_set_desync(subsurface);
-    wl_surface_commit(subsurface);
-    wl_surface_commit(main_surface);
 
     wl_subsurface_set_position(subsurface, subsurface_x, subsurface_y);
     wl_surface_commit(subsurface);
+    // We don't call wl_surface_commit(main_surface), so position should not be applied
     client.roundtrip();
 
     input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
@@ -637,6 +637,7 @@ TEST_P(SubsurfaceMultilevelTest, subsurface_with_sync_parent_does_not_move_when_
     int const subsurface_x = 20, subsurface_y = 20;
 
     wl_subsurface_set_position(child_subsurface, subsurface_x, subsurface_y);
+    // We don't call wl_surface_commit(parent_subsurface), so position should not be applied
     wl_surface_commit(main_surface);
     client.roundtrip();
 
@@ -661,9 +662,9 @@ TEST_P(SubsurfaceMultilevelTest, subsurface_with_desync_parent_does_not_move_whe
     int const subsurface_x = 20, subsurface_y = 20;
 
     wl_subsurface_set_desync(parent_subsurface);
-    wl_surface_commit(parent_subsurface);
 
     wl_subsurface_set_position(child_subsurface, subsurface_x, subsurface_y);
+    // We don't call wl_surface_commit(parent_subsurface), so position should not be applied
     wl_surface_commit(main_surface);
     client.roundtrip();
 
@@ -689,6 +690,8 @@ TEST_P(SubsurfaceMultilevelTest, subsurface_with_sync_parent_does_not_move_when_
 
     wl_subsurface_set_position(child_subsurface, subsurface_x, subsurface_y);
     wl_surface_commit(parent_subsurface);
+    // We don't call wl_surface_commit(main_surface), which should be required before position is applied because
+    // parent_subsurface is sync
     client.roundtrip();
 
     input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
@@ -712,10 +715,11 @@ TEST_P(SubsurfaceMultilevelTest, subsurface_with_desync_parent_moves_when_only_p
     int const subsurface_x = 20, subsurface_y = 20;
 
     wl_subsurface_set_desync(parent_subsurface);
-    wl_surface_commit(parent_subsurface);
 
     wl_subsurface_set_position(child_subsurface, subsurface_x, subsurface_y);
     wl_surface_commit(parent_subsurface);
+    // wl_surface_commit(main_surface) should NOT be required for position to be applied because parent_subsurface is
+    // desync
     client.roundtrip();
 
     input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
@@ -741,6 +745,7 @@ TEST_P(SubsurfaceMultilevelTest, subsurface_does_not_move_when_grandparent_commi
     wl_subsurface_set_position(child_subsurface, subsurface_x, subsurface_y);
     wl_surface_commit(main_surface);
     wl_surface_commit(parent_subsurface);
+    // Committing main_surface would need to happend AFTER parent_subsurface in order for position to be applied
     client.roundtrip();
 
     input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
@@ -790,6 +795,7 @@ TEST_P(SubsurfaceMultilevelTest, by_default_subsurface_is_sync)
 
     wl_subsurface_set_position(child_subsurface, subsurface_x, subsurface_x);
     wl_surface_commit(parent_subsurface);
+    // Not calling wl_surface_commit(main_surface), so new position should not be applied
     client.roundtrip();
 
     input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
@@ -813,9 +819,6 @@ TEST_P(SubsurfaceMultilevelTest, subsurface_does_not_move_when_only_grandparent_
     int const subsurface_x = 20, subsurface_y = 20;
 
     wl_subsurface_set_desync(parent_subsurface);
-    wl_surface_commit(parent_subsurface);
-    wl_surface_commit(main_surface);
-    client.roundtrip();
 
     wl_subsurface_set_position(child_subsurface, subsurface_x, subsurface_y);
     wl_surface_commit(main_surface);
