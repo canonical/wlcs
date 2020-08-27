@@ -25,6 +25,7 @@ auto wlcs::SurfaceBuilder::all_surface_types() -> std::vector<std::shared_ptr<Su
         std::make_shared<WlShellSurfaceBuilder>(),
         std::make_shared<XdgV6SurfaceBuilder>(),
         std::make_shared<XdgStableSurfaceBuilder>(0, 0, 0, 0),
+        std::make_shared<XdgStableSurfaceBuilder>(12, 5, 20, 6),
         std::make_shared<SubsurfaceBuilder>(std::make_pair(0, 0)),
         std::make_shared<SubsurfaceBuilder>(std::make_pair(7, 12))};
 }
