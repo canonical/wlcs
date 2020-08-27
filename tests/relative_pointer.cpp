@@ -29,8 +29,8 @@ namespace
 {
 auto const any_width = 300;
 auto const any_height = 300;
-auto const middle_x = any_width / 2;
-auto const middle_y = any_height / 2;
+auto const nw_middle_x = any_width / 2;
+auto const nw_middle_y = any_height / 2;
 
 struct RelativePointer : StartedInProcessServer
 {
@@ -48,7 +48,7 @@ struct RelativePointer : StartedInProcessServer
 
         // Get the surface in a known position with the cursor over it
         the_server().move_surface_to(a_surface, 0, 0);
-        cursor.move_to(middle_x, middle_y);
+        cursor.move_to(nw_middle_x, nw_middle_y);
     }
 
     void TearDown() override
