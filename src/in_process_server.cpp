@@ -1668,6 +1668,10 @@ public:
             }
         }
 
+        for (auto const& callback: destruction_callbacks)
+            callback();
+        destruction_callbacks.clear();
+
         wl_surface_destroy(surface_);
     }
 
@@ -1703,6 +1707,11 @@ public:
         owner_.dispatch_until([surface_rendered]() { return *surface_rendered; });
     }
 
+    void run_on_destruction(std::function<void()> callback)
+    {
+        destruction_callbacks.push_back(callback);
+    }
+
     Client& owner() const
     {
         return owner_;
@@ -1736,6 +1745,7 @@ private:
 
     struct wl_surface* const surface_;
     Client& owner_;
+    std::vector<std::function<void()>> destruction_callbacks;
 };
 
 std::vector<std::pair<wlcs::Surface::Impl const*, wl_callback*>> wlcs::Surface::Impl::pending_callbacks;
@@ -1769,6 +1779,11 @@ void wlcs::Surface::add_frame_callback(std::function<void(int)> const& on_frame)
 void wlcs::Surface::attach_visible_buffer(int width, int height)
 {
     impl->attach_visible_buffer(width, height);
+}
+
+void wlcs::Surface::run_on_destruction(std::function<void()> callback)
+{
+    impl->run_on_destruction(callback);
 }
 
 wlcs::Client& wlcs::Surface::owner() const
