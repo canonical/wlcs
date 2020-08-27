@@ -140,6 +140,7 @@ set(
   include/helpers.h
   include/wl_handle.h
   include/in_process_server.h
+  include/pointer_constraints_unstable_v1.h
   include/primary_selection.h
   include/relative_pointer_unstable_v1.h
   include/xdg_shell_v6.h
@@ -159,6 +160,7 @@ set(
   src/xdg_shell_stable.cpp
   src/layer_shell_v1.cpp
   src/main.cpp
+  src/pointer_constraints_unstable_v1.cpp
   src/primary_selection.cpp
   src/shared_library.cpp
   src/relative_pointer_unstable_v1.cpp
