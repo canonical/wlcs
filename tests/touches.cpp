@@ -142,6 +142,27 @@ TEST_P(TouchTest, touch_drag_outside_of_surface_and_back_not_lost)
     client.roundtrip();
 }
 
+TEST_P(TouchTest, sends_touch_up_on_surface_destroy)
+{
+    int const window_width = 300, window_height = 300;
+    int const window_top_left_x = 64, window_top_left_y = 7;
+
+    wlcs::Client client{the_server()};
+    auto surface = GetParam()->build(
+        the_server(), client, {window_top_left_x, window_top_left_y}, {window_width, window_height});
+
+    auto touch = the_server().create_touch();
+    int touch_x = window_top_left_x + 27;
+    int touch_y = window_top_left_y + 8;
+    touch.down_at(touch_x, touch_y);
+    client.roundtrip();
+
+    surface.reset();
+    client.roundtrip();
+
+    ASSERT_THAT(client.touched_window(), Eq(nullptr)) << "Touch did not leave surface when surface was destroyed";
+}
+
 INSTANTIATE_TEST_SUITE_P(
     AllSurfaceTypes,
     TouchTest,
