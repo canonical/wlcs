@@ -67,13 +67,15 @@ struct XdgV6SurfaceBuilder : SurfaceBuilder
 
 struct XdgStableSurfaceBuilder : SurfaceBuilder
 {
-    XdgStableSurfaceBuilder() : SurfaceBuilder{"xdg_surface (stable)"} {}
+    XdgStableSurfaceBuilder(int left_offset, int top_offset, int right_offset, int bottom_offset);
 
     auto build(
         wlcs::Server& server,
         wlcs::Client& client,
         std::pair<int, int> position,
         std::pair<int, int> size) const -> std::unique_ptr<wlcs::Surface> override;
+
+    int left_offset, top_offset, right_offset, bottom_offset;
 };
 
 struct SubsurfaceBuilder : SurfaceBuilder
