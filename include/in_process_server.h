@@ -168,6 +168,7 @@ public:
     void attach_buffer(int width, int height);
     void add_frame_callback(std::function<void(int)> const& on_frame);
     void attach_visible_buffer(int width, int height);
+    void run_on_destruction(std::function<void()> callback);
 
     bool has_focus() const;
     std::pair<int, int> pointer_position() const;

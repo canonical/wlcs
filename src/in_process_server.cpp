@@ -714,7 +714,7 @@ public:
         Surface surface{client};
 
         wl_shell_surface * shell_surface = wl_shell_get_shell_surface(shell, surface);
-        run_on_destruction([shell_surface]()
+        surface.run_on_destruction([shell_surface]()
             {
                 wl_shell_surface_destroy(shell_surface);
             });
@@ -734,7 +734,7 @@ public:
         auto xdg_surface = std::make_shared<XdgSurfaceV6>(client, surface);
         auto xdg_toplevel = std::make_shared<XdgToplevelV6>(*xdg_surface);
 
-        run_on_destruction([xdg_surface, xdg_toplevel]() mutable
+        surface.run_on_destruction([xdg_surface, xdg_toplevel]() mutable
             {
                 xdg_surface.reset();
                 xdg_toplevel.reset();
@@ -754,7 +754,7 @@ public:
         auto xdg_surface = std::make_shared<XdgSurfaceStable>(client, surface);
         auto xdg_toplevel = std::make_shared<XdgToplevelStable>(*xdg_surface);
 
-        run_on_destruction([xdg_surface, xdg_toplevel]() mutable
+        surface.run_on_destruction([xdg_surface, xdg_toplevel]() mutable
             {
                 xdg_surface.reset();
                 xdg_toplevel.reset();
@@ -1668,6 +1668,10 @@ public:
             }
         }
 
+        for (auto const& callback: destruction_callbacks)
+            callback();
+        destruction_callbacks.clear();
+
         wl_surface_destroy(surface_);
     }
 
@@ -1703,6 +1707,11 @@ public:
         owner_.dispatch_until([surface_rendered]() { return *surface_rendered; });
     }
 
+    void run_on_destruction(std::function<void()> callback)
+    {
+        destruction_callbacks.push_back(callback);
+    }
+
     Client& owner() const
     {
         return owner_;
@@ -1736,6 +1745,7 @@ private:
 
     struct wl_surface* const surface_;
     Client& owner_;
+    std::vector<std::function<void()>> destruction_callbacks;
 };
 
 std::vector<std::pair<wlcs::Surface::Impl const*, wl_callback*>> wlcs::Surface::Impl::pending_callbacks;
@@ -1769,6 +1779,11 @@ void wlcs::Surface::add_frame_callback(std::function<void(int)> const& on_frame)
 void wlcs::Surface::attach_visible_buffer(int width, int height)
 {
     impl->attach_visible_buffer(width, height);
+}
+
+void wlcs::Surface::run_on_destruction(std::function<void()> callback)
+{
+    impl->run_on_destruction(callback);
 }
 
 wlcs::Client& wlcs::Surface::owner() const
