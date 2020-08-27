@@ -92,6 +92,9 @@ struct SubsurfaceBuilder : SurfaceBuilder
 // TODO: popup surfaces
 }
 
+namespace std
+{
 std::ostream& operator<<(std::ostream& out, std::shared_ptr<wlcs::SurfaceBuilder> const& param);
+}
 
 #endif // WLCS_SURFACE_BUILDER_H_
