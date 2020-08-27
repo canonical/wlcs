@@ -714,7 +714,7 @@ public:
         Surface surface{client};
 
         wl_shell_surface * shell_surface = wl_shell_get_shell_surface(shell, surface);
-        run_on_destruction([shell_surface]()
+        surface.run_on_destruction([shell_surface]()
             {
                 wl_shell_surface_destroy(shell_surface);
             });
@@ -734,7 +734,7 @@ public:
         auto xdg_surface = std::make_shared<XdgSurfaceV6>(client, surface);
         auto xdg_toplevel = std::make_shared<XdgToplevelV6>(*xdg_surface);
 
-        run_on_destruction([xdg_surface, xdg_toplevel]() mutable
+        surface.run_on_destruction([xdg_surface, xdg_toplevel]() mutable
             {
                 xdg_surface.reset();
                 xdg_toplevel.reset();
@@ -754,7 +754,7 @@ public:
         auto xdg_surface = std::make_shared<XdgSurfaceStable>(client, surface);
         auto xdg_toplevel = std::make_shared<XdgToplevelStable>(*xdg_surface);
 
-        run_on_destruction([xdg_surface, xdg_toplevel]() mutable
+        surface.run_on_destruction([xdg_surface, xdg_toplevel]() mutable
             {
                 xdg_surface.reset();
                 xdg_toplevel.reset();
