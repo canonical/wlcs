@@ -17,6 +17,7 @@
  */
 
 #include "surface_builder.h"
+#include "xdg_shell_stable.h"
 
 auto wlcs::SurfaceBuilder::all_surface_types() -> std::vector<std::shared_ptr<SurfaceBuilder>>
 {
@@ -66,8 +67,16 @@ auto wlcs::XdgStableSurfaceBuilder::build(
     std::pair<int, int> position,
     std::pair<int, int> size) const -> std::unique_ptr<wlcs::Surface>
 {
-    auto surface = std::make_unique<wlcs::Surface>(
-        client.create_xdg_shell_stable_surface(size.first, size.second));
+    auto surface = std::make_unique<wlcs::Surface>(client);
+    auto xdg_surface = std::make_shared<wlcs::XdgSurfaceStable>(client, *surface);
+    auto xdg_toplevel = std::make_shared<wlcs::XdgToplevelStable>(*xdg_surface);
+    surface->attach_visible_buffer(size.first, size.second);
+    surface->run_on_destruction(
+        [xdg_surface, xdg_toplevel]() mutable
+        {
+            xdg_toplevel.reset();
+            xdg_surface.reset();
+        });
     server.move_surface_to(*surface, position.first, position.second);
     return surface;
 }
