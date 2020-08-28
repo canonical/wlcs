@@ -74,7 +74,7 @@ TEST_F(PointerConstraints, locked_pointer_on_initially_focussed_surface_gets_loc
 {
     ZwpLockedPointerV1 locked_ptr{pointer_constraints, nw_surface, pointer, nullptr, ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_ONESHOT};
 
-    EXPECT_CALL(locked_ptr, locked).Times(1);
+    EXPECT_CALL(locked_ptr, locked()).Times(1);
 
     client.roundtrip();
 }
@@ -83,7 +83,7 @@ TEST_F(PointerConstraints, locked_pointer_does_not_move)
 {
     auto const initial_cursor_position = client.pointer_position();
     ZwpLockedPointerV1 locked_ptr{pointer_constraints, nw_surface, pointer, nullptr, ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_ONESHOT};
-    EXPECT_CALL(locked_ptr, locked).Times(AnyNumber());
+    EXPECT_CALL(locked_ptr, locked()).Times(AnyNumber());
     client.roundtrip();
 
     cursor.move_by(10, 10);
@@ -96,7 +96,7 @@ TEST_F(PointerConstraints, locked_pointer_on_initially_unfocussed_surface_gets_n
 {
     ZwpLockedPointerV1 locked_ptr{pointer_constraints, se_surface, pointer, nullptr, ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_ONESHOT};
 
-    EXPECT_CALL(locked_ptr, locked).Times(0);
+    EXPECT_CALL(locked_ptr, locked()).Times(0);
 
     client.roundtrip();
 }
@@ -105,7 +105,7 @@ TEST_F(PointerConstraints, when_cursor_moves_onto_surface_locked_pointer_gets_lo
 {
     ZwpLockedPointerV1 locked_ptr{pointer_constraints, se_surface, pointer, nullptr, ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_ONESHOT};
 
-    EXPECT_CALL(locked_ptr, locked).Times(1);
+    EXPECT_CALL(locked_ptr, locked()).Times(1);
 
     cursor.move_to(se_middle_x, se_middle_y);
     client.roundtrip();
