@@ -1,3 +1,17 @@
+wlcs (1.2.0-0ubuntu0) groovy; urgency=medium
+
+  * New upstream release. Notable changes:
+    + Add tests for wlr_layer_shell_unstable_v1
+    + Build fixes for Musl libc; WLCS now builds on Alpine. Thanks, Luca Weiss
+    + More XDG Shell tests, particularly around protocol errors,
+    window-geometry, and input edge-cases.
+    + Add tests for wlr_foreign_toplevel_management_unstable_v1
+    + Many improvements to wl_subsurface tests. Notably this fixes a
+    misinterpretation of the protocol which lead to testing incorrect
+    behaviour.
+
+ -- Christopher James Halse Rogers <raof@ubuntu.com>  Mon, 31 Aug 2020 16:39:21 +1000
+
 wlcs (1.1.0-0ubuntu0) eoan; urgency=medium
 
   * New upstream release. Relevant upstream changes:
