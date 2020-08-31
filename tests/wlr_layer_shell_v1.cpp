@@ -526,7 +526,7 @@ TEST_P(LayerSurfaceLayerTest, surface_on_lower_layer_is_initially_placed_below)
     client.roundtrip();
 
     ASSERT_THAT(client.window_under_cursor(), Ne((wl_surface*)below.surface))
-        << "Wrong wurface was on top";
+        << "Wrong wl_surface was on top";
     ASSERT_THAT(client.window_under_cursor(), Eq((wl_surface*)above.surface))
         << "Correct surface was not on top";
 }
@@ -556,7 +556,7 @@ TEST_P(LayerSurfaceLayerTest, below_surface_can_not_be_raised_with_click)
     client.roundtrip();
 
     ASSERT_THAT(client.window_under_cursor(), Ne((wl_surface*)below.surface))
-        << "Wrong wurface was on top";
+        << "Wrong wl_surface was on top";
     ASSERT_THAT(client.window_under_cursor(), Eq((wl_surface*)above.surface))
         << "Correct surface was not on top";
 }
@@ -600,7 +600,7 @@ TEST_P(LayerSurfaceLayerTest, surface_can_be_moved_to_layer)
     client.roundtrip();
 
     ASSERT_THAT(client.window_under_cursor(), Ne((wl_surface*)below.surface))
-        << "Wrong wurface was on top";
+        << "Wrong wl_surface was on top";
     ASSERT_THAT(client.window_under_cursor(), Eq((wl_surface*)above.surface))
         << "Correct surface was not on top";
 }
