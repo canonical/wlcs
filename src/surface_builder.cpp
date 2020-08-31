@@ -17,13 +17,15 @@
  */
 
 #include "surface_builder.h"
+#include "xdg_shell_stable.h"
 
 auto wlcs::SurfaceBuilder::all_surface_types() -> std::vector<std::shared_ptr<SurfaceBuilder>>
 {
     return {
         std::make_shared<WlShellSurfaceBuilder>(),
         std::make_shared<XdgV6SurfaceBuilder>(),
-        std::make_shared<XdgStableSurfaceBuilder>(),
+        std::make_shared<XdgStableSurfaceBuilder>(0, 0, 0, 0),
+        std::make_shared<XdgStableSurfaceBuilder>(12, 5, 20, 6),
         std::make_shared<SubsurfaceBuilder>(std::make_pair(0, 0)),
         std::make_shared<SubsurfaceBuilder>(std::make_pair(7, 12))};
 }
@@ -33,7 +35,7 @@ auto wlcs::SurfaceBuilder::toplevel_surface_types() -> std::vector<std::shared_p
     return {
         std::make_shared<WlShellSurfaceBuilder>(),
         std::make_shared<XdgV6SurfaceBuilder>(),
-        std::make_shared<XdgStableSurfaceBuilder>()};
+        std::make_shared<XdgStableSurfaceBuilder>(0, 0, 0, 0)};
 }
 
 auto wlcs::WlShellSurfaceBuilder::build(
@@ -60,15 +62,42 @@ auto wlcs::XdgV6SurfaceBuilder::build(
     return surface;
 }
 
+wlcs::XdgStableSurfaceBuilder::XdgStableSurfaceBuilder(int left_offset, int top_offset, int right_offset, int bottom_offset)
+    : SurfaceBuilder{"xdg_surface (stable)" +
+          ((left_offset || top_offset || right_offset || bottom_offset) ? (" {" +
+              std::to_string(left_offset) + ":" +
+              std::to_string(top_offset) + ":" +
+              std::to_string(right_offset) + ":" +
+              std::to_string(bottom_offset) + "}") : "")},
+      left_offset{left_offset},
+      top_offset{top_offset},
+      right_offset{right_offset},
+      bottom_offset{bottom_offset}
+{
+}
+
 auto wlcs::XdgStableSurfaceBuilder::build(
     wlcs::Server& server,
     wlcs::Client& client,
     std::pair<int, int> position,
     std::pair<int, int> size) const -> std::unique_ptr<wlcs::Surface>
 {
-    auto surface = std::make_unique<wlcs::Surface>(
-        client.create_xdg_shell_stable_surface(size.first, size.second));
-    server.move_surface_to(*surface, position.first, position.second);
+    auto surface = std::make_unique<wlcs::Surface>(client);
+    auto xdg_surface = std::make_shared<wlcs::XdgSurfaceStable>(client, *surface);
+    auto xdg_toplevel = std::make_shared<wlcs::XdgToplevelStable>(*xdg_surface);
+    // The logical window will be shrunk and moved based on the offset, but the underlying surface will not
+    xdg_surface_set_window_geometry(
+        *xdg_surface,
+        left_offset, top_offset,
+        size.first - left_offset - right_offset, size.second -bottom_offset - top_offset);
+    surface->attach_visible_buffer(size.first, size.second);
+    surface->run_on_destruction(
+        [xdg_surface, xdg_toplevel]() mutable
+        {
+            xdg_toplevel.reset();
+            xdg_surface.reset();
+        });
+    server.move_surface_to(*surface, position.first + left_offset, position.second + top_offset);
     return surface;
 }
 
