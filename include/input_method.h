@@ -75,6 +75,9 @@ struct TouchInputMethod : InputMethod
 
 }
 
+namespace std
+{
 std::ostream& operator<<(std::ostream& out, std::shared_ptr<wlcs::InputMethod> const& param);
+}
 
 #endif // WLCS_INPUT_METHOD_H_

@@ -110,7 +110,7 @@ auto wlcs::SubsurfaceBuilder::build(
     return subsurface;
 }
 
-std::ostream& operator<<(std::ostream& out, std::shared_ptr<wlcs::SurfaceBuilder> const& param)
+std::ostream& std::operator<<(std::ostream& out, std::shared_ptr<wlcs::SurfaceBuilder> const& param)
 {
     return out << param->name;
 }
