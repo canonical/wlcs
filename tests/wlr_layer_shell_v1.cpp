@@ -337,6 +337,34 @@ TEST_F(LayerSurfaceTest, gets_configured_after_anchor_change)
     EXPECT_THAT(configured_size().second, Gt(0));
 }
 
+TEST_F(LayerSurfaceTest, destroy_request_supported)
+{
+    wlcs::Client client{the_server()};
+
+    {
+        auto const layer_shell = client.bind_if_supported<zwlr_layer_shell_v1>(
+            wlcs::AtLeastVersion{ZWLR_LAYER_SHELL_V1_DESTROY_SINCE_VERSION});
+        client.roundtrip();
+    }
+    // layer_shell is now destroyed
+
+    client.roundtrip();
+}
+
+TEST_F(LayerSurfaceTest, destroy_request_not_sent_when_not_supported)
+{
+    wlcs::Client client{the_server()};
+
+    {
+        auto const layer_shell = client.bind_if_supported<zwlr_layer_shell_v1>(
+            wlcs::ExactlyVersion{ZWLR_LAYER_SHELL_V1_DESTROY_SINCE_VERSION - 1});
+        client.roundtrip();
+    }
+    // layer_shell is now destroyed
+
+    client.roundtrip();
+}
+
 TEST_P(LayerSurfaceAnchorTest, is_initially_positioned_correctly_for_anchor)
 {
     auto const anchor = GetParam();
