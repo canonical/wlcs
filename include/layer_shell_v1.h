@@ -36,7 +36,30 @@
 
 namespace wlcs
 {
-WLCS_CREATE_INTERFACE_DESCRIPTOR(zwlr_layer_shell_v1)
+
+// We need to use a custom destructor as .destroyed() changed in v3
+namespace
+{
+void send_destroy_if_supported(zwlr_layer_shell_v1* to_destroy)
+{
+    if (zwlr_layer_shell_v1_get_version(to_destroy) >= ZWLR_LAYER_SHELL_V1_DESTROY_SINCE_VERSION)
+    {
+        zwlr_layer_shell_v1_destroy(to_destroy);
+    }
+    else
+    {
+        wl_proxy_destroy(reinterpret_cast<wl_proxy*>(to_destroy));
+    }
+}
+}
+template<>
+struct WlInterfaceDescriptor<zwlr_layer_shell_v1>
+{
+    static constexpr bool const has_specialisation = true;
+    static constexpr wl_interface const* const interface = &zwlr_layer_shell_v1_interface;
+    static constexpr void (* const destructor)(zwlr_layer_shell_v1*) = &send_destroy_if_supported;
+};
+
 WLCS_CREATE_INTERFACE_DESCRIPTOR(zwlr_layer_surface_v1)
 
 class LayerSurfaceV1

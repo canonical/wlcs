@@ -74,7 +74,6 @@ struct WlInterfaceDescriptor<wl_output>
     static constexpr void (* const destructor)(wl_output*) = &send_release_if_supported;
 };
 
-
 class Pointer
 {
 public:
