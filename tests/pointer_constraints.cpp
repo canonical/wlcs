@@ -101,13 +101,14 @@ TEST_F(PointerConstraints, locked_pointer_on_initially_unfocussed_surface_gets_n
     client.roundtrip();
 }
 
-TEST_F(PointerConstraints, when_cursor_moves_onto_surface_locked_pointer_gets_locked_notification)
+TEST_F(PointerConstraints, when_cursor_clicks_on_surface_locked_pointer_gets_locked_notification)
 {
     ZwpLockedPointerV1 locked_ptr{pointer_constraints, se_surface, pointer, nullptr, ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_ONESHOT};
 
     EXPECT_CALL(locked_ptr, locked()).Times(1);
 
     cursor.move_to(se_middle_x, se_middle_y);
+    cursor.left_click();
     client.roundtrip();
 }
 
