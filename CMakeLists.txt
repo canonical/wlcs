@@ -176,7 +176,7 @@ set(
   ${PROTOCOL_SOURCES}
 
   tests/test_bad_buffer.cpp
-        tests/pointer_constraints.cpp
+  tests/pointer_constraints.cpp
   tests/copy_cut_paste.cpp
   tests/gtk_primary_selection.cpp
   tests/test_surface_events.cpp
