@@ -256,6 +256,7 @@ public:
     void add_output_done_notifier(size_t index, std::function<void()> const& notifier);
 
     wl_shell* shell() const;
+    wl_pointer* the_pointer() const;
     zxdg_shell_v6* xdg_shell_v6() const;
     xdg_wm_base* xdg_shell_stable() const;
     wl_surface* window_under_cursor() const;
