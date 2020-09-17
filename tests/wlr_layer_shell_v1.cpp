@@ -86,7 +86,7 @@ public:
     int static const default_height = 50;
 };
 
-struct LayerAnchor
+struct LayerSurfaceLayout
 {
     template<typename T>
     struct Sides
@@ -94,10 +94,10 @@ struct LayerAnchor
         T left, right, top, bottom;
     };
 
-    static auto get_all() -> std::vector<LayerAnchor>
+    static auto get_all() -> std::vector<LayerSurfaceLayout>
     {
         bool const range[]{false, true};
-        std::vector<LayerAnchor> result;
+        std::vector<LayerSurfaceLayout> result;
         for (auto left: range)
             for (auto right: range)
                 for (auto top: range)
@@ -106,7 +106,7 @@ struct LayerAnchor
         return result;
     }
 
-    LayerAnchor(Sides<bool> anchor)
+    LayerSurfaceLayout(Sides<bool> anchor)
         : anchor{anchor}
     {
     }
@@ -180,7 +180,7 @@ struct LayerAnchor
     Sides<bool> const anchor;
 };
 
-std::ostream& operator<<(std::ostream& os, const LayerAnchor& anchor)
+std::ostream& operator<<(std::ostream& os, const LayerSurfaceLayout& anchor)
 {
     std::vector<std::string> strs;
     if (anchor.anchor.left)
@@ -204,9 +204,9 @@ std::ostream& operator<<(std::ostream& os, const LayerAnchor& anchor)
     return os;
 }
 
-class LayerSurfaceAnchorTest:
+class LayerSurfaceLayoutTest:
     public LayerSurfaceTest,
-    public testing::WithParamInterface<LayerAnchor>
+    public testing::WithParamInterface<LayerSurfaceLayout>
 {
 };
 
@@ -307,7 +307,7 @@ TEST_F(LayerSurfaceTest, gets_configured_with_supplied_size_when_set)
 TEST_F(LayerSurfaceTest, gets_configured_with_supplied_size_even_when_anchored_to_edges)
 {
     int width = 321, height = 218;
-    zwlr_layer_surface_v1_set_anchor(layer_surface, LayerAnchor({true, true, true, true}));
+    zwlr_layer_surface_v1_set_anchor(layer_surface, LayerSurfaceLayout({true, true, true, true}));
     zwlr_layer_surface_v1_set_size(layer_surface, width, height);
     commit_and_wait_for_configure();
     EXPECT_THAT(configured_size(), Eq(std::make_pair(width, height)));
@@ -315,7 +315,7 @@ TEST_F(LayerSurfaceTest, gets_configured_with_supplied_size_even_when_anchored_t
 
 TEST_F(LayerSurfaceTest, when_anchored_to_all_edges_gets_configured_with_output_size)
 {
-    zwlr_layer_surface_v1_set_anchor(layer_surface, LayerAnchor({true, true, true, true}));
+    zwlr_layer_surface_v1_set_anchor(layer_surface, LayerSurfaceLayout({true, true, true, true}));
     commit_and_wait_for_configure();
     auto const size = output_rect().second;
     ASSERT_THAT(configured_size(), Eq(size));
@@ -324,13 +324,13 @@ TEST_F(LayerSurfaceTest, when_anchored_to_all_edges_gets_configured_with_output_
 TEST_F(LayerSurfaceTest, gets_configured_after_anchor_change)
 {
     commit_and_wait_for_configure();
-    zwlr_layer_surface_v1_set_anchor(layer_surface, LayerAnchor({true, true, true, true}));
+    zwlr_layer_surface_v1_set_anchor(layer_surface, LayerSurfaceLayout({true, true, true, true}));
     commit_and_wait_for_configure();
     EXPECT_THAT(configured_size().first, Gt(0));
     EXPECT_THAT(configured_size().second, Gt(0));
 }
 
-TEST_P(LayerSurfaceAnchorTest, is_initially_positioned_correctly_for_anchor)
+TEST_P(LayerSurfaceLayoutTest, is_initially_positioned_correctly_for_anchor)
 {
     auto const anchor = GetParam();
     zwlr_layer_surface_v1_set_anchor(layer_surface, anchor);
@@ -352,7 +352,7 @@ TEST_P(LayerSurfaceAnchorTest, is_initially_positioned_correctly_for_anchor)
     expect_surface_is_at_position(rect.first);
 }
 
-TEST_P(LayerSurfaceAnchorTest, is_positioned_correctly_when_buffer_size_changed)
+TEST_P(LayerSurfaceLayoutTest, is_positioned_correctly_when_buffer_size_changed)
 {
     auto const anchor = GetParam();
     int const initial_width{52}, initial_height{74};
@@ -367,7 +367,7 @@ TEST_P(LayerSurfaceAnchorTest, is_positioned_correctly_when_buffer_size_changed)
     expect_surface_is_at_position(rect.first);
 }
 
-TEST_P(LayerSurfaceAnchorTest, is_positioned_correctly_when_explicit_size_does_not_match_buffer_size)
+TEST_P(LayerSurfaceLayoutTest, is_positioned_correctly_when_explicit_size_does_not_match_buffer_size)
 {
     auto const anchor = GetParam();
     int const initial_width{52}, initial_height{74};
@@ -385,11 +385,11 @@ TEST_P(LayerSurfaceAnchorTest, is_positioned_correctly_when_explicit_size_does_n
     expect_surface_is_at_position(rect.first);
 }
 
-TEST_P(LayerSurfaceAnchorTest, is_positioned_correctly_when_anchor_changed)
+TEST_P(LayerSurfaceLayoutTest, is_positioned_correctly_when_anchor_changed)
 {
     commit_and_wait_for_configure();
     auto const output = output_rect();
-    auto initial_rect = LayerAnchor({false, false, false, false}).placement_rect(output);
+    auto initial_rect = LayerSurfaceLayout({false, false, false, false}).placement_rect(output);
     surface.attach_visible_buffer(initial_rect.second.first, initial_rect.second.second);
 
     auto const anchor = GetParam();
@@ -412,7 +412,7 @@ TEST_P(LayerSurfaceAnchorTest, is_positioned_correctly_when_anchor_changed)
     expect_surface_is_at_position(new_rect.first);
 }
 
-TEST_P(LayerSurfaceAnchorTest, maximized_xdg_toplevel_is_shrunk_for_exclusive_zone)
+TEST_P(LayerSurfaceLayoutTest, maximized_xdg_toplevel_is_shrunk_for_exclusive_zone)
 {
     int const exclusive_zone = 25;
     int width = 0, height = 0;
@@ -492,8 +492,8 @@ TEST_P(LayerSurfaceAnchorTest, maximized_xdg_toplevel_is_shrunk_for_exclusive_zo
 
 INSTANTIATE_TEST_SUITE_P(
     Anchor,
-    LayerSurfaceAnchorTest,
-    testing::ValuesIn(LayerAnchor::get_all()));
+    LayerSurfaceLayoutTest,
+    testing::ValuesIn(LayerSurfaceLayout::get_all()));
 
 TEST_P(LayerSurfaceLayerTest, surface_on_lower_layer_is_initially_placed_below)
 {
