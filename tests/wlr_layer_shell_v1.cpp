@@ -88,6 +88,12 @@ public:
 
 struct LayerAnchor
 {
+    template<typename T>
+    struct Sides
+    {
+        T left, right, top, bottom;
+    };
+
     static auto get_all() -> std::vector<LayerAnchor>
     {
         bool const range[]{false, true};
@@ -96,37 +102,26 @@ struct LayerAnchor
             for (auto right: range)
                 for (auto top: range)
                     for (auto bottom: range)
-                        result.emplace_back(left, right, top, bottom);
+                        result.emplace_back(Sides<bool>{left, right, top, bottom});
         return result;
     }
 
-    LayerAnchor(bool left, bool right, bool top, bool bottom)
-        : left{left},
-          right{right},
-          top{top},
-          bottom{bottom}
-    {
-    }
-
-    LayerAnchor(uint32_t const anchor)
-        : left  {static_cast<bool>(anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT)},
-          right {static_cast<bool>(anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT)},
-          top   {static_cast<bool>(anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP)},
-          bottom{static_cast<bool>(anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM)}
+    LayerAnchor(Sides<bool> anchor)
+        : anchor{anchor}
     {
     }
 
     operator uint32_t() const
     {
         return
-            (left   ? ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT   : 0) |
-            (right  ? ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT  : 0) |
-            (top    ? ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP    : 0) |
-            (bottom ? ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM : 0);
+            (anchor.left   ? ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT   : 0) |
+            (anchor.right  ? ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT  : 0) |
+            (anchor.top    ? ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP    : 0) |
+            (anchor.bottom ? ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM : 0);
     }
 
-    auto h_expand() const -> bool { return left && right; }
-    auto v_expand() const -> bool { return top && bottom; }
+    auto h_expand() const -> bool { return anchor.left && anchor.right; }
+    auto v_expand() const -> bool { return anchor.top && anchor.bottom; }
 
     auto placement_rect(Rect const& output) const -> Rect
     {
@@ -137,17 +132,17 @@ struct LayerAnchor
         int const width = h_expand() ? output_width : LayerSurfaceTest::default_width;
         int const height = v_expand() ? output_height : LayerSurfaceTest::default_height;
         int const x =
-            (left ?
+            (anchor.left ?
                 output_x :
-                (right ?
+                (anchor.right ?
                     (output_x + output_width - width) :
                     (output_x + (output_width - width) / 2)
                 )
             );
         int const y =
-            (top ?
+            (anchor.top ?
                 output_y :
-                (bottom ?
+                (anchor.bottom ?
                     (output_y + output_height - height) :
                     (output_y + (output_height - height) / 2)
                 )
@@ -165,36 +160,36 @@ struct LayerAnchor
     // Will always either return 0, or a single enum value
     auto attached_edge() const -> zwlr_layer_surface_v1_anchor
     {
-        if (top == bottom)
+        if (anchor.top == anchor.bottom)
         {
-            if (left && !right)
+            if (anchor.left && !anchor.right)
                 return ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT;
-            else if (right && !left)
+            else if (anchor.right && !anchor.left)
                 return ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
         }
-        else if (left == right)
+        else if (anchor.left == anchor.right)
         {
-            if (top && !bottom)
+            if (anchor.top && !anchor.bottom)
                 return ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP;
-            else if (bottom && !top)
+            else if (anchor.bottom && !anchor.top)
                 return ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM;
         }
         return (zwlr_layer_surface_v1_anchor)0;
     }
 
-    bool const left, right, top, bottom;
+    Sides<bool> const anchor;
 };
 
 std::ostream& operator<<(std::ostream& os, const LayerAnchor& anchor)
 {
     std::vector<std::string> strs;
-    if (anchor.left)
+    if (anchor.anchor.left)
         strs.emplace_back("left");
-    if (anchor.right)
+    if (anchor.anchor.right)
         strs.emplace_back("right");
-    if (anchor.top)
+    if (anchor.anchor.top)
         strs.emplace_back("top");
-    if (anchor.bottom)
+    if (anchor.anchor.bottom)
         strs.emplace_back("bottom");
     if (strs.empty())
         strs.emplace_back("none");
@@ -312,7 +307,7 @@ TEST_F(LayerSurfaceTest, gets_configured_with_supplied_size_when_set)
 TEST_F(LayerSurfaceTest, gets_configured_with_supplied_size_even_when_anchored_to_edges)
 {
     int width = 321, height = 218;
-    zwlr_layer_surface_v1_set_anchor(layer_surface, LayerAnchor(true, true, true, true));
+    zwlr_layer_surface_v1_set_anchor(layer_surface, LayerAnchor({true, true, true, true}));
     zwlr_layer_surface_v1_set_size(layer_surface, width, height);
     commit_and_wait_for_configure();
     EXPECT_THAT(configured_size(), Eq(std::make_pair(width, height)));
@@ -320,7 +315,7 @@ TEST_F(LayerSurfaceTest, gets_configured_with_supplied_size_even_when_anchored_t
 
 TEST_F(LayerSurfaceTest, when_anchored_to_all_edges_gets_configured_with_output_size)
 {
-    zwlr_layer_surface_v1_set_anchor(layer_surface, LayerAnchor(true, true, true, true));
+    zwlr_layer_surface_v1_set_anchor(layer_surface, LayerAnchor({true, true, true, true}));
     commit_and_wait_for_configure();
     auto const size = output_rect().second;
     ASSERT_THAT(configured_size(), Eq(size));
@@ -329,7 +324,7 @@ TEST_F(LayerSurfaceTest, when_anchored_to_all_edges_gets_configured_with_output_
 TEST_F(LayerSurfaceTest, gets_configured_after_anchor_change)
 {
     commit_and_wait_for_configure();
-    zwlr_layer_surface_v1_set_anchor(layer_surface, LayerAnchor(true, true, true, true));
+    zwlr_layer_surface_v1_set_anchor(layer_surface, LayerAnchor({true, true, true, true}));
     commit_and_wait_for_configure();
     EXPECT_THAT(configured_size().first, Gt(0));
     EXPECT_THAT(configured_size().second, Gt(0));
@@ -394,7 +389,7 @@ TEST_P(LayerSurfaceAnchorTest, is_positioned_correctly_when_anchor_changed)
 {
     commit_and_wait_for_configure();
     auto const output = output_rect();
-    auto initial_rect = LayerAnchor(false, false, false, false).placement_rect(output);
+    auto initial_rect = LayerAnchor({false, false, false, false}).placement_rect(output);
     surface.attach_visible_buffer(initial_rect.second.first, initial_rect.second.second);
 
     auto const anchor = GetParam();
