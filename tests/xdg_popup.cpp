@@ -399,6 +399,7 @@ public:
         : XdgPopupManagerBase{in_process_server},
           layer_surface{client, surface}
     {
+        zwlr_layer_surface_v1_set_size(layer_surface, window_width, window_height);
         wait_for_frame_to_render();
     }
 
