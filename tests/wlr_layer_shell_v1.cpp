@@ -46,18 +46,23 @@ public:
         layer_surface.dispatch_until_configure();
     }
 
-    void expect_surface_is_at_position(std::pair<int, int> pos)
+    void expect_surface_is_at_position(std::pair<int, int> pos, wlcs::Surface const& expected)
     {
         auto pointer = the_server().create_pointer();
-        pointer.move_to(pos.first + 22, pos.second + 23);
+        pointer.move_to(pos.first + 10, pos.second + 10);
         client.roundtrip();
 
-        EXPECT_THAT(client.window_under_cursor(), Eq((wl_surface*)surface));
-        if (client.window_under_cursor())
+        EXPECT_THAT(client.window_under_cursor(), Eq((wl_surface*)expected));
+        if (client.window_under_cursor() == expected)
         {
-            EXPECT_THAT(wl_fixed_to_int(client.pointer_position().first), Eq(22));
-            EXPECT_THAT(wl_fixed_to_int(client.pointer_position().second), Eq(23));
+            EXPECT_THAT(wl_fixed_to_int(client.pointer_position().first), Eq(10));
+            EXPECT_THAT(wl_fixed_to_int(client.pointer_position().second), Eq(10));
         }
+    }
+
+    void expect_surface_is_at_position(std::pair<int, int> pos)
+    {
+        expect_surface_is_at_position(pos, surface);
     }
 
     auto output_rect() const -> Rect
@@ -85,8 +90,8 @@ public:
     wlcs::Surface surface;
     wlcs::LayerSurfaceV1 layer_surface;
 
-    int static const default_width = 40;
-    int static const default_height = 50;
+    int static const default_width = 200;
+    int static const default_height = 300;
 };
 
 struct LayerSurfaceLayout
@@ -407,9 +412,6 @@ TEST_P(LayerSurfaceLayoutTest, is_positioned_correctly_when_explicit_size_does_n
 
     surface.attach_visible_buffer(initial_width, initial_height);
 
-    wl_surface_commit(surface);
-    client.roundtrip();
-
     expect_surface_is_at_position(rect.first);
 }
 
@@ -517,6 +519,61 @@ TEST_P(LayerSurfaceLayoutTest, maximized_xdg_toplevel_is_shrunk_for_exclusive_zo
 
     EXPECT_THAT(new_width, Eq(expected_width));
     EXPECT_THAT(new_height, Eq(expected_height));
+}
+
+TEST_P(LayerSurfaceLayoutTest, simple_popup_positioned_correctly)
+{
+    auto const layout = GetParam();
+    auto const output = output_rect();
+    auto const layer_surface_rect = layout.placement_rect(output);
+    auto const layer_surface_request_size = layout.request_size();
+
+    zwlr_layer_surface_v1_set_anchor(layer_surface, layout);
+    zwlr_layer_surface_v1_set_margin(layer_surface, SPLAT_MARGIN(layout));
+    zwlr_layer_surface_v1_set_size(layer_surface, layer_surface_request_size.first, layer_surface_request_size.second);
+    commit_and_wait_for_configure();
+    surface.attach_visible_buffer(layer_surface_rect.second.first, layer_surface_rect.second.second);
+
+    auto const popup_size = std::make_pair(30, 30);
+    wlcs::XdgPositionerStable positioner{client};
+    xdg_positioner_set_size(positioner, popup_size.first, popup_size.second);
+    xdg_positioner_set_anchor_rect(
+        positioner,
+        5, 5,
+        layer_surface_rect.second.first - 10, layer_surface_rect.second.second - 10);
+    xdg_positioner_set_anchor(positioner,  0);
+    xdg_positioner_set_gravity(positioner, XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
+
+    wlcs::Surface popup_wl_surface{client};
+    wlcs::XdgSurfaceStable popup_xdg_surface{client, popup_wl_surface};
+    wlcs::XdgPopupStable popup_xdg_popup{popup_xdg_surface, std::experimental::nullopt, positioner};
+    zwlr_layer_surface_v1_get_popup(layer_surface, popup_xdg_popup);
+
+    int popup_surface_configure_count = 0;
+    Vec2 popup_configured_position;
+    popup_xdg_surface.add_configure_notification([&](uint32_t serial)
+        {
+            xdg_surface_ack_configure(popup_xdg_surface, serial);
+            popup_surface_configure_count++;
+        });
+    popup_xdg_popup.add_configure_notification([&](int32_t x, int32_t y, int32_t, int32_t)
+        {
+            popup_configured_position.first = x;
+            popup_configured_position.second = y;
+        });
+
+    popup_wl_surface.attach_visible_buffer(popup_size.first, popup_size.second);
+    client.dispatch_until([&](){ return popup_surface_configure_count > 0; });
+
+    EXPECT_THAT(
+        popup_configured_position,
+        Eq(Vec2{layer_surface_rect.second.first / 2, layer_surface_rect.second.second / 2}));
+
+    expect_surface_is_at_position(
+        Vec2{
+            layer_surface_rect.first.first + layer_surface_rect.second.first / 2,
+            layer_surface_rect.first.second + layer_surface_rect.second.second / 2},
+        popup_wl_surface);
 }
 
 INSTANTIATE_TEST_SUITE_P(
