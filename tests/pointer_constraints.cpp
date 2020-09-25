@@ -141,7 +141,7 @@ TEST_F(PointerConstraints, locked_pointer_on_initially_unfocussed_surface_gets_n
     client.roundtrip();
 }
 
-TEST_F(PointerConstraints, when_cursor_clicks_on_surface_locked_pointer_gets_locked_notification)
+TEST_F(PointerConstraints, when_surface_is_selected_locked_pointer_gets_locked_notification)
 {
     setup_locked_ptr_on(se_surface);
     setup_sync();
@@ -151,7 +151,7 @@ TEST_F(PointerConstraints, when_cursor_clicks_on_surface_locked_pointer_gets_loc
     select_se_window();
 }
 
-TEST_F(PointerConstraints, when_cursor_clicks_away_from_surface_locked_pointer_gets_unlocked_notification)
+TEST_F(PointerConstraints, when_surface_is_unselected_locked_pointer_gets_unlocked_notification)
 {
     setup_locked_ptr_on(se_surface);
     EXPECT_CALL(*locked_ptr, locked()).Times(AnyNumber());
