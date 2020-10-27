@@ -213,8 +213,12 @@ struct LayerSurfaceLayout
     Sides<int> const margin;
 };
 
-// Given a LayerSurfaceLayout, emits the margin sides to use in a call to zwlr_layer_surface_v1_set_margin()
-#define SPLAT_MARGIN(layout) (layout).margin.top, (layout).margin.right, (layout).margin.bottom, (layout).margin.left
+static void invoke_zwlr_layer_surface_v1_set_margin(
+    zwlr_layer_surface_v1* layer_surface,
+    LayerSurfaceLayout::Sides<int> const& margin)
+{
+    zwlr_layer_surface_v1_set_margin(layer_surface, margin.top, margin.right, margin.bottom, margin.left);
+}
 
 std::ostream& operator<<(std::ostream& os, const LayerSurfaceLayout& layout)
 {
@@ -380,7 +384,7 @@ TEST_P(LayerSurfaceLayoutTest, is_initially_positioned_correctly_for_anchor)
     auto const request_size = layout.request_size();
 
     zwlr_layer_surface_v1_set_anchor(layer_surface, layout);
-    zwlr_layer_surface_v1_set_margin(layer_surface, SPLAT_MARGIN(layout));
+    invoke_zwlr_layer_surface_v1_set_margin(layer_surface, layout.margin);
     zwlr_layer_surface_v1_set_size(layer_surface, request_size.first, request_size.second);
     commit_and_wait_for_configure();
 
@@ -406,7 +410,7 @@ TEST_P(LayerSurfaceLayoutTest, is_positioned_correctly_when_explicit_size_does_n
     auto const request_size = layout.request_size();
 
     zwlr_layer_surface_v1_set_anchor(layer_surface, layout);
-    zwlr_layer_surface_v1_set_margin(layer_surface, SPLAT_MARGIN(layout));
+    invoke_zwlr_layer_surface_v1_set_margin(layer_surface, layout.margin);
     zwlr_layer_surface_v1_set_size(layer_surface, request_size.first, request_size.second);
     commit_and_wait_for_configure();
 
@@ -426,7 +430,7 @@ TEST_P(LayerSurfaceLayoutTest, is_positioned_correctly_when_layout_changed)
     commit_and_wait_for_configure();
 
     zwlr_layer_surface_v1_set_anchor(layer_surface, layout);
-    zwlr_layer_surface_v1_set_margin(layer_surface, SPLAT_MARGIN(layout));
+    invoke_zwlr_layer_surface_v1_set_margin(layer_surface, layout.margin);
     zwlr_layer_surface_v1_set_size(layer_surface, request_size.first, request_size.second);
     surface.attach_visible_buffer(result_rect.second.first, result_rect.second.second);
     wl_surface_commit(surface);
@@ -484,7 +488,7 @@ TEST_P(LayerSurfaceLayoutTest, maximized_xdg_toplevel_is_shrunk_for_exclusive_zo
     auto const request_size = layout.request_size();
     auto const rect = layout.placement_rect(output_rect());
     zwlr_layer_surface_v1_set_anchor(layer_surface, layout);
-    zwlr_layer_surface_v1_set_margin(layer_surface, SPLAT_MARGIN(layout));
+    invoke_zwlr_layer_surface_v1_set_margin(layer_surface, layout.margin);
     zwlr_layer_surface_v1_set_exclusive_zone(layer_surface, exclusive_zone);
     zwlr_layer_surface_v1_set_size(layer_surface, request_size.first, request_size.second);
     commit_and_wait_for_configure();
@@ -529,7 +533,7 @@ TEST_P(LayerSurfaceLayoutTest, simple_popup_positioned_correctly)
     auto const layer_surface_request_size = layout.request_size();
 
     zwlr_layer_surface_v1_set_anchor(layer_surface, layout);
-    zwlr_layer_surface_v1_set_margin(layer_surface, SPLAT_MARGIN(layout));
+    invoke_zwlr_layer_surface_v1_set_margin(layer_surface, layout.margin);
     zwlr_layer_surface_v1_set_size(layer_surface, layer_surface_request_size.first, layer_surface_request_size.second);
     commit_and_wait_for_configure();
     surface.attach_visible_buffer(layer_surface_rect.second.first, layer_surface_rect.second.second);
