@@ -332,7 +332,94 @@ public:
     wlcs::Client client;
 };
 
+struct SizeAndAnchors
+{
+    uint32_t width, height;
+    LayerSurfaceLayout anchors;
+};
+
+class LayerSurfaceErrorsTest:
+    public LayerSurfaceTest,
+    public testing::WithParamInterface<SizeAndAnchors>
+{
+};
+
 }
+
+TEST_F(LayerSurfaceTest, specifying_no_size_without_anchors_is_an_error)
+{
+    try
+    {
+        // Protocol specifies that a size of (0,0) is the default
+        commit_and_wait_for_configure();
+    }
+    catch (wlcs::ProtocolError const& err)
+    {
+        EXPECT_THAT(err.interface(), Eq(&zwlr_layer_surface_v1_interface));
+        // The protocol does not explicitly state what error to send here; INVALID_SIZE seems most appropriate
+        EXPECT_THAT(err.error_code(), Eq(ZWLR_LAYER_SURFACE_V1_ERROR_INVALID_SIZE));
+        return;
+    }
+    FAIL() << "Expected protocol error not raised";
+}
+
+TEST_F(LayerSurfaceTest, specifying_zero_size_without_anchors_is_an_error)
+{
+    try
+    {
+        zwlr_layer_surface_v1_set_size(layer_surface, 0, 0);
+        commit_and_wait_for_configure();
+    }
+    catch (wlcs::ProtocolError const& err)
+    {
+        EXPECT_THAT(err.interface(), Eq(&zwlr_layer_surface_v1_interface));
+        // The protocol does not explicitly state what error to send here; INVALID_SIZE seems most appropriate
+        EXPECT_THAT(err.error_code(), Eq(ZWLR_LAYER_SURFACE_V1_ERROR_INVALID_SIZE));
+        return;
+    }
+    FAIL() << "Expected protocol error not raised";
+}
+
+TEST_P(LayerSurfaceErrorsTest, specifying_zero_size_without_corresponding_anchors_is_an_error)
+{
+    try
+    {
+        zwlr_layer_surface_v1_set_size(layer_surface, GetParam().width, GetParam().height);
+        zwlr_layer_surface_v1_set_anchor(layer_surface, GetParam().anchors);
+        commit_and_wait_for_configure();
+    }
+    catch (wlcs::ProtocolError const& err)
+    {
+        EXPECT_THAT(err.interface(), Eq(&zwlr_layer_surface_v1_interface));
+        // The protocol does not explicitly state what error to send here; INVALID_SIZE seems most appropriate
+        EXPECT_THAT(err.error_code(), Eq(ZWLR_LAYER_SURFACE_V1_ERROR_INVALID_SIZE));
+        return;
+    }
+    FAIL() << "Expected protocol error not raised";
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    Anchors,
+    LayerSurfaceErrorsTest,
+    testing::Values(
+        SizeAndAnchors{0, 0, LayerSurfaceLayout{{false, false, false, false}}},
+        SizeAndAnchors{0, 0, LayerSurfaceLayout{{true, false, false, false}}},
+        SizeAndAnchors{0, 0, LayerSurfaceLayout{{false, true, false, false}}},
+        SizeAndAnchors{0, 0, LayerSurfaceLayout{{true, true, false, false}}},
+        SizeAndAnchors{0, 0, LayerSurfaceLayout{{false, false, true, false}}},
+        SizeAndAnchors{0, 0, LayerSurfaceLayout{{true, false, true, false}}},
+        SizeAndAnchors{0, 0, LayerSurfaceLayout{{false, true, true, false}}},
+        SizeAndAnchors{0, 0, LayerSurfaceLayout{{true, true, true, false}}},
+        SizeAndAnchors{0, 0, LayerSurfaceLayout{{false, false, false, true}}},
+        SizeAndAnchors{0, 0, LayerSurfaceLayout{{true, false, false, true}}},
+        SizeAndAnchors{0, 0, LayerSurfaceLayout{{false, true, false, true}}},
+        SizeAndAnchors{0, 0, LayerSurfaceLayout{{true, true, false, true}}},
+        SizeAndAnchors{0, 0, LayerSurfaceLayout{{false, true, true, true}}},
+        SizeAndAnchors{200, 0, LayerSurfaceLayout{{false, false, false, true}}},
+        SizeAndAnchors{200, 0, LayerSurfaceLayout{{false, false, true, false}}},
+        SizeAndAnchors{0, 200, LayerSurfaceLayout{{true, false, false, true}}},
+        SizeAndAnchors{0, 200, LayerSurfaceLayout{{false, true, true, false}}}
+    ));
 
 TEST_F(LayerSurfaceTest, can_open_layer_surface)
 {
