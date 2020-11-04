@@ -218,6 +218,63 @@ TEST_F(XdgToplevelStableTest, surface_can_be_moved_interactively)
     client.roundtrip();
 }
 
+// Tests https://github.com/MirServer/mir/issues/1792
+TEST_F(XdgToplevelStableTest, surface_moved_by_pointer_when_touch_down_after_pointer)
+{
+    int window_x = 100, window_y = 100;
+    int window_width = 420, window_height = 390;
+    int start_x = window_x + 5, start_y = window_y + 5;
+    int dx = 60, dy = -40;
+    int end_x = window_x + dx + 20, end_y = window_y + dy + 20;
+
+    wlcs::Client client{the_server()};
+    wlcs::Surface surface{client};
+    wlcs::XdgSurfaceStable xdg_shell_surface{client, surface};
+    wlcs::XdgToplevelStable toplevel{xdg_shell_surface};
+    surface.attach_buffer(window_width, window_height);
+    wl_surface_commit(surface);
+    client.roundtrip();
+
+    the_server().move_surface_to(surface, window_x, window_y);
+
+    auto pointer = the_server().create_pointer();
+    auto touch = the_server().create_touch();
+
+    bool button_down{false};
+    uint32_t last_serial{0};
+
+    client.add_pointer_button_notification([&](uint32_t serial, uint32_t, bool is_down) -> bool {
+            last_serial = serial;
+            button_down = is_down;
+            return true;
+        });
+
+    pointer.move_to(start_x, start_y);
+    pointer.left_button_down();
+    touch.down_at(start_x, start_y);
+
+    client.dispatch_until([&](){
+            return button_down;
+        });
+
+    xdg_toplevel_move(toplevel, client.seat(), last_serial);
+    client.roundtrip();
+    pointer.move_to(start_x + dx, start_x + dy);
+    pointer.left_button_up();
+    client.roundtrip();
+
+    pointer.move_to(end_x, end_y);
+    client.roundtrip();
+
+    EXPECT_THAT(client.window_under_cursor(), Eq(static_cast<struct wl_surface*>(surface)));
+    EXPECT_THAT(client.pointer_position(),
+                Eq(std::make_pair(
+                    wl_fixed_from_int(end_x - window_x - dx),
+                    wl_fixed_from_int(end_y - window_y - dy))));
+
+    client.roundtrip();
+}
+
 TEST_F(XdgToplevelStableTest, pointer_leaves_surface_during_interactive_move)
 {
     int window_x = 100, window_y = 100;
