@@ -164,6 +164,26 @@ TEST_F(PointerConstraints, when_surface_is_unselected_locked_pointer_gets_unlock
     client.roundtrip();
 }
 
+TEST_F(PointerConstraints, when_surface_is_reselected_persistent_locked_pointer_gets_notifications)
+{
+    setup_locked_ptr_on(nw_surface, ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_PERSISTENT);
+    EXPECT_CALL(*locked_ptr, locked()).Times(AnyNumber());
+    setup_sync();
+
+    for (auto i = 3; i-- != 0;)
+    {
+        {
+            EXPECT_CALL(*locked_ptr, unlocked()).Times(1);
+            // A new surface will be given focus
+            Surface a_new_surface{client.create_visible_surface(any_width, any_height)};
+            setup_sync();
+
+            EXPECT_CALL(*locked_ptr, locked()).Times(1);
+        }
+        client.roundtrip();
+    }
+}
+
 TEST_F(PointerConstraints, can_get_confined_pointer)
 {
     setup_confined_ptr_on(nw_surface);
