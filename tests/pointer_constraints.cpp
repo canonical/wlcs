@@ -153,13 +153,15 @@ TEST_F(PointerConstraints, when_surface_is_selected_locked_pointer_gets_locked_n
 
 TEST_F(PointerConstraints, when_surface_is_unselected_locked_pointer_gets_unlocked_notification)
 {
-    setup_locked_ptr_on(se_surface);
+    setup_locked_ptr_on(nw_surface);
     EXPECT_CALL(*locked_ptr, locked()).Times(AnyNumber());
     setup_sync();
 
     EXPECT_CALL(*locked_ptr, unlocked()).Times(1);
 
-    select_nw_window();
+    // A new surface will be given focus
+    Surface a_new_surface{client.create_visible_surface(any_width, any_height)};
+    client.roundtrip();
 }
 
 TEST_F(PointerConstraints, can_get_confined_pointer)
