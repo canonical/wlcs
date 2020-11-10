@@ -94,7 +94,7 @@ public:
     friend void zwp_locked_pointer_v1_destroy(ZwpLockedPointerV1 const&) = delete;
 
 private:
-    zwp_locked_pointer_v1* const relative_pointer;
+    zwp_locked_pointer_v1* const locked_pointer;
     uint32_t const version;
     static zwp_locked_pointer_v1_listener const listener;
 };
