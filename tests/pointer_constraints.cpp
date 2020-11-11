@@ -189,3 +189,77 @@ TEST_F(PointerConstraints, can_get_confined_pointer)
     setup_confined_ptr_on(nw_surface);
     EXPECT_THAT(*confined_ptr, NotNull());
 }
+
+TEST_F(PointerConstraints, confined_pointer_on_initially_focussed_surface_gets_confined_notification)
+{
+    setup_confined_ptr_on(nw_surface);
+
+    EXPECT_CALL(*confined_ptr, confined()).Times(1);
+
+    client.roundtrip();
+}
+
+TEST_F(PointerConstraints, confined_pointer_does_move)
+{
+    auto const initial_pointer_position = client.pointer_position();
+    setup_confined_ptr_on(nw_surface);
+    EXPECT_CALL(*confined_ptr, confined()).Times(AnyNumber());
+    setup_sync();
+
+    cursor.move_by(10, 10);
+    client.roundtrip();
+
+    EXPECT_THAT(client.pointer_position(), Ne(initial_pointer_position));
+}
+
+TEST_F(PointerConstraints, confined_pointer_on_initially_unfocussed_surface_gets_no_confined_notification)
+{
+    setup_confined_ptr_on(se_surface);
+
+    EXPECT_CALL(*confined_ptr, confined()).Times(0);
+
+    client.roundtrip();
+}
+
+TEST_F(PointerConstraints, when_surface_is_selected_confined_pointer_gets_confined_notification)
+{
+    setup_confined_ptr_on(se_surface);
+    setup_sync();
+
+    EXPECT_CALL(*confined_ptr, confined()).Times(1);
+
+    select_se_window();
+}
+
+TEST_F(PointerConstraints, when_surface_is_unselected_confined_pointer_gets_unconfined_notification)
+{
+    setup_confined_ptr_on(nw_surface);
+    EXPECT_CALL(*confined_ptr, confined()).Times(AnyNumber());
+    setup_sync();
+
+    EXPECT_CALL(*confined_ptr, unconfined()).Times(1);
+
+    // A new surface will be given focus
+    Surface a_new_surface{client.create_visible_surface(any_width, any_height)};
+    client.roundtrip();
+}
+
+TEST_F(PointerConstraints, when_surface_is_reselected_persistent_confined_pointer_gets_notifications)
+{
+    setup_confined_ptr_on(nw_surface, ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_PERSISTENT);
+    EXPECT_CALL(*confined_ptr, confined()).Times(AnyNumber());
+    setup_sync();
+
+    for (auto i = 3; i-- != 0;)
+    {
+        {
+            EXPECT_CALL(*confined_ptr, unconfined()).Times(1);
+            // A new surface will be given focus
+            Surface a_new_surface{client.create_visible_surface(any_width, any_height)};
+            setup_sync();
+
+            EXPECT_CALL(*confined_ptr, confined()).Times(1);
+        }
+        client.roundtrip();
+    }
+}
