@@ -212,6 +212,38 @@ TEST_F(PointerConstraints, confined_pointer_does_move)
     EXPECT_THAT(client.pointer_position(), Ne(initial_pointer_position));
 }
 
+TEST_F(PointerConstraints, confined_pointer_movement_is_constrained)
+{
+    auto const top = wl_fixed_from_int(0);
+    auto const left = wl_fixed_from_int(0);
+    auto const bottom = wl_fixed_from_int(any_height-1);
+    auto const right = wl_fixed_from_int(any_width-1);
+
+    setup_confined_ptr_on(nw_surface);
+    EXPECT_CALL(*confined_ptr, confined()).Times(AnyNumber());
+    setup_sync();
+
+    cursor.move_by(2*any_width, 2*any_height);
+    client.roundtrip();
+
+    EXPECT_THAT(client.pointer_position(), Eq(std::make_pair(bottom, right)));
+
+    cursor.move_by(-2*any_width, -2*any_height);
+    client.roundtrip();
+
+    EXPECT_THAT(client.pointer_position(), Eq(std::make_pair(top, left)));
+
+    cursor.move_by(-2*any_width, 2*any_height);
+    client.roundtrip();
+
+    EXPECT_THAT(client.pointer_position(), Eq(std::make_pair(top, right)));
+
+    cursor.move_by(2*any_width, -2*any_height);
+    client.roundtrip();
+
+    EXPECT_THAT(client.pointer_position(), Eq(std::make_pair(bottom, left)));
+}
+
 TEST_F(PointerConstraints, confined_pointer_on_initially_unfocussed_surface_gets_no_confined_notification)
 {
     setup_confined_ptr_on(se_surface);
