@@ -1,0 +1,71 @@
+name: Spread
+
+on:
+  push:
+    branches:
+    - master
+    - staging
+    - trying
+    - release/[0-9]+.[0-9]+
+    tags:
+    - v[0-9]+[0-9]+.[0-9]+
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  BuildAndTest:
+    strategy:
+      fail-fast: true
+      matrix:
+        spread-task:
+        - lxd:ubuntu-18.04:...:gcc
+        - lxd:ubuntu-20.04:...:gcc
+        - lxd:ubuntu-devel:...:gcc
+        - lxd:ubuntu-devel:...:clang
+        - lxd:fedora-31:...:gcc
+        - lxd:fedora-32:...:gcc
+        - lxd:alpine-3.11:...:gcc
+
+    runs-on: ubuntu-latest
+
+    env:
+      DEBFULLNAME: "Mir CI Bot"
+      DEBEMAIL: "mir-ci-bot@canonical.com"
+
+    steps:
+    - name: Set up LXD
+      run: |
+        set -euo pipefail 
+        sudo adduser $USER lxd
+        sudo apt-get remove --yes lxd
+        sudo snap install lxd
+        sg lxd -c 'lxd init --auto'
+
+    - name: Set up Spread
+      run: |
+        set -euo pipefail 
+        curl -s -O https://people.canonical.com/~chrishr/spread.snap
+        sudo snap run lxd init --auto
+        sudo snap install --dangerous spread.snap
+        sudo snap connect spread:lxd lxd:lxd
+
+    - name: Check out code
+      uses: actions/checkout@v2
+
+    - name: Run Spread task
+      env:
+        LXD_DIR: /var/snap/lxd/common/lxd
+      run: sg lxd -c 'snap run spread -v ${{ matrix.spread-task }}'
+
+  # Report result to Bors on `staging` and `trying` branches.
+  Bors:
+    if: ${{ always() && github.event_name == 'push' && contains('refs/heads/staging refs/heads/trying', github.ref) }}
+    needs:
+    - BuildAndTest
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Report failure
+      if: ${{ needs.BuildAndTest.result != 'success' }}
+      run: exit 1
