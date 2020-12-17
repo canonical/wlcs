@@ -69,21 +69,21 @@ wlcs::ZwpLockedPointerV1::ZwpLockedPointerV1(
     wl_pointer* pointer,
     wl_region* region,
     uint32_t lifetime) :
-    relative_pointer{zwp_pointer_constraints_v1_lock_pointer(manager, surface, pointer, region, lifetime)},
-    version{zwp_locked_pointer_v1_get_version(relative_pointer)}
+    locked_pointer{zwp_pointer_constraints_v1_lock_pointer(manager, surface, pointer, region, lifetime)},
+    version{zwp_locked_pointer_v1_get_version(locked_pointer)}
 {
-    zwp_locked_pointer_v1_set_user_data(relative_pointer, this);
-    zwp_locked_pointer_v1_add_listener(relative_pointer, &listener, this);
+    zwp_locked_pointer_v1_set_user_data(locked_pointer, this);
+    zwp_locked_pointer_v1_add_listener(locked_pointer, &listener, this);
 }
 
 wlcs::ZwpLockedPointerV1::~ZwpLockedPointerV1()
 {
-    zwp_locked_pointer_v1_destroy(relative_pointer);
+    zwp_locked_pointer_v1_destroy(locked_pointer);
 }
 
 wlcs::ZwpLockedPointerV1::operator zwp_locked_pointer_v1*() const
 {
-    return relative_pointer;
+    return locked_pointer;
 }
 
 zwp_locked_pointer_v1_listener const wlcs::ZwpLockedPointerV1::listener =

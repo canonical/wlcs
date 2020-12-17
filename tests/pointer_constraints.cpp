@@ -22,6 +22,8 @@
 
 #include <gmock/gmock.h>
 
+#include <memory>
+
 using namespace testing;
 using namespace wlcs;
 
@@ -46,6 +48,9 @@ struct PointerConstraints : StartedInProcessServer
 
     ZwpPointerConstraintsV1 pointer_constraints{client};
 
+    std::unique_ptr<ZwpLockedPointerV1> locked_ptr = nullptr;
+    std::unique_ptr<ZwpConfinedPointerV1> confined_ptr = nullptr;
+
     void SetUp() override
     {
         StartedInProcessServer::SetUp();
@@ -58,62 +63,235 @@ struct PointerConstraints : StartedInProcessServer
 
     void TearDown() override
     {
+        locked_ptr.reset();
+        confined_ptr.reset();
         client.roundtrip();
         StartedInProcessServer::TearDown();
+    }
+
+    void setup_locked_ptr_on(Surface& surface, zwp_pointer_constraints_v1_lifetime lifetime = ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_ONESHOT)
+    {
+        locked_ptr = std::make_unique<ZwpLockedPointerV1>(pointer_constraints, surface, pointer, nullptr, lifetime);
+    }
+
+    void setup_confined_ptr_on(Surface& surface, zwp_pointer_constraints_v1_lifetime lifetime = ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_ONESHOT)
+    {
+        confined_ptr = std::make_unique<ZwpConfinedPointerV1>(pointer_constraints, surface, pointer, nullptr, lifetime);
+    }
+
+    void setup_sync()
+    {
+        client.roundtrip();
+        using namespace testing;
+        if (locked_ptr) Mock::VerifyAndClearExpectations(locked_ptr.get());
+        if (confined_ptr) Mock::VerifyAndClearExpectations(confined_ptr.get());
+    }
+
+    void select_se_window()
+    {
+        cursor.move_to(se_middle_x, se_middle_y);
+        cursor.left_click();
+        client.roundtrip();
+    }
+
+    void select_nw_window()
+    {
+        cursor.move_to(nw_middle_x, nw_middle_y);
+        cursor.left_click();
+        client.roundtrip();
     }
 };
 }
 
 TEST_F(PointerConstraints, can_get_locked_pointer)
 {
-    ZwpLockedPointerV1 locked_ptr{pointer_constraints, nw_surface, pointer, nullptr, ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_ONESHOT};
-    EXPECT_THAT(locked_ptr, NotNull());
+    setup_locked_ptr_on(nw_surface);
+
+    EXPECT_THAT(*locked_ptr, NotNull());
 }
 
 TEST_F(PointerConstraints, locked_pointer_on_initially_focussed_surface_gets_locked_notification)
 {
-    ZwpLockedPointerV1 locked_ptr{pointer_constraints, nw_surface, pointer, nullptr, ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_ONESHOT};
+    setup_locked_ptr_on(nw_surface);
 
-    EXPECT_CALL(locked_ptr, locked()).Times(1);
+    EXPECT_CALL(*locked_ptr, locked()).Times(1);
 
     client.roundtrip();
 }
 
 TEST_F(PointerConstraints, locked_pointer_does_not_move)
 {
-    auto const initial_cursor_position = client.pointer_position();
-    ZwpLockedPointerV1 locked_ptr{pointer_constraints, nw_surface, pointer, nullptr, ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_ONESHOT};
-    EXPECT_CALL(locked_ptr, locked()).Times(AnyNumber());
-    client.roundtrip();
+    auto const initial_pointer_position = client.pointer_position();
+    setup_locked_ptr_on(nw_surface);
+    EXPECT_CALL(*locked_ptr, locked()).Times(AnyNumber());
+    setup_sync();
 
     cursor.move_by(10, 10);
     client.roundtrip();
 
-    EXPECT_THAT(client.pointer_position(), Eq(initial_cursor_position));
+    EXPECT_THAT(client.pointer_position(), Eq(initial_pointer_position));
 }
 
 TEST_F(PointerConstraints, locked_pointer_on_initially_unfocussed_surface_gets_no_locked_notification)
 {
-    ZwpLockedPointerV1 locked_ptr{pointer_constraints, se_surface, pointer, nullptr, ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_ONESHOT};
+    setup_locked_ptr_on(se_surface);
 
-    EXPECT_CALL(locked_ptr, locked()).Times(0);
+    EXPECT_CALL(*locked_ptr, locked()).Times(0);
 
     client.roundtrip();
 }
 
-TEST_F(PointerConstraints, when_cursor_clicks_on_surface_locked_pointer_gets_locked_notification)
+TEST_F(PointerConstraints, when_surface_is_selected_locked_pointer_gets_locked_notification)
 {
-    ZwpLockedPointerV1 locked_ptr{pointer_constraints, se_surface, pointer, nullptr, ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_ONESHOT};
+    setup_locked_ptr_on(se_surface);
+    setup_sync();
 
-    EXPECT_CALL(locked_ptr, locked()).Times(1);
+    EXPECT_CALL(*locked_ptr, locked()).Times(1);
 
-    cursor.move_to(se_middle_x, se_middle_y);
-    cursor.left_click();
+    select_se_window();
+}
+
+TEST_F(PointerConstraints, when_surface_is_unselected_locked_pointer_gets_unlocked_notification)
+{
+    setup_locked_ptr_on(nw_surface);
+    EXPECT_CALL(*locked_ptr, locked()).Times(AnyNumber());
+    setup_sync();
+
+    EXPECT_CALL(*locked_ptr, unlocked()).Times(1);
+
+    // A new surface will be given focus
+    Surface a_new_surface{client.create_visible_surface(any_width, any_height)};
     client.roundtrip();
+}
+
+TEST_F(PointerConstraints, when_surface_is_reselected_persistent_locked_pointer_gets_notifications)
+{
+    setup_locked_ptr_on(nw_surface, ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_PERSISTENT);
+    EXPECT_CALL(*locked_ptr, locked()).Times(AnyNumber());
+    setup_sync();
+
+    for (auto i = 3; i-- != 0;)
+    {
+        {
+            EXPECT_CALL(*locked_ptr, unlocked()).Times(1);
+            // A new surface will be given focus
+            Surface a_new_surface{client.create_visible_surface(any_width, any_height)};
+            setup_sync();
+
+            EXPECT_CALL(*locked_ptr, locked()).Times(1);
+        }
+        client.roundtrip();
+    }
 }
 
 TEST_F(PointerConstraints, can_get_confined_pointer)
 {
-    ZwpConfinedPointerV1 confined_ptr{pointer_constraints, nw_surface, pointer, nullptr, ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_ONESHOT};
-    EXPECT_THAT(confined_ptr, NotNull());
+    setup_confined_ptr_on(nw_surface);
+    EXPECT_THAT(*confined_ptr, NotNull());
+}
+
+TEST_F(PointerConstraints, confined_pointer_on_initially_focussed_surface_gets_confined_notification)
+{
+    setup_confined_ptr_on(nw_surface);
+
+    EXPECT_CALL(*confined_ptr, confined()).Times(1);
+
+    client.roundtrip();
+}
+
+TEST_F(PointerConstraints, confined_pointer_does_move)
+{
+    auto const initial_pointer_position = client.pointer_position();
+    setup_confined_ptr_on(nw_surface);
+    EXPECT_CALL(*confined_ptr, confined()).Times(AnyNumber());
+    setup_sync();
+
+    cursor.move_by(10, 10);
+    client.roundtrip();
+
+    EXPECT_THAT(client.pointer_position(), Ne(initial_pointer_position));
+}
+
+TEST_F(PointerConstraints, confined_pointer_movement_is_constrained)
+{
+    auto const top = wl_fixed_from_int(0);
+    auto const left = wl_fixed_from_int(0);
+    auto const bottom = wl_fixed_from_int(any_height-1);
+    auto const right = wl_fixed_from_int(any_width-1);
+
+    setup_confined_ptr_on(nw_surface);
+    EXPECT_CALL(*confined_ptr, confined()).Times(AnyNumber());
+    setup_sync();
+
+    cursor.move_by(2*any_width, 2*any_height);
+    client.roundtrip();
+
+    EXPECT_THAT(client.pointer_position(), Eq(std::make_pair(bottom, right)));
+
+    cursor.move_by(-2*any_width, -2*any_height);
+    client.roundtrip();
+
+    EXPECT_THAT(client.pointer_position(), Eq(std::make_pair(top, left)));
+
+    cursor.move_by(-2*any_width, 2*any_height);
+    client.roundtrip();
+
+    EXPECT_THAT(client.pointer_position(), Eq(std::make_pair(top, right)));
+
+    cursor.move_by(2*any_width, -2*any_height);
+    client.roundtrip();
+
+    EXPECT_THAT(client.pointer_position(), Eq(std::make_pair(bottom, left)));
+}
+
+TEST_F(PointerConstraints, confined_pointer_on_initially_unfocussed_surface_gets_no_confined_notification)
+{
+    setup_confined_ptr_on(se_surface);
+
+    EXPECT_CALL(*confined_ptr, confined()).Times(0);
+
+    client.roundtrip();
+}
+
+TEST_F(PointerConstraints, when_surface_is_selected_confined_pointer_gets_confined_notification)
+{
+    setup_confined_ptr_on(se_surface);
+    setup_sync();
+
+    EXPECT_CALL(*confined_ptr, confined()).Times(1);
+
+    select_se_window();
+}
+
+TEST_F(PointerConstraints, when_surface_is_unselected_confined_pointer_gets_unconfined_notification)
+{
+    setup_confined_ptr_on(nw_surface);
+    EXPECT_CALL(*confined_ptr, confined()).Times(AnyNumber());
+    setup_sync();
+
+    EXPECT_CALL(*confined_ptr, unconfined()).Times(1);
+
+    // A new surface will be given focus
+    Surface a_new_surface{client.create_visible_surface(any_width, any_height)};
+    client.roundtrip();
+}
+
+TEST_F(PointerConstraints, when_surface_is_reselected_persistent_confined_pointer_gets_notifications)
+{
+    setup_confined_ptr_on(nw_surface, ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_PERSISTENT);
+    EXPECT_CALL(*confined_ptr, confined()).Times(AnyNumber());
+    setup_sync();
+
+    for (auto i = 3; i-- != 0;)
+    {
+        {
+            EXPECT_CALL(*confined_ptr, unconfined()).Times(1);
+            // A new surface will be given focus
+            Surface a_new_surface{client.create_visible_surface(any_width, any_height)};
+            setup_sync();
+
+            EXPECT_CALL(*confined_ptr, confined()).Times(1);
+        }
+        client.roundtrip();
+    }
 }
