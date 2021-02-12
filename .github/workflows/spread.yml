@@ -24,7 +24,7 @@ jobs:
         - lxd:ubuntu-devel:...:clang
         - lxd:fedora-31:...:gcc
         - lxd:fedora-32:...:gcc
-        - lxd:alpine-3.11:...:gcc
+        - lxd:alpine-3.13:...:gcc
 
     runs-on: ubuntu-latest
 
