@@ -9,9 +9,9 @@ backends:
             - ubuntu-20.04
             - ubuntu-devel:
                 image: ubuntu-daily:devel/amd64
-            - fedora-31
             - fedora-32
-            - alpine-3.11
+            - fedora-33
+            - alpine-3.13
 
 suites:
     spread/build/:
