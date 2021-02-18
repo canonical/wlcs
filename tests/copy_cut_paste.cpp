@@ -44,11 +44,16 @@ struct CCnPSource : Client
     Surface const surface{create_visible_surface(any_width, any_height)};
     WlHandle<wl_data_device_manager> const manager{
         this->bind_if_supported<wl_data_device_manager>(AnyVersion)};
+    DataDevice data_device{wl_data_device_manager_get_data_device(manager,seat())};
     DataSource data{wl_data_device_manager_create_data_source(manager)};
 
     void offer(char const* mime_type)
     {
         wl_data_source_offer(data, mime_type);
+        // TODO: collect a serial from the "event that triggered" the selection
+        // (This works while Mir fails to validate the serial)
+        uint32_t const serial = 0;
+        wl_data_device_set_selection(data_device, data, serial);
         roundtrip();
     }
 };
