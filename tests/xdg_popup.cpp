@@ -115,6 +115,7 @@ struct PositionerParams
     auto with_gravity(xdg_positioner_gravity value) -> PositionerParams& { gravity_stable = {value}; return *this; }
     auto with_constraint_adjustment(xdg_positioner_constraint_adjustment value) -> PositionerParams& { constraint_adjustment_stable = {value}; return *this; }
     auto with_offset(int x, int y) -> PositionerParams& { offset = {{x, y}}; return *this; }
+    auto with_grab(bool enable = true) -> PositionerParams& { grab = enable; return *this; }
 
     std::pair<int, int> popup_size; // will default to XdgPopupStableTestBase::popup_(width|height) if nullopt
     std::pair<std::pair<int, int>, std::pair<int, int>> anchor_rect; // will default to the full window rect
@@ -122,6 +123,7 @@ struct PositionerParams
     std::experimental::optional<xdg_positioner_gravity> gravity_stable;
     std::experimental::optional<xdg_positioner_constraint_adjustment> constraint_adjustment_stable;
     std::experimental::optional<std::pair<int, int>> offset;
+    bool grab{false};
 };
 
 struct PositionerTestParams
@@ -195,8 +197,9 @@ public:
     }
 
     virtual auto popup_position() const -> std::experimental::optional<std::pair<int, int>> = 0;
-
     virtual void dispatch_until_popup_configure() = 0;
+
+    MOCK_METHOD0(popup_done, void());
 
     wlcs::Server& the_server;
 
@@ -260,11 +263,19 @@ public:
         if (param.offset)
             xdg_positioner_set_offset(positioner, param.offset.value().first, param.offset.value().second);
 
-
         popup_xdg_surface.emplace(client, popup_surface.value());
 
         popup.emplace(popup_xdg_surface.value(), &xdg_shell_surface, positioner);
+        if (param.grab)
+        {
+            if (!client.latest_serial())
+            {
+                BOOST_THROW_EXCEPTION(std::runtime_error("client does not have a serial"));
+            }
+            xdg_popup_grab(popup.value().popup, client.seat(), client.latest_serial().value());
+        }
 
+        popup.value().add_close_notification([this](){ popup_done(); });
         popup_xdg_surface.value().add_configure_notification([&](uint32_t serial)
             {
                 xdg_surface_ack_configure(popup_xdg_surface.value(), serial);
@@ -359,7 +370,16 @@ public:
 
         popup_xdg_surface.emplace(client, popup_surface.value());
         popup.emplace(popup_xdg_surface.value(), xdg_shell_surface, positioner);
+        if (param.grab)
+        {
+            if (!client.latest_serial())
+            {
+                BOOST_THROW_EXCEPTION(std::runtime_error("client does not have a serial"));
+            }
+            zxdg_popup_v6_grab(popup.value().popup, client.seat(), client.latest_serial().value());
+        }
 
+        popup.value().add_close_notification([this](){ popup_done(); });
         popup_xdg_surface.value().add_configure_notification([&](uint32_t serial)
             {
                 zxdg_surface_v6_ack_configure(popup_xdg_surface.value(), serial);
@@ -443,6 +463,14 @@ public:
         popup_xdg_surface.emplace(client, popup_surface.value());
         popup.emplace(popup_xdg_surface.value(), std::experimental::nullopt, positioner);
         zwlr_layer_surface_v1_get_popup(layer_surface, popup.value());
+        if (param.grab)
+        {
+            if (!client.latest_serial())
+            {
+                BOOST_THROW_EXCEPTION(std::runtime_error("client does not have a serial"));
+            }
+            xdg_popup_grab(popup.value().popup, client.seat(), client.latest_serial().value());
+        }
 
         popup_xdg_surface.value().add_configure_notification([&](uint32_t serial)
             {
@@ -450,6 +478,7 @@ public:
                 popup_surface_configure_count++;
             });
 
+        popup.value().add_close_notification([this](){ popup_done(); });
         popup.value().add_configure_notification([this](int32_t x, int32_t y, int32_t width, int32_t height)
             {
                 state = State{x, y, width, height};
