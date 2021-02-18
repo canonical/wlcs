@@ -829,6 +829,11 @@ public:
             BOOST_THROW_EXCEPTION(std::runtime_error("More than one touches"));
     };
 
+    std::experimental::optional<uint32_t> latest_serial() const
+    {
+        return latest_serial_;
+    }
+
     bool pointer_events_pending() const
     {
         return !pending_buttons.empty() || pending_pointer_location;
@@ -1053,12 +1058,13 @@ private:
     static void pointer_enter(
         void* ctx,
         wl_pointer* /*pointer*/,
-        uint32_t /*serial*/,
+        uint32_t serial,
         wl_surface* surface,
         wl_fixed_t x,
         wl_fixed_t y)
     {
         auto me = static_cast<Impl*>(ctx);
+        me->latest_serial_ = serial;
 
         if (me->current_pointer_location && !me->pending_pointer_leave)
             FAIL()
@@ -1074,10 +1080,11 @@ private:
     static void pointer_leave(
         void* ctx,
         wl_pointer* /*pointer*/,
-        uint32_t /*serial*/,
+        uint32_t serial,
         wl_surface* surface)
     {
         auto me = static_cast<Impl*>(ctx);
+        me->latest_serial_ = serial;
 
         if (!me->current_pointer_location)
             FAIL() << "Got wl_pointer.leave when the pointer was not on a surface";
@@ -1118,6 +1125,7 @@ private:
         uint32_t state)
     {
         auto me = static_cast<Impl*>(ctx);
+        me->latest_serial_ = serial;
 
         me->pending_buttons[button] = std::make_pair(serial, state == WL_POINTER_BUTTON_STATE_PRESSED);
     }
@@ -1246,7 +1254,7 @@ private:
     static void touch_down(
         void* ctx,
         wl_touch* /*wl_touch*/,
-        uint32_t /*serial*/,
+        uint32_t serial,
         uint32_t /*time*/,
         wl_surface* surface,
         int32_t id,
@@ -1254,6 +1262,7 @@ private:
         wl_fixed_t y)
     {
         auto me = static_cast<Impl*>(ctx);
+        me->latest_serial_ = serial;
 
         auto touch = me->current_touches.find(id);
         if (touch != me->current_touches.end())
@@ -1268,11 +1277,12 @@ private:
     static void touch_up(
         void* ctx,
         wl_touch* /*wl_touch*/,
-        uint32_t /*serial*/,
+        uint32_t serial,
         uint32_t /*time*/,
         int32_t id)
     {
         auto me = static_cast<Impl*>(ctx);
+        me->latest_serial_ = serial;
 
         auto touch = me->current_touches.find(id);
         if (touch == me->current_touches.end())
@@ -1477,6 +1487,7 @@ private:
     std::map<int, SurfaceLocation> current_touches; ///< Touches that have gotten a frame event
     std::map<int, SurfaceLocation> pending_touches; ///< Touches that have gotten down or motion events without a frame
     std::set<int> pending_up_touches; ///< Touches that have gotten up events without a frame
+    std::experimental::optional<uint32_t> latest_serial_;
 
     std::vector<PointerEnterNotifier> enter_notifiers;
     std::vector<PointerLeaveNotifier> leave_notifiers;
@@ -1606,6 +1617,11 @@ std::pair<wl_fixed_t, wl_fixed_t> wlcs::Client::pointer_position() const
 std::pair<wl_fixed_t, wl_fixed_t> wlcs::Client::touch_position() const
 {
     return impl->touch_position();
+}
+
+std::experimental::optional<uint32_t> wlcs::Client::latest_serial() const
+{
+    return impl->latest_serial();
 }
 
 void wlcs::Client::add_pointer_enter_notification(PointerEnterNotifier const& on_enter)
