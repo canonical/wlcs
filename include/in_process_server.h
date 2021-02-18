@@ -263,6 +263,7 @@ public:
     wl_surface* touched_window() const;
     std::pair<wl_fixed_t, wl_fixed_t> pointer_position() const;
     std::pair<wl_fixed_t, wl_fixed_t> touch_position() const;
+    std::experimental::optional<uint32_t> latest_serial() const;
 
     using PointerEnterNotifier =
         std::function<bool(wl_surface*, wl_fixed_t x, wl_fixed_t y)>;
