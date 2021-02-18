@@ -181,7 +181,7 @@ public:
         setup_popup(params);
         wl_surface_commit(popup_surface.value());
         dispatch_until_popup_configure();
-        popup_surface.value().attach_buffer(popup_width, popup_height);
+        popup_surface.value().attach_buffer(params.popup_size.first, params.popup_size.second);
         bool surface_rendered{false};
         popup_surface.value().add_frame_callback([&surface_rendered](auto) { surface_rendered = true; });
         wl_surface_commit(popup_surface.value());
