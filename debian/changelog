@@ -1,3 +1,10 @@
+wlcs (1.2.1-0ubuntu0) groovy; urgency=medium
+
+  * New upstream release. Notable changes:
+    + Fix cut & paste test
+
+ -- Alan Griffiths <alan@octopull.co.uk>  Fri, 19 Feb 2021 11:11:11 +0000
+
 wlcs (1.2.0-0ubuntu0) groovy; urgency=medium
 
   * New upstream release. Notable changes:
