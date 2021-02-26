@@ -1069,18 +1069,19 @@ private:
     static void keyboard_enter(
         void* ctx,
         wl_keyboard*,
-        uint32_t /*serial*/,
+        uint32_t serial,
         wl_surface *surface,
         wl_array* /*keys*/)
     {
         auto me = static_cast<Impl*>(ctx);
         me->keyboard_focused_surface = surface;
+        me->latest_serial_ = serial;
     }
 
     static void keyboard_leave(
         void *ctx,
         wl_keyboard*,
-        uint32_t /*serial*/,
+        uint32_t serial,
         wl_surface* surface)
     {
         auto me = static_cast<Impl*>(ctx);
@@ -1088,10 +1089,19 @@ private:
         {
             me->keyboard_focused_surface = nullptr;
         }
+        me->latest_serial_ = serial;
     }
 
-    static void keyboard_key(void*, wl_keyboard*, uint32_t, uint32_t, uint32_t, uint32_t)
+    static void keyboard_key(
+        void* ctx,
+        wl_keyboard*,
+        uint32_t serial,
+        uint32_t /*time*/,
+        uint32_t /*key*/,
+        uint32_t /*state*/)
     {
+        auto me = static_cast<Impl*>(ctx);
+        me->latest_serial_ = serial;
     }
 
     static void keyboard_modifiers(void*, wl_keyboard*, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)
