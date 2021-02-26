@@ -657,6 +657,7 @@ public:
         if (subcompositor) wl_subcompositor_destroy(subcompositor);
         if (registry) wl_registry_destroy(registry);
         if (seat) wl_seat_destroy(seat);
+        if (keyboard) wl_keyboard_destroy(keyboard);
         if (pointer) wl_pointer_destroy(pointer);
         if (touch) wl_touch_destroy(touch);
         if (xdg_shell_v6) zxdg_shell_v6_destroy(xdg_shell_v6);
@@ -783,6 +784,11 @@ public:
     }
 
     wl_pointer* the_pointer() const { return pointer; }
+
+    wl_surface* keyboard_focused_window() const
+    {
+        return keyboard_focused_surface;
+    }
 
     wl_surface* window_under_cursor() const
     {
@@ -1055,6 +1061,56 @@ public:
     std::vector<std::unique_ptr<Output>> outputs;
 
 private:
+    static void keyboard_keymap(void*, wl_keyboard*, uint32_t, int32_t fd, uint32_t)
+    {
+        close(fd);
+    }
+
+    static void keyboard_enter(
+        void* ctx,
+        wl_keyboard*,
+        uint32_t /*serial*/,
+        wl_surface *surface,
+        wl_array* /*keys*/)
+    {
+        auto me = static_cast<Impl*>(ctx);
+        me->keyboard_focused_surface = surface;
+    }
+
+    static void keyboard_leave(
+        void *ctx,
+        wl_keyboard*,
+        uint32_t /*serial*/,
+        wl_surface* surface)
+    {
+        auto me = static_cast<Impl*>(ctx);
+        if (me->keyboard_focused_surface == surface)
+        {
+            me->keyboard_focused_surface = nullptr;
+        }
+    }
+
+    static void keyboard_key(void*, wl_keyboard*, uint32_t, uint32_t, uint32_t, uint32_t)
+    {
+    }
+
+    static void keyboard_modifiers(void*, wl_keyboard*, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)
+    {
+    }
+
+    static void keyboard_repeat_info(void*, wl_keyboard*, int32_t, int32_t)
+    {
+    }
+
+    static constexpr wl_keyboard_listener keyboard_listener = {
+        keyboard_keymap,
+        keyboard_enter,
+        keyboard_leave,
+        keyboard_key,
+        keyboard_modifiers,
+        keyboard_repeat_info,
+    };
+
     static void pointer_enter(
         void* ctx,
         wl_pointer* /*pointer*/,
@@ -1346,6 +1402,12 @@ private:
     {
         auto me = static_cast<Impl*>(ctx);
 
+        if (capabilities & WL_SEAT_CAPABILITY_KEYBOARD)
+        {
+            me->keyboard = wl_seat_get_keyboard(seat);
+            wl_keyboard_add_listener(me->keyboard, &keyboard_listener, me);
+        }
+
         if (capabilities & WL_SEAT_CAPABILITY_POINTER)
         {
             me->pointer = wl_seat_get_pointer(seat);
@@ -1461,6 +1523,7 @@ private:
     struct wl_shm* shm = nullptr;
     struct wl_shell* shell = nullptr;
     struct wl_seat* seat = nullptr;
+    struct wl_keyboard* keyboard = nullptr;
     struct wl_pointer* pointer = nullptr;
     struct wl_touch* touch = nullptr;
     struct zxdg_shell_v6* xdg_shell_v6 = nullptr;
@@ -1480,6 +1543,7 @@ private:
         wl_surface* surface;
         std::pair<wl_fixed_t, wl_fixed_t> coordinates;
     };
+    wl_surface* keyboard_focused_surface = nullptr;
     std::experimental::optional<SurfaceLocation> current_pointer_location;
     std::experimental::optional<SurfaceLocation> pending_pointer_location;
     bool pending_pointer_leave{false};
@@ -1495,6 +1559,7 @@ private:
     std::vector<PointerButtonNotifier> button_notifiers;
 };
 
+constexpr wl_keyboard_listener wlcs::Client::Impl::keyboard_listener;
 constexpr wl_pointer_listener wlcs::Client::Impl::pointer_listener;
 constexpr wl_touch_listener wlcs::Client::Impl::touch_listener;
 constexpr wl_seat_listener wlcs::Client::Impl::seat_listener;
@@ -1597,6 +1662,11 @@ zxdg_shell_v6* wlcs::Client::xdg_shell_v6() const
 xdg_wm_base* wlcs::Client::xdg_shell_stable() const
 {
     return impl->the_xdg_shell_stable();
+}
+
+wl_surface* wlcs::Client::keyboard_focused_window() const
+{
+    return impl->keyboard_focused_window();
 }
 
 wl_surface* wlcs::Client::window_under_cursor() const
