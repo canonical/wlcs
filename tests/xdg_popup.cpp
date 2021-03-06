@@ -737,29 +737,6 @@ TEST_P(XdgPopupTest, grabbed_popup_gets_done_event_when_new_toplevel_created)
     manager->client.create_visible_surface(window_width, window_height);
 }
 
-TEST_P(XdgPopupTest, non_grabbed_popup_gets_done_event_when_new_toplevel_created)
-{
-    auto const& param = GetParam();
-    auto manager = param.build(this);
-    auto pointer = the_server().create_pointer();
-
-    // This is needed to get a serial, which will be used later on
-    pointer.move_to(manager->window_x + 2, manager->window_y + 2);
-    pointer.left_click();
-    manager->client.roundtrip();
-
-    auto positioner = PositionerParams{}
-        .with_size(30, 30)
-        .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
-        .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
-    manager->map_popup(positioner);
-    manager->client.roundtrip();
-
-    EXPECT_CALL(*manager, popup_done());
-
-    manager->client.create_visible_surface(window_width, window_height);
-}
-
 TEST_P(XdgPopupTest, grabbed_popup_does_not_get_keyboard_focus)
 {
     auto const& param = GetParam();
