@@ -75,3 +75,19 @@ TEST_F(RelativePointer, relative_pointer_gets_movement)
 
     cursor.move_by(move_x, move_y);
 }
+
+// #1959
+TEST_F(RelativePointer, default_pointer_still_gets_movement)
+{
+    auto const move_x = any_width/6;
+    auto const move_y = any_height/6;
+    EXPECT_CALL(pointer, relative_motion(_, _, _, _, _, _)).Times(AnyNumber());
+
+    bool moved = false;
+    a_client.add_pointer_motion_notification([&](auto...) { moved = true; return true; });
+
+    cursor.move_by(move_x, move_y);
+
+    a_client.roundtrip();
+    EXPECT_THAT(moved, IsTrue());
+}

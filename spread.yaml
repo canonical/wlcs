@@ -5,7 +5,6 @@ kill-timeout: 50m
 backends:
     lxd:
         systems:
-            - ubuntu-18.04
             - ubuntu-20.04
             - ubuntu-devel:
                 image: ubuntu-daily:devel/amd64

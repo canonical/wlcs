@@ -18,7 +18,6 @@ jobs:
       fail-fast: true
       matrix:
         spread-task:
-        - lxd:ubuntu-18.04:...:gcc
         - lxd:ubuntu-20.04:...:gcc
         - lxd:ubuntu-devel:...:gcc
         - lxd:ubuntu-devel:...:clang
