@@ -75,3 +75,90 @@ TEST_F(RelativePointer, relative_pointer_gets_movement)
 
     cursor.move_by(move_x, move_y);
 }
+
+namespace
+{
+struct PointerListener
+{
+    PointerListener(wl_pointer* pointer)
+    {
+        wl_pointer_add_listener(pointer, &thunks, this);
+    }
+
+    MOCK_METHOD5(enter, void(
+        struct wl_pointer *wl_pointer,
+        uint32_t serial,
+        struct wl_surface *surface,
+        wl_fixed_t surface_x,
+        wl_fixed_t surface_y));
+
+    MOCK_METHOD3(leave, void(
+        struct wl_pointer *wl_pointer,
+        uint32_t serial,
+        struct wl_surface *surface));
+
+    MOCK_METHOD4(motion, void(
+        struct wl_pointer *wl_pointer,
+        uint32_t time,
+        wl_fixed_t surface_x,
+        wl_fixed_t surface_y));
+
+    MOCK_METHOD5(button, void(
+        struct wl_pointer *wl_pointer,
+        uint32_t serial,
+        uint32_t time,
+        uint32_t button,
+        uint32_t state));
+
+    MOCK_METHOD4(axis, void(
+        struct wl_pointer *wl_pointer,
+        uint32_t time,
+        uint32_t axis,
+        wl_fixed_t value));
+
+    MOCK_METHOD1(frame, void(struct wl_pointer *wl_pointer));
+
+    MOCK_METHOD2(axis_source, void(struct wl_pointer *wl_pointer,
+                        uint32_t axis_source));
+
+    MOCK_METHOD3(axis_stop, void(struct wl_pointer *wl_pointer,
+                      uint32_t time,
+                      uint32_t axis));
+
+    MOCK_METHOD3(axis_discrete, void(struct wl_pointer *wl_pointer,
+                          uint32_t axis,
+                          int32_t discrete));
+
+    constexpr static wl_pointer_listener const thunks = {
+        /*.enter = */       [](void* data, auto... args) { return static_cast<PointerListener*>(data)->enter(args...); },
+        /*.leave = */       [](void* data, auto... args) { return static_cast<PointerListener*>(data)->leave(args...); },
+        /*.motion = */      [](void* data, auto... args) { return static_cast<PointerListener*>(data)->motion(args...); },
+        /*.button = */      [](void* data, auto... args) { return static_cast<PointerListener*>(data)->button(args...); },
+        /*.axis = */        [](void* data, auto... args) { return static_cast<PointerListener*>(data)->axis(args...); },
+        /*.frame = */       [](void* data, auto... args) { return static_cast<PointerListener*>(data)->frame(args...); },
+        /*.axis_source = */ [](void* data, auto... args) { return static_cast<PointerListener*>(data)->axis_source(args...); },
+        /*.axis_stop = */   [](void* data, auto... args) { return static_cast<PointerListener*>(data)->axis_stop(args...); },
+        /*.axis_discrete = */[](void* data, auto... args) { return static_cast<PointerListener*>(data)->axis_discrete(args...); }
+    };
+};
+
+constexpr wl_pointer_listener const PointerListener::thunks;
+}
+
+TEST_F(RelativePointer, default_pointer_gets_movement)
+{
+    auto const move_x = any_width/6;
+    auto const move_y = any_height/6;
+
+    PointerListener pointer_listener(a_client.the_pointer());
+
+    EXPECT_CALL(pointer, relative_motion(_, _,
+                                         wl_fixed_from_int(move_x), wl_fixed_from_int(move_y),
+                                         wl_fixed_from_int(move_x), wl_fixed_from_int(move_y))).Times(1);
+
+    EXPECT_CALL(pointer_listener, motion(_, _, _, _)).Times(1);
+
+    cursor.move_by(move_x, move_y);
+    a_client.roundtrip();
+    a_client.roundtrip();
+}
