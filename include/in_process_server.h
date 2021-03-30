@@ -170,9 +170,6 @@ public:
     void attach_visible_buffer(int width, int height);
     void run_on_destruction(std::function<void()> callback);
 
-    bool has_focus() const;
-    std::pair<int, int> pointer_position() const;
-
     Client& owner() const;
 
 private:
@@ -259,10 +256,12 @@ public:
     wl_pointer* the_pointer() const;
     zxdg_shell_v6* xdg_shell_v6() const;
     xdg_wm_base* xdg_shell_stable() const;
+    wl_surface* keyboard_focused_window() const;
     wl_surface* window_under_cursor() const;
     wl_surface* touched_window() const;
     std::pair<wl_fixed_t, wl_fixed_t> pointer_position() const;
     std::pair<wl_fixed_t, wl_fixed_t> touch_position() const;
+    std::experimental::optional<uint32_t> latest_serial() const;
 
     using PointerEnterNotifier =
         std::function<bool(wl_surface*, wl_fixed_t x, wl_fixed_t y)>;
