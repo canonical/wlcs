@@ -539,12 +539,14 @@ TEST_P(LayerSurfaceLayoutTest, is_positioned_to_accommodate_other_surfaces_exclu
 {
     auto const layout = GetParam();
     auto const request_size = layout.request_size();
+    auto const initial_rect = layout.placement_rect(output_rect());
     auto const exclusive = 12;
 
     zwlr_layer_surface_v1_set_anchor(layer_surface, layout);
     invoke_zwlr_layer_surface_v1_set_margin(layer_surface, layout.margin);
     zwlr_layer_surface_v1_set_size(layer_surface, request_size.first, request_size.second);
     commit_and_wait_for_configure();
+    surface.attach_visible_buffer(initial_rect.second.first, initial_rect.second.second);
 
     // Create layer surfaces with exclusive zones on the top and left of the output to push our surface out of the way
 
