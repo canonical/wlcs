@@ -535,6 +535,38 @@ TEST_P(LayerSurfaceLayoutTest, is_positioned_correctly_when_layout_changed)
     expect_surface_is_at_position(result_rect.first);
 }
 
+TEST_P(LayerSurfaceLayoutTest, is_positioned_correctly_after_multiple_changes)
+{
+    auto const layout = GetParam();
+    auto const output = output_rect();
+    auto const result_rect = layout.placement_rect(output);
+    auto const request_size = layout.request_size();
+
+    zwlr_layer_surface_v1_set_size(layer_surface, default_width, default_height);
+    commit_and_wait_for_configure();
+
+    zwlr_layer_surface_v1_set_anchor(layer_surface, layout);
+    invoke_zwlr_layer_surface_v1_set_margin(layer_surface, layout.margin);
+    zwlr_layer_surface_v1_set_size(layer_surface, request_size.first, request_size.second);
+    surface.attach_visible_buffer(result_rect.second.first, result_rect.second.second);
+    wl_surface_commit(surface);
+    client.roundtrip(); // Sometimes we get a configure, sometimes we don't
+
+    zwlr_layer_surface_v1_set_anchor(layer_surface, 0);
+    zwlr_layer_surface_v1_set_margin(layer_surface, 0, 0, 0, 0);
+    zwlr_layer_surface_v1_set_size(layer_surface, default_width, default_height);
+    surface.attach_visible_buffer(default_width, default_height);
+    wl_surface_commit(surface);
+    client.roundtrip(); // Sometimes we get a configure, sometimes we don't
+
+    EXPECT_THAT(configured_size().first, Eq(default_width));
+    EXPECT_THAT(configured_size().second, Eq(default_height));
+    auto expected_top_left = output.first;
+    expected_top_left.first += (output.second.first - default_width) / 2;
+    expected_top_left.second += (output.second.second - default_height) / 2;
+    expect_surface_is_at_position(expected_top_left);
+}
+
 TEST_P(LayerSurfaceLayoutTest, is_positioned_to_accommodate_other_surfaces_exclusive_zone)
 {
     auto const layout = GetParam();
