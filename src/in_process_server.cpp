@@ -657,6 +657,7 @@ public:
         if (subcompositor) wl_subcompositor_destroy(subcompositor);
         if (registry) wl_registry_destroy(registry);
         if (seat) wl_seat_destroy(seat);
+        if (keyboard) wl_keyboard_destroy(keyboard);
         if (pointer) wl_pointer_destroy(pointer);
         if (touch) wl_touch_destroy(touch);
         if (xdg_shell_v6) zxdg_shell_v6_destroy(xdg_shell_v6);
@@ -714,7 +715,7 @@ public:
         Surface surface{client};
 
         wl_shell_surface * shell_surface = wl_shell_get_shell_surface(shell, surface);
-        run_on_destruction([shell_surface]()
+        surface.run_on_destruction([shell_surface]()
             {
                 wl_shell_surface_destroy(shell_surface);
             });
@@ -734,7 +735,7 @@ public:
         auto xdg_surface = std::make_shared<XdgSurfaceV6>(client, surface);
         auto xdg_toplevel = std::make_shared<XdgToplevelV6>(*xdg_surface);
 
-        run_on_destruction([xdg_surface, xdg_toplevel]() mutable
+        surface.run_on_destruction([xdg_surface, xdg_toplevel]() mutable
             {
                 xdg_surface.reset();
                 xdg_toplevel.reset();
@@ -754,7 +755,7 @@ public:
         auto xdg_surface = std::make_shared<XdgSurfaceStable>(client, surface);
         auto xdg_toplevel = std::make_shared<XdgToplevelStable>(*xdg_surface);
 
-        run_on_destruction([xdg_surface, xdg_toplevel]() mutable
+        surface.run_on_destruction([xdg_surface, xdg_toplevel]() mutable
             {
                 xdg_surface.reset();
                 xdg_toplevel.reset();
@@ -780,6 +781,13 @@ public:
     xdg_wm_base* the_xdg_shell_stable() const
     {
         return xdg_shell_stable;
+    }
+
+    wl_pointer* the_pointer() const { return pointer; }
+
+    wl_surface* keyboard_focused_window() const
+    {
+        return keyboard_focused_surface;
     }
 
     wl_surface* window_under_cursor() const
@@ -826,6 +834,11 @@ public:
         else
             BOOST_THROW_EXCEPTION(std::runtime_error("More than one touches"));
     };
+
+    std::experimental::optional<uint32_t> latest_serial() const
+    {
+        return latest_serial_;
+    }
 
     bool pointer_events_pending() const
     {
@@ -1048,15 +1061,76 @@ public:
     std::vector<std::unique_ptr<Output>> outputs;
 
 private:
+    static void keyboard_keymap(void*, wl_keyboard*, uint32_t, int32_t fd, uint32_t)
+    {
+        close(fd);
+    }
+
+    static void keyboard_enter(
+        void* ctx,
+        wl_keyboard*,
+        uint32_t serial,
+        wl_surface *surface,
+        wl_array* /*keys*/)
+    {
+        auto me = static_cast<Impl*>(ctx);
+        me->keyboard_focused_surface = surface;
+        me->latest_serial_ = serial;
+    }
+
+    static void keyboard_leave(
+        void *ctx,
+        wl_keyboard*,
+        uint32_t serial,
+        wl_surface* surface)
+    {
+        auto me = static_cast<Impl*>(ctx);
+        if (me->keyboard_focused_surface == surface)
+        {
+            me->keyboard_focused_surface = nullptr;
+        }
+        me->latest_serial_ = serial;
+    }
+
+    static void keyboard_key(
+        void* ctx,
+        wl_keyboard*,
+        uint32_t serial,
+        uint32_t /*time*/,
+        uint32_t /*key*/,
+        uint32_t /*state*/)
+    {
+        auto me = static_cast<Impl*>(ctx);
+        me->latest_serial_ = serial;
+    }
+
+    static void keyboard_modifiers(void*, wl_keyboard*, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)
+    {
+    }
+
+    static void keyboard_repeat_info(void*, wl_keyboard*, int32_t, int32_t)
+    {
+    }
+
+    static constexpr wl_keyboard_listener keyboard_listener = {
+        keyboard_keymap,
+        keyboard_enter,
+        keyboard_leave,
+        keyboard_key,
+        keyboard_modifiers,
+        keyboard_repeat_info,
+    };
+
     static void pointer_enter(
         void* ctx,
         wl_pointer* /*pointer*/,
-        uint32_t /*serial*/,
+        uint32_t serial,
         wl_surface* surface,
         wl_fixed_t x,
         wl_fixed_t y)
     {
         auto me = static_cast<Impl*>(ctx);
+        me->latest_serial_ = serial;
 
         if (me->current_pointer_location && !me->pending_pointer_leave)
             FAIL()
@@ -1072,10 +1146,11 @@ private:
     static void pointer_leave(
         void* ctx,
         wl_pointer* /*pointer*/,
-        uint32_t /*serial*/,
+        uint32_t serial,
         wl_surface* surface)
     {
         auto me = static_cast<Impl*>(ctx);
+        me->latest_serial_ = serial;
 
         if (!me->current_pointer_location)
             FAIL() << "Got wl_pointer.leave when the pointer was not on a surface";
@@ -1116,6 +1191,7 @@ private:
         uint32_t state)
     {
         auto me = static_cast<Impl*>(ctx);
+        me->latest_serial_ = serial;
 
         me->pending_buttons[button] = std::make_pair(serial, state == WL_POINTER_BUTTON_STATE_PRESSED);
     }
@@ -1244,7 +1320,7 @@ private:
     static void touch_down(
         void* ctx,
         wl_touch* /*wl_touch*/,
-        uint32_t /*serial*/,
+        uint32_t serial,
         uint32_t /*time*/,
         wl_surface* surface,
         int32_t id,
@@ -1252,6 +1328,7 @@ private:
         wl_fixed_t y)
     {
         auto me = static_cast<Impl*>(ctx);
+        me->latest_serial_ = serial;
 
         auto touch = me->current_touches.find(id);
         if (touch != me->current_touches.end())
@@ -1266,11 +1343,12 @@ private:
     static void touch_up(
         void* ctx,
         wl_touch* /*wl_touch*/,
-        uint32_t /*serial*/,
+        uint32_t serial,
         uint32_t /*time*/,
         int32_t id)
     {
         auto me = static_cast<Impl*>(ctx);
+        me->latest_serial_ = serial;
 
         auto touch = me->current_touches.find(id);
         if (touch == me->current_touches.end())
@@ -1333,6 +1411,12 @@ private:
         uint32_t capabilities)
     {
         auto me = static_cast<Impl*>(ctx);
+
+        if (capabilities & WL_SEAT_CAPABILITY_KEYBOARD)
+        {
+            me->keyboard = wl_seat_get_keyboard(seat);
+            wl_keyboard_add_listener(me->keyboard, &keyboard_listener, me);
+        }
 
         if (capabilities & WL_SEAT_CAPABILITY_POINTER)
         {
@@ -1449,6 +1533,7 @@ private:
     struct wl_shm* shm = nullptr;
     struct wl_shell* shell = nullptr;
     struct wl_seat* seat = nullptr;
+    struct wl_keyboard* keyboard = nullptr;
     struct wl_pointer* pointer = nullptr;
     struct wl_touch* touch = nullptr;
     struct zxdg_shell_v6* xdg_shell_v6 = nullptr;
@@ -1468,6 +1553,7 @@ private:
         wl_surface* surface;
         std::pair<wl_fixed_t, wl_fixed_t> coordinates;
     };
+    wl_surface* keyboard_focused_surface = nullptr;
     std::experimental::optional<SurfaceLocation> current_pointer_location;
     std::experimental::optional<SurfaceLocation> pending_pointer_location;
     bool pending_pointer_leave{false};
@@ -1475,6 +1561,7 @@ private:
     std::map<int, SurfaceLocation> current_touches; ///< Touches that have gotten a frame event
     std::map<int, SurfaceLocation> pending_touches; ///< Touches that have gotten down or motion events without a frame
     std::set<int> pending_up_touches; ///< Touches that have gotten up events without a frame
+    std::experimental::optional<uint32_t> latest_serial_;
 
     std::vector<PointerEnterNotifier> enter_notifiers;
     std::vector<PointerLeaveNotifier> leave_notifiers;
@@ -1482,6 +1569,7 @@ private:
     std::vector<PointerButtonNotifier> button_notifiers;
 };
 
+constexpr wl_keyboard_listener wlcs::Client::Impl::keyboard_listener;
 constexpr wl_pointer_listener wlcs::Client::Impl::pointer_listener;
 constexpr wl_touch_listener wlcs::Client::Impl::touch_listener;
 constexpr wl_seat_listener wlcs::Client::Impl::seat_listener;
@@ -1586,6 +1674,11 @@ xdg_wm_base* wlcs::Client::xdg_shell_stable() const
     return impl->the_xdg_shell_stable();
 }
 
+wl_surface* wlcs::Client::keyboard_focused_window() const
+{
+    return impl->keyboard_focused_window();
+}
+
 wl_surface* wlcs::Client::window_under_cursor() const
 {
     return impl->window_under_cursor();
@@ -1604,6 +1697,11 @@ std::pair<wl_fixed_t, wl_fixed_t> wlcs::Client::pointer_position() const
 std::pair<wl_fixed_t, wl_fixed_t> wlcs::Client::touch_position() const
 {
     return impl->touch_position();
+}
+
+std::experimental::optional<uint32_t> wlcs::Client::latest_serial() const
+{
+    return impl->latest_serial();
 }
 
 void wlcs::Client::add_pointer_enter_notification(PointerEnterNotifier const& on_enter)
@@ -1641,6 +1739,11 @@ void* wlcs::Client::bind_if_supported(wl_interface const& interface, VersionSpec
     return impl->bind_if_supported(interface, version);
 }
 
+wl_pointer* wlcs::Client::the_pointer() const
+{
+    return impl->the_pointer();
+}
+
 class wlcs::Surface::Impl
 {
 public:
@@ -1648,6 +1751,7 @@ public:
         : surface_{wl_compositor_create_surface(client.compositor())},
           owner_{client}
     {
+        wl_surface_add_listener(surface_, &surface_listener, this);
     }
 
     ~Impl()
@@ -1667,6 +1771,10 @@ public:
                 ++i;
             }
         }
+
+        for (auto const& callback: destruction_callbacks)
+            callback();
+        destruction_callbacks.clear();
 
         wl_surface_destroy(surface_);
     }
@@ -1703,13 +1811,25 @@ public:
         owner_.dispatch_until([surface_rendered]() { return *surface_rendered; });
     }
 
+    void run_on_destruction(std::function<void()> callback)
+    {
+        destruction_callbacks.push_back(callback);
+    }
+
     Client& owner() const
     {
         return owner_;
     }
+
+    auto current_outputs() -> std::set<wl_output*> const&
+    {
+        return outputs;
+    }
+
 private:
 
     static std::vector<std::pair<Impl const*, wl_callback*>> pending_callbacks;
+    std::set<wl_output*> outputs;
 
     static void frame_callback(void* ctx, wl_callback* callback, uint32_t frame_time)
     {
@@ -1734,13 +1854,50 @@ private:
         &frame_callback
     };
 
+    static void on_enter(void* data, wl_surface* /*wl_surface*/, wl_output* output)
+    {
+        auto const self = static_cast<Impl*>(data);
+
+        auto const inserted = self->outputs.insert(output);
+
+        if (!inserted.second)
+        {
+            BOOST_THROW_EXCEPTION(std::runtime_error(
+                "Got wl_surface.enter(wl_output@" +
+                std::to_string(wl_proxy_get_id(reinterpret_cast<wl_proxy*>(output))) +
+                ") for an output the surface is already on"));
+        }
+    }
+
+    static void on_leave(void* data, wl_surface* /*wl_surface*/, wl_output* output)
+    {
+        auto const self = static_cast<Impl*>(data);
+
+        auto const erased = self->outputs.erase(output);
+
+        if (!erased)
+        {
+            BOOST_THROW_EXCEPTION(std::runtime_error(
+                "Got wl_surface.leave(wl_output@" +
+                std::to_string(wl_proxy_get_id(reinterpret_cast<wl_proxy*>(output))) +
+                ") for an output the surface is not on"));
+        }
+    }
+
+    static constexpr wl_surface_listener surface_listener{
+        &on_enter,
+        &on_leave,
+    };
+
     struct wl_surface* const surface_;
     Client& owner_;
+    std::vector<std::function<void()>> destruction_callbacks;
 };
 
 std::vector<std::pair<wlcs::Surface::Impl const*, wl_callback*>> wlcs::Surface::Impl::pending_callbacks;
 
 constexpr wl_callback_listener wlcs::Surface::Impl::frame_listener;
+constexpr wl_surface_listener wlcs::Surface::Impl::surface_listener;
 
 wlcs::Surface::Surface(Client& client)
     : impl{std::make_unique<Impl>(client)}
@@ -1771,9 +1928,19 @@ void wlcs::Surface::attach_visible_buffer(int width, int height)
     impl->attach_visible_buffer(width, height);
 }
 
+void wlcs::Surface::run_on_destruction(std::function<void()> callback)
+{
+    impl->run_on_destruction(callback);
+}
+
 wlcs::Client& wlcs::Surface::owner() const
 {
     return impl->owner();
+}
+
+auto wlcs::Surface:: current_outputs() -> std::set<wl_output*> const&
+{
+    return impl->current_outputs();
 }
 
 class wlcs::Subsurface::Impl

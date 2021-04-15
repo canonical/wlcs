@@ -125,7 +125,7 @@ auto wlcs::TouchInputMethod::position_on_surface(wlcs::Client const& client) -> 
         wl_fixed_to_int(wl_fixed_position.second)};
 }
 
-std::ostream& operator<<(std::ostream& out, std::shared_ptr<wlcs::InputMethod> const& param)
+std::ostream& std::operator<<(std::ostream& out, std::shared_ptr<wlcs::InputMethod> const& param)
 {
     return out << param->name;
 }

@@ -63,6 +63,11 @@ if (EXISTS ${GMOCK_SOURCE})
 else()
     # Assume gmock is no longer source, we'll find out soon enough if that's wrong
     add_custom_target(GMock)
+    # Upstream GTestConfig.cmake doesn't provide GTEST_LIBRARY but GTEST_LIBRARIES
+    # CMake 3.20+ uses the upstream gtest config if possible.
+    if (NOT DEFINED GTEST_LIBRARY)
+        set(GTEST_LIBRARY ${GTEST_LIBRARIES})
+    endif()
     string(REPLACE gtest gmock GMOCK_LIBRARY ${GTEST_LIBRARY})
 endif()
 

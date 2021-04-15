@@ -21,7 +21,7 @@ cmake_minimum_required(VERSION 3.5)
 cmake_policy(SET CMP0015 NEW)
 cmake_policy(SET CMP0022 NEW)
 
-project(wlcs VERSION 1.1.0)
+project(wlcs VERSION 1.2.1)
 
 add_definitions(-D_GNU_SOURCE)
 add_definitions(-D_FILE_OFFSET_BITS=64)
@@ -31,9 +31,12 @@ include(GNUInstallDirs)
 find_package(PkgConfig)
 #include (Doxygen.cmake)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread -g -Werror -Wall -pedantic -Wextra -fPIC")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -g -std=c++14 -Werror -Wall -fno-strict-aliasing -pedantic -Wnon-virtual-dtor -Wextra -fPIC")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -g -Werror -Wall -fno-strict-aliasing -pedantic -Wnon-virtual-dtor -Wextra -fPIC")
 if ("${CMAKE_SHARED_LINKER_FLAGS}" MATCHES ".*-fsanitize=.*")
   set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}")
 else()
@@ -124,6 +127,8 @@ GENERATE_PROTOCOL(xdg-shell)
 GENERATE_PROTOCOL(wlr-layer-shell-unstable-v1)
 GENERATE_PROTOCOL(xdg-output-unstable-v1)
 GENERATE_PROTOCOL(wlr-foreign-toplevel-management-unstable-v1)
+GENERATE_PROTOCOL(pointer-constraints-unstable-v1)
+GENERATE_PROTOCOL(relative-pointer-unstable-v1)
 
 option(WLCS_BUILD_ASAN "Build a test runner with AddressSanitizer annotations" ON)
 option(WLCS_BUILD_TSAN "Build a test runner with ThreadSanitizer annotations" ON)
@@ -138,7 +143,9 @@ set(
   include/helpers.h
   include/wl_handle.h
   include/in_process_server.h
+  include/pointer_constraints_unstable_v1.h
   include/primary_selection.h
+  include/relative_pointer_unstable_v1.h
   include/xdg_shell_v6.h
   include/xdg_shell_stable.h
   include/xdg_output_v1.h
@@ -156,8 +163,10 @@ set(
   src/xdg_shell_stable.cpp
   src/layer_shell_v1.cpp
   src/main.cpp
+  src/pointer_constraints_unstable_v1.cpp
   src/primary_selection.cpp
   src/shared_library.cpp
+  src/relative_pointer_unstable_v1.cpp
   src/xfail_supporting_test_listener.h
   src/xfail_supporting_test_listener.cpp
   src/termcolor.hpp
@@ -170,6 +179,7 @@ set(
   ${PROTOCOL_SOURCES}
 
   tests/test_bad_buffer.cpp
+  tests/pointer_constraints.cpp
   tests/copy_cut_paste.cpp
   tests/gtk_primary_selection.cpp
   tests/test_surface_events.cpp
@@ -178,6 +188,7 @@ set(
   tests/surface_input_regions.cpp
   tests/frame_submission.cpp
   tests/primary_selection.cpp
+  tests/relative_pointer.cpp
   tests/subsurfaces.cpp
   tests/xdg_surface_v6.cpp
   tests/xdg_toplevel_v6.cpp

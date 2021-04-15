@@ -108,7 +108,7 @@ std::ostream& operator<<(std::ostream& out, RegionWithTestPoints const& param)
 auto const all_surface_types = ValuesIn(wlcs::SurfaceBuilder::all_surface_types());
 auto const toplevel_surface_types = ValuesIn(wlcs::SurfaceBuilder::toplevel_surface_types());
 auto const xdg_stable_surface_type = Values(
-    std::static_pointer_cast<wlcs::SurfaceBuilder>(std::make_shared<wlcs::XdgStableSurfaceBuilder>()));
+    std::static_pointer_cast<wlcs::SurfaceBuilder>(std::make_shared<wlcs::XdgStableSurfaceBuilder>(0, 0, 0, 0)));
 
 auto const all_input_types = ValuesIn(wlcs::InputMethod::all_input_methods());
 
