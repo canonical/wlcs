@@ -535,6 +535,96 @@ TEST_P(LayerSurfaceLayoutTest, is_positioned_correctly_when_layout_changed)
     expect_surface_is_at_position(result_rect.first);
 }
 
+TEST_P(LayerSurfaceLayoutTest, is_positioned_correctly_after_multiple_changes)
+{
+    auto const layout = GetParam();
+    auto const output = output_rect();
+    auto const result_rect = layout.placement_rect(output);
+    auto const request_size = layout.request_size();
+
+    zwlr_layer_surface_v1_set_size(layer_surface, default_width, default_height);
+    commit_and_wait_for_configure();
+
+    zwlr_layer_surface_v1_set_anchor(layer_surface, layout);
+    invoke_zwlr_layer_surface_v1_set_margin(layer_surface, layout.margin);
+    zwlr_layer_surface_v1_set_size(layer_surface, request_size.first, request_size.second);
+    surface.attach_visible_buffer(result_rect.second.first, result_rect.second.second);
+    wl_surface_commit(surface);
+    client.roundtrip(); // Sometimes we get a configure, sometimes we don't
+
+    zwlr_layer_surface_v1_set_anchor(layer_surface, 0);
+    zwlr_layer_surface_v1_set_margin(layer_surface, 0, 0, 0, 0);
+    zwlr_layer_surface_v1_set_size(layer_surface, default_width, default_height);
+    surface.attach_visible_buffer(default_width, default_height);
+    wl_surface_commit(surface);
+    client.roundtrip(); // Sometimes we get a configure, sometimes we don't
+
+    EXPECT_THAT(configured_size().first, Eq(default_width));
+    EXPECT_THAT(configured_size().second, Eq(default_height));
+    auto expected_top_left = output.first;
+    expected_top_left.first += (output.second.first - default_width) / 2;
+    expected_top_left.second += (output.second.second - default_height) / 2;
+    expect_surface_is_at_position(expected_top_left);
+}
+
+TEST_P(LayerSurfaceLayoutTest, is_positioned_to_accommodate_other_surfaces_exclusive_zone)
+{
+    auto const layout = GetParam();
+    auto const request_size = layout.request_size();
+    auto const initial_rect = layout.placement_rect(output_rect());
+    auto const exclusive = 12;
+
+    zwlr_layer_surface_v1_set_anchor(layer_surface, layout);
+    invoke_zwlr_layer_surface_v1_set_margin(layer_surface, layout.margin);
+    zwlr_layer_surface_v1_set_size(layer_surface, request_size.first, request_size.second);
+    commit_and_wait_for_configure();
+    surface.attach_visible_buffer(initial_rect.second.first, initial_rect.second.second);
+
+    // Create layer surfaces with exclusive zones on the top and left of the output to push our surface out of the way
+
+    wlcs::Surface top_surface{client};
+    wlcs::LayerSurfaceV1 top_layer_surface{client, top_surface};
+    zwlr_layer_surface_v1_set_anchor(top_layer_surface, ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP);
+    zwlr_layer_surface_v1_set_exclusive_zone(top_layer_surface, exclusive);
+    zwlr_layer_surface_v1_set_size(top_layer_surface, exclusive, exclusive);
+    wl_surface_commit(top_surface);
+    top_layer_surface.dispatch_until_configure();
+    top_surface.attach_visible_buffer(exclusive, exclusive);
+    wl_surface_commit(top_surface);
+
+    wlcs::Surface left_surface{client};
+    wlcs::LayerSurfaceV1 left_layer_surface{client, left_surface};
+    zwlr_layer_surface_v1_set_anchor(left_layer_surface, ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT);
+    zwlr_layer_surface_v1_set_exclusive_zone(left_layer_surface, exclusive);
+    zwlr_layer_surface_v1_set_size(left_layer_surface, exclusive, exclusive);
+    wl_surface_commit(left_surface);
+    left_layer_surface.dispatch_until_configure();
+    left_surface.attach_visible_buffer(exclusive, exclusive);
+    wl_surface_commit(left_surface);
+
+    client.roundtrip();
+
+    Rect non_exlusive_zone = output_rect();
+    non_exlusive_zone.first.first += exclusive; // left
+    non_exlusive_zone.first.second += exclusive; // top
+    non_exlusive_zone.second.first -= exclusive; // width
+    non_exlusive_zone.second.second -= exclusive; // height
+
+    auto expected_config_size = layout.configure_size(non_exlusive_zone);
+    if (expected_config_size.first)
+    {
+        EXPECT_THAT(configured_size().first, Eq(expected_config_size.first));
+    }
+    if (expected_config_size.second)
+    {
+        EXPECT_THAT(configured_size().second, Eq(expected_config_size.second));
+    }
+
+    auto const expected_placement = layout.placement_rect(non_exlusive_zone);
+    surface.attach_visible_buffer(expected_placement.second.first, expected_placement.second.second);
+    expect_surface_is_at_position(expected_placement.first);
+}
+
 TEST_P(LayerSurfaceLayoutTest, maximized_xdg_toplevel_is_shrunk_for_exclusive_zone)
 {
     int const exclusive_zone = 25;
