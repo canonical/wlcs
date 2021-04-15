@@ -115,6 +115,7 @@ struct PositionerParams
     auto with_gravity(xdg_positioner_gravity value) -> PositionerParams& { gravity_stable = {value}; return *this; }
     auto with_constraint_adjustment(xdg_positioner_constraint_adjustment value) -> PositionerParams& { constraint_adjustment_stable = {value}; return *this; }
     auto with_offset(int x, int y) -> PositionerParams& { offset = {{x, y}}; return *this; }
+    auto with_grab(bool enable = true) -> PositionerParams& { grab = enable; return *this; }
 
     std::pair<int, int> popup_size; // will default to XdgPopupStableTestBase::popup_(width|height) if nullopt
     std::pair<std::pair<int, int>, std::pair<int, int>> anchor_rect; // will default to the full window rect
@@ -122,6 +123,7 @@ struct PositionerParams
     std::experimental::optional<xdg_positioner_gravity> gravity_stable;
     std::experimental::optional<xdg_positioner_constraint_adjustment> constraint_adjustment_stable;
     std::experimental::optional<std::pair<int, int>> offset;
+    bool grab{false};
 };
 
 struct PositionerTestParams
@@ -181,7 +183,7 @@ public:
         setup_popup(params);
         wl_surface_commit(popup_surface.value());
         dispatch_until_popup_configure();
-        popup_surface.value().attach_buffer(popup_width, popup_height);
+        popup_surface.value().attach_buffer(params.popup_size.first, params.popup_size.second);
         bool surface_rendered{false};
         popup_surface.value().add_frame_callback([&surface_rendered](auto) { surface_rendered = true; });
         wl_surface_commit(popup_surface.value());
@@ -195,8 +197,9 @@ public:
     }
 
     virtual auto popup_position() const -> std::experimental::optional<std::pair<int, int>> = 0;
-
     virtual void dispatch_until_popup_configure() = 0;
+
+    MOCK_METHOD0(popup_done, void());
 
     wlcs::Server& the_server;
 
@@ -260,11 +263,19 @@ public:
         if (param.offset)
             xdg_positioner_set_offset(positioner, param.offset.value().first, param.offset.value().second);
 
-
         popup_xdg_surface.emplace(client, popup_surface.value());
 
         popup.emplace(popup_xdg_surface.value(), &xdg_shell_surface, positioner);
+        if (param.grab)
+        {
+            if (!client.latest_serial())
+            {
+                BOOST_THROW_EXCEPTION(std::runtime_error("client does not have a serial"));
+            }
+            xdg_popup_grab(popup.value().popup, client.seat(), client.latest_serial().value());
+        }
 
+        popup.value().add_close_notification([this](){ popup_done(); });
         popup_xdg_surface.value().add_configure_notification([&](uint32_t serial)
             {
                 xdg_surface_ack_configure(popup_xdg_surface.value(), serial);
@@ -359,7 +370,16 @@ public:
 
         popup_xdg_surface.emplace(client, popup_surface.value());
         popup.emplace(popup_xdg_surface.value(), xdg_shell_surface, positioner);
+        if (param.grab)
+        {
+            if (!client.latest_serial())
+            {
+                BOOST_THROW_EXCEPTION(std::runtime_error("client does not have a serial"));
+            }
+            zxdg_popup_v6_grab(popup.value().popup, client.seat(), client.latest_serial().value());
+        }
 
+        popup.value().add_close_notification([this](){ popup_done(); });
         popup_xdg_surface.value().add_configure_notification([&](uint32_t serial)
             {
                 zxdg_surface_v6_ack_configure(popup_xdg_surface.value(), serial);
@@ -443,6 +463,14 @@ public:
         popup_xdg_surface.emplace(client, popup_surface.value());
         popup.emplace(popup_xdg_surface.value(), std::experimental::nullopt, positioner);
         zwlr_layer_surface_v1_get_popup(layer_surface, popup.value());
+        if (param.grab)
+        {
+            if (!client.latest_serial())
+            {
+                BOOST_THROW_EXCEPTION(std::runtime_error("client does not have a serial"));
+            }
+            xdg_popup_grab(popup.value().popup, client.seat(), client.latest_serial().value());
+        }
 
         popup_xdg_surface.value().add_configure_notification([&](uint32_t serial)
             {
@@ -450,6 +478,7 @@ public:
                 popup_surface_configure_count++;
             });
 
+        popup.value().add_close_notification([this](){ popup_done(); });
         popup.value().add_configure_notification([this](int32_t x, int32_t y, int32_t width, int32_t height)
             {
                 state = State{x, y, width, height};
@@ -682,6 +711,116 @@ TEST_P(XdgPopupTest, popup_gives_up_pointer_focus_when_gone)
     manager->client.roundtrip();
 
     EXPECT_THAT(manager->client.window_under_cursor(), Eq((wl_surface*)manager->surface));
+}
+
+TEST_P(XdgPopupTest, grabbed_popup_gets_done_event_when_new_toplevel_created)
+{
+    auto const& param = GetParam();
+    auto manager = param.build(this);
+    auto pointer = the_server().create_pointer();
+
+    // This is needed to get a serial, which will be used later on
+    pointer.move_to(manager->window_x + 2, manager->window_y + 2);
+    pointer.left_click();
+    manager->client.roundtrip();
+
+    auto positioner = PositionerParams{}
+        .with_size(30, 30)
+        .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
+        .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT)
+        .with_grab();
+    manager->map_popup(positioner);
+    manager->client.roundtrip();
+
+    EXPECT_CALL(*manager, popup_done());
+
+    manager->client.create_visible_surface(window_width, window_height);
+}
+
+TEST_P(XdgPopupTest, grabbed_popup_does_not_get_keyboard_focus)
+{
+    auto const& param = GetParam();
+    auto manager = param.build(this);
+    auto pointer = the_server().create_pointer();
+
+    // This is needed to get a serial, which will be used later on
+    pointer.move_to(manager->window_x + 2, manager->window_y + 2);
+    pointer.left_click();
+    manager->client.roundtrip();
+
+    auto positioner = PositionerParams{}
+        .with_size(30, 30)
+        .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
+        .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT)
+        .with_grab();
+    manager->map_popup(positioner);
+    manager->client.roundtrip();
+
+    EXPECT_THAT(
+        manager->client.keyboard_focused_window(),
+        Ne(static_cast<wl_surface*>(manager->popup_surface.value())))
+        << "popup given keyboard focus";
+    EXPECT_THAT(
+        manager->client.keyboard_focused_window(),
+        Eq(static_cast<wl_surface*>(manager->surface)));
+}
+
+TEST_P(XdgPopupTest, non_grabbed_popup_does_not_get_keyboard_focus)
+{
+    auto const& param = GetParam();
+    auto manager = param.build(this);
+
+    auto positioner = PositionerParams{}
+        .with_size(30, 30)
+        .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
+        .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
+    manager->map_popup(positioner);
+    manager->client.roundtrip();
+
+    EXPECT_THAT(
+        manager->client.keyboard_focused_window(),
+        Ne(static_cast<wl_surface*>(manager->popup_surface.value())))
+        << "popup given keyboard focus";
+    EXPECT_THAT(
+        manager->client.keyboard_focused_window(),
+        Eq(static_cast<wl_surface*>(manager->surface)));
+}
+
+TEST_P(XdgPopupTest, does_not_get_popup_done_event_before_button_press)
+{
+    auto const& param = GetParam();
+    auto manager = param.build(this);
+    auto pointer = the_server().create_pointer();
+
+    // This is needed to get a serial, which will be used later on
+    pointer.move_to(manager->window_x + 2, manager->window_y + 2);
+    pointer.left_click();
+    manager->client.roundtrip();
+
+    auto positioner = PositionerParams{}
+        .with_size(30, 30)
+        .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
+        .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT)
+        .with_grab();
+    manager->map_popup(positioner);
+    manager->client.roundtrip();
+
+    // This may or may not be sent, but a button press should not come in after it if it is sent
+    bool got_popup_done = false;
+    EXPECT_CALL(*manager, popup_done()).Times(AnyNumber()).WillRepeatedly([&]()
+        {
+            got_popup_done = true;
+        });
+
+    manager->client.add_pointer_button_notification([&](auto, auto, auto)
+        {
+            EXPECT_THAT(got_popup_done, IsFalse()) << "pointer button sent after popup done";
+            return true;
+        });
+
+    pointer.move_to(manager->window_x + 32, manager->window_y + 32);
+    pointer.left_click();
+    manager->client.roundtrip();
 }
 
 TEST_F(XdgPopupTest, zero_size_anchor_rect_stable)
