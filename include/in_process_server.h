@@ -171,6 +171,7 @@ public:
     void run_on_destruction(std::function<void()> callback);
 
     Client& owner() const;
+    auto current_outputs() -> std::set<wl_output*> const&;
 
 private:
     class Impl;
