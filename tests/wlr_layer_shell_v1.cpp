@@ -20,6 +20,7 @@
 #include "in_process_server.h"
 #include "layer_shell_v1.h"
 #include "xdg_shell_stable.h"
+#include "version_specifier.h"
 
 #include <gmock/gmock.h>
 
@@ -295,6 +296,7 @@ std::ostream& operator<<(std::ostream& os, const LayerLayerParams& layer)
         {
             os << "none";
         }
+        os << "}";
     }
     return os;
 }
@@ -461,6 +463,34 @@ TEST_F(LayerSurfaceTest, gets_configured_after_anchor_change)
     commit_and_wait_for_configure();
     EXPECT_THAT(configured_size().first, Gt(0));
     EXPECT_THAT(configured_size().second, Gt(0));
+}
+
+TEST_F(LayerSurfaceTest, destroy_request_supported)
+{
+    wlcs::Client client{the_server()};
+
+    {
+        auto const layer_shell = client.bind_if_supported<zwlr_layer_shell_v1>(
+            wlcs::AtLeastVersion{ZWLR_LAYER_SHELL_V1_DESTROY_SINCE_VERSION});
+        client.roundtrip();
+    }
+    // layer_shell is now destroyed
+
+    client.roundtrip();
+}
+
+TEST_F(LayerSurfaceTest, destroy_request_not_sent_when_not_supported)
+{
+    wlcs::Client client{the_server()};
+
+    {
+        auto const layer_shell = client.bind_if_supported<zwlr_layer_shell_v1>(
+            wlcs::ExactlyVersion{ZWLR_LAYER_SHELL_V1_DESTROY_SINCE_VERSION - 1});
+        client.roundtrip();
+    }
+    // layer_shell is now destroyed
+
+    client.roundtrip();
 }
 
 TEST_P(LayerSurfaceLayoutTest, is_initially_positioned_correctly_for_anchor)
@@ -786,7 +816,7 @@ TEST_P(LayerSurfaceLayerTest, surface_on_lower_layer_is_initially_placed_below)
     client.roundtrip();
 
     ASSERT_THAT(client.window_under_cursor(), Ne((wl_surface*)below.surface))
-        << "Wrong wurface was on top";
+        << "Wrong wl_surface was on top";
     ASSERT_THAT(client.window_under_cursor(), Eq((wl_surface*)above.surface))
         << "Correct surface was not on top";
 }
@@ -816,7 +846,51 @@ TEST_P(LayerSurfaceLayerTest, below_surface_can_not_be_raised_with_click)
     client.roundtrip();
 
     ASSERT_THAT(client.window_under_cursor(), Ne((wl_surface*)below.surface))
-        << "Wrong wurface was on top";
+        << "Wrong wl_surface was on top";
+    ASSERT_THAT(client.window_under_cursor(), Eq((wl_surface*)above.surface))
+        << "Correct surface was not on top";
+}
+
+TEST_P(LayerSurfaceLayerTest, surface_can_be_moved_to_layer)
+{
+    client.bind_if_supported<zwlr_layer_shell_v1>(wlcs::AtLeastVersion{ZWLR_LAYER_SURFACE_V1_SET_LAYER_SINCE_VERSION});
+    auto const& param = GetParam();
+
+    auto initial_below{param.below}, initial_above{param.above};
+    if (initial_below)
+    {
+        initial_below = ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY;
+    }
+    if (initial_above)
+    {
+        initial_above = ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND;
+    }
+    SurfaceOnLayer above{client, initial_above};
+    SurfaceOnLayer below{client, initial_below};
+
+    client.roundtrip();
+
+    if (above.layer_surface)
+    {
+        zwlr_layer_surface_v1_set_layer(above.layer_surface.value(), param.above.value());
+    }
+    if (below.layer_surface)
+    {
+        zwlr_layer_surface_v1_set_layer(below.layer_surface.value(), param.below.value());
+    }
+
+    wl_surface_commit(above.surface);
+    wl_surface_commit(below.surface);
+
+    auto pointer = the_server().create_pointer();
+    the_server().move_surface_to(above.surface, 0, 0);
+    the_server().move_surface_to(below.surface, 0, 0);
+    pointer.move_to(2, 3);
+
+    client.roundtrip();
+
+    ASSERT_THAT(client.window_under_cursor(), Ne((wl_surface*)below.surface))
+        << "Wrong wl_surface was on top";
     ASSERT_THAT(client.window_under_cursor(), Eq((wl_surface*)above.surface))
         << "Correct surface was not on top";
 }
