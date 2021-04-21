@@ -79,3 +79,28 @@ TEST_F(FrameSubmission, post_one_frame_at_a_time)
         EXPECT_THAT(frame_consumed, Eq(true));
     }
 }
+
+TEST_F(FrameSubmission, frame_sent_after_delay)
+{
+    auto const surface = client.create_visible_surface(200, 200);
+    ShmBuffer buffer{client, 200, 200};
+    wl_surface_attach(surface, buffer, 0, 0);
+
+    auto frame_consumed = false;
+    submit_frame(frame_consumed);
+    client.roundtrip();
+    EXPECT_THAT(frame_consumed, Eq(false)) << "frame callback sent immediately";
+    wait_for_frame(frame_consumed);
+    EXPECT_THAT(frame_consumed, Eq(true));
+}
+
+TEST_F(FrameSubmission, frame_sent_after_delay_with_no_buffer)
+{
+    auto const surface = client.create_visible_surface(200, 200);
+    auto frame_consumed = false;
+    submit_frame(frame_consumed);
+    client.roundtrip();
+    EXPECT_THAT(frame_consumed, Eq(false)) << "frame callback sent immediately";
+    wait_for_frame(frame_consumed);
+    EXPECT_THAT(frame_consumed, Eq(true));
+}
