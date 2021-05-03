@@ -22,13 +22,15 @@ jobs:
         - lxd:ubuntu-21.04:...:gcc
         - lxd:ubuntu-21.04:...:clang
         - lxd:fedora-32:...:gcc
-        - lxd:fedora-33:...:gcc
+        - lxd:fedora-34:...:gcc
         - lxd:alpine-3.13:...:gcc
         allow-fail: [false]
         include:
         - spread-task: lxd:ubuntu-devel:...:gcc
           allow-fail: true
         - spread-task: lxd:ubuntu-devel:...:clang
+          allow-fail: true
+        - spread-task: lxd:fedora-33:...:gcc
           allow-fail: true
 
     runs-on: ubuntu-latest

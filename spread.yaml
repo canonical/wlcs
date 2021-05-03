@@ -11,6 +11,7 @@ backends:
                 image: ubuntu-daily:devel/amd64
             - fedora-32
             - fedora-33
+            - fedora-34
             - alpine-3.13
 
 suites:
