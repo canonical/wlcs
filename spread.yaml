@@ -6,6 +6,7 @@ backends:
     lxd:
         systems:
             - ubuntu-20.04
+            - ubuntu-21.04
             - ubuntu-devel:
                 image: ubuntu-daily:devel/amd64
             - fedora-32

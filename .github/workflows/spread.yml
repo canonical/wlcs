@@ -19,11 +19,17 @@ jobs:
       matrix:
         spread-task:
         - lxd:ubuntu-20.04:...:gcc
-        - lxd:ubuntu-devel:...:gcc
-        - lxd:ubuntu-devel:...:clang
+        - lxd:ubuntu-21.04:...:gcc
+        - lxd:ubuntu-21.04:...:clang
         - lxd:fedora-32:...:gcc
         - lxd:fedora-33:...:gcc
         - lxd:alpine-3.13:...:gcc
+        allow-fail: [false]
+        include:
+        - spread-task: lxd:ubuntu-devel:...:gcc
+          allow-fail: true
+        - spread-task: lxd:ubuntu-devel:...:clang
+          allow-fail: true
 
     runs-on: ubuntu-latest
 
@@ -55,6 +61,7 @@ jobs:
       env:
         LXD_DIR: /var/snap/lxd/common/lxd
       run: sg lxd -c 'snap run spread -v ${{ matrix.spread-task }}'
+      continue-on-error: ${{ matrix.allow-fail }}
 
   # Report result to Bors on `staging` and `trying` branches.
   Bors:
