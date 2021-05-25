@@ -166,4 +166,5 @@ TEST_P(TouchTest, sends_touch_up_on_surface_destroy)
 INSTANTIATE_TEST_SUITE_P(
     AllSurfaceTypes,
     TouchTest,
-    ValuesIn(wlcs::SurfaceBuilder::all_surface_types()));
+    ValuesIn(wlcs::SurfaceBuilder::all_surface_types()),
+    wlcs::SubsurfaceBuilder::surface_builder_to_string);

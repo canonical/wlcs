@@ -38,6 +38,12 @@ auto wlcs::SurfaceBuilder::toplevel_surface_types() -> std::vector<std::shared_p
         std::make_shared<XdgStableSurfaceBuilder>(0, 0, 0, 0)};
 }
 
+auto wlcs::SurfaceBuilder::surface_builder_to_string(
+    testing::TestParamInfo<std::shared_ptr<SurfaceBuilder>> builder) -> std::string
+{
+    return builder.param->name;
+}
+
 auto wlcs::WlShellSurfaceBuilder::build(
     wlcs::Server& server,
     wlcs::Client& client,
@@ -63,12 +69,12 @@ auto wlcs::XdgV6SurfaceBuilder::build(
 }
 
 wlcs::XdgStableSurfaceBuilder::XdgStableSurfaceBuilder(int left_offset, int top_offset, int right_offset, int bottom_offset)
-    : SurfaceBuilder{"xdg_surface (stable)" +
-          ((left_offset || top_offset || right_offset || bottom_offset) ? (" {" +
-              std::to_string(left_offset) + ":" +
-              std::to_string(top_offset) + ":" +
-              std::to_string(right_offset) + ":" +
-              std::to_string(bottom_offset) + "}") : "")},
+    : SurfaceBuilder{"xdg_surface_stable" +
+          ((left_offset || top_offset || right_offset || bottom_offset) ? ("_" +
+              std::to_string(left_offset) + "_" +
+              std::to_string(top_offset) + "_" +
+              std::to_string(right_offset) + "_" +
+              std::to_string(bottom_offset)) : "")},
       left_offset{left_offset},
       top_offset{top_offset},
       right_offset{right_offset},
@@ -103,11 +109,10 @@ auto wlcs::XdgStableSurfaceBuilder::build(
 
 wlcs::SubsurfaceBuilder::SubsurfaceBuilder(std::pair<int, int> offset)
     : SurfaceBuilder{
-        "subsurface (offset " +
+        "subsurface_at_x" +
         std::to_string(offset.first) +
-        ", " +
-        std::to_string(offset.second) +
-        ")"},
+        "_y" +
+        std::to_string(offset.second)},
         offset{offset}
 {
 }
