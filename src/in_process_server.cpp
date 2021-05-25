@@ -1952,6 +1952,11 @@ public:
     {
     }
 
+    ~Impl()
+    {
+        wl_subsurface_destroy(subsurface_);
+    }
+
     struct wl_subsurface* const subsurface_;
     Surface& parent_;
 };
