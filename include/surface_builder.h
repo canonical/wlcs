@@ -41,6 +41,9 @@ struct SurfaceBuilder
 
     static auto all_surface_types() -> std::vector<std::shared_ptr<SurfaceBuilder>>;
     static auto toplevel_surface_types() -> std::vector<std::shared_ptr<SurfaceBuilder>>;
+
+    static auto surface_builder_to_string(
+        testing::TestParamInfo<std::shared_ptr<SurfaceBuilder>> builder) -> std::string;
 };
 
 struct WlShellSurfaceBuilder : SurfaceBuilder
