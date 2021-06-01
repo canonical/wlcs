@@ -39,7 +39,7 @@ fi
 
 GIT_REVISION=$( git rev-parse --short HEAD )
 
-if [[ "${GIT_BRANCH}" =~ ^(release/|v)([0-9\.]+)$ ]]; then
+if [[ "${GIT_BRANCH}" =~ ^(refs/(heads|tags)/)?(release/|v)([0-9\.]+)$ ]]; then
   # we're on a release branch
   TARGET_PPA=ppa:mir-team/wlcs-rc
   WLCS_SERIES=${BASH_REMATCH[2]}
