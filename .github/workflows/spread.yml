@@ -21,7 +21,6 @@ jobs:
         - lxd:ubuntu-20.04:...:gcc
         - lxd:ubuntu-21.04:...:gcc
         - lxd:ubuntu-21.04:...:clang
-        - lxd:fedora-32:...:gcc
         - lxd:fedora-34:...:gcc
         - lxd:alpine-3.13:...:gcc
         allow-fail: [false]
