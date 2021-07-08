@@ -22,7 +22,11 @@
 
 #include <gmock/gmock.h>
 
-using namespace testing;
+using testing::AnyNumber;
+using testing::IsTrue;
+using testing::NotNull;
+using testing::_;
+
 using namespace wlcs;
 
 namespace

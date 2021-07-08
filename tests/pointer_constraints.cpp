@@ -24,7 +24,11 @@
 
 #include <memory>
 
-using namespace testing;
+using testing::AnyNumber;
+using testing::Eq;
+using testing::Ne;
+using testing::NotNull;
+
 using namespace wlcs;
 
 namespace
