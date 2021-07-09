@@ -30,6 +30,7 @@
 #include "xdg_shell_stable.h"
 #include "xdg_shell_v6.h"
 #include "layer_shell_v1.h"
+#include "version_specifier.h"
 
 #include <gmock/gmock.h>
 
@@ -419,7 +420,16 @@ public:
         : XdgPopupManagerBase{in_process_server},
           layer_surface{client, surface}
     {
+        {
+            wlcs::Client client{in_process_server->the_server()};
+            auto const layer_shell = client.bind_if_supported<zwlr_layer_shell_v1>(
+                wlcs::AtLeastVersion{ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND_SINCE_VERSION});
+            client.roundtrip();
+        }
         zwlr_layer_surface_v1_set_size(layer_surface, window_width, window_height);
+        zwlr_layer_surface_v1_set_keyboard_interactivity(
+            layer_surface,
+            ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND);
         wait_for_frame_to_render();
     }
 

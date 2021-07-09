@@ -493,6 +493,214 @@ TEST_F(LayerSurfaceTest, destroy_request_not_sent_when_not_supported)
     client.roundtrip();
 }
 
+TEST_F(LayerSurfaceTest, does_not_take_keyboard_focus_without_keyboard_interactivity)
+{
+    auto normal_surface = client.create_visible_surface(100, 100);
+    the_server().move_surface_to(normal_surface, 0, default_height);
+    auto pointer = the_server().create_pointer();
+    pointer.move_to(5, default_height + 5);
+    pointer.left_click();
+    client.roundtrip();
+    ASSERT_THAT(client.keyboard_focused_window(), Eq(static_cast<wl_surface*>(normal_surface)))
+        << "Could not run test because normal surface was not given keyboeard focus";
+
+    zwlr_layer_surface_v1_set_size(layer_surface, default_width, default_height);
+    zwlr_layer_surface_v1_set_anchor(
+        layer_surface,
+        ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT);
+    commit_and_wait_for_configure();
+    surface.attach_visible_buffer(default_width, default_height);
+
+    EXPECT_THAT(client.keyboard_focused_window(), Eq(static_cast<wl_surface*>(normal_surface)))
+        << "Normal surface lost keyboard focus when non-keyboard layer surface appeared";
+}
+
+TEST_F(LayerSurfaceTest, takes_keyboard_focus_with_exclusive_keyboard_interactivity)
+{
+    auto normal_surface = client.create_visible_surface(100, 100);
+    the_server().move_surface_to(normal_surface, 0, default_height);
+    auto pointer = the_server().create_pointer();
+    pointer.move_to(5, default_height + 5);
+    pointer.left_click();
+    client.roundtrip();
+    ASSERT_THAT(client.keyboard_focused_window(), Eq(static_cast<wl_surface*>(normal_surface)))
+        << "Could not run test because normal surface was not given keyboeard focus";
+
+    zwlr_layer_surface_v1_set_keyboard_interactivity(
+        layer_surface,
+        ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_EXCLUSIVE);
+    zwlr_layer_surface_v1_set_size(layer_surface, default_width, default_height);
+    zwlr_layer_surface_v1_set_anchor(
+        layer_surface,
+        ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT);
+    commit_and_wait_for_configure();
+    surface.attach_visible_buffer(default_width, default_height);
+
+    EXPECT_THAT(client.keyboard_focused_window(), Eq(static_cast<wl_surface*>(surface)))
+        << "Layer surface not given keyboard focus in exclusive mode";
+}
+
+TEST_F(LayerSurfaceTest, takes_keyboard_focus_after_click_with_on_demand_keyboard_interactivity)
+{
+    auto normal_surface = client.create_visible_surface(100, 100);
+    the_server().move_surface_to(normal_surface, 0, default_height);
+    auto pointer = the_server().create_pointer();
+    pointer.move_to(5, default_height + 5);
+    pointer.left_click();
+    client.roundtrip();
+    ASSERT_THAT(client.keyboard_focused_window(), Eq(static_cast<wl_surface*>(normal_surface)))
+        << "Could not run test because normal surface was not given keyboeard focus";
+
+    {
+        wlcs::Client client{the_server()};
+        auto const layer_shell = client.bind_if_supported<zwlr_layer_shell_v1>(
+            wlcs::AtLeastVersion{ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND_SINCE_VERSION});
+        client.roundtrip();
+    }
+
+    zwlr_layer_surface_v1_set_keyboard_interactivity(
+        layer_surface,
+        ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND);
+    zwlr_layer_surface_v1_set_size(layer_surface, default_width, default_height);
+    zwlr_layer_surface_v1_set_anchor(
+        layer_surface,
+        ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT);
+    commit_and_wait_for_configure();
+    surface.attach_visible_buffer(default_width, default_height);
+    client.roundtrip();
+
+    pointer.move_to(5, 5);
+    pointer.left_click();
+    client.roundtrip();
+
+    EXPECT_THAT(client.keyboard_focused_window(), Eq(static_cast<wl_surface*>(surface)))
+        << "Layer surface not given keyboard focus in on-demand mode";
+}
+
+TEST_F(LayerSurfaceTest, does_not_lose_keyboard_focus_with_exclusive_keyboard_interactivity)
+{
+    zwlr_layer_surface_v1_set_keyboard_interactivity(
+        layer_surface,
+        ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_EXCLUSIVE);
+    zwlr_layer_surface_v1_set_size(layer_surface, default_width, default_height);
+    zwlr_layer_surface_v1_set_anchor(
+        layer_surface,
+        ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT);
+    commit_and_wait_for_configure();
+    surface.attach_visible_buffer(default_width, default_height);
+    ASSERT_THAT(client.keyboard_focused_window(), Eq(static_cast<wl_surface*>(surface)))
+        << "Layer surface not given keyboard focus in exclusive mode";
+
+    auto normal_surface = client.create_visible_surface(100, 100);
+    the_server().move_surface_to(normal_surface, 0, default_height);
+    auto pointer = the_server().create_pointer();
+    pointer.move_to(5, default_height + 5);
+    pointer.left_click();
+    client.roundtrip();
+    ASSERT_THAT(client.keyboard_focused_window(), Eq(static_cast<wl_surface*>(surface)))
+        << "Creating a normal surface caused the layer surface in exclusive mode to lose keyboard focus";
+}
+
+TEST_F(LayerSurfaceTest, can_lose_keyboard_focus_with_on_demand_keyboard_interactivity)
+{
+    {
+        wlcs::Client client{the_server()};
+        auto const layer_shell = client.bind_if_supported<zwlr_layer_shell_v1>(
+            wlcs::AtLeastVersion{ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND_SINCE_VERSION});
+        client.roundtrip();
+    }
+
+    zwlr_layer_surface_v1_set_keyboard_interactivity(
+        layer_surface,
+        ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND);
+    zwlr_layer_surface_v1_set_size(layer_surface, default_width, default_height);
+    zwlr_layer_surface_v1_set_anchor(
+        layer_surface,
+        ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT);
+    commit_and_wait_for_configure();
+    surface.attach_visible_buffer(default_width, default_height);
+    ASSERT_THAT(client.keyboard_focused_window(), Eq(static_cast<wl_surface*>(surface)))
+        << "Layer surface not given keyboard focus in exclusive mode";
+
+    auto normal_surface = client.create_visible_surface(100, 100);
+    the_server().move_surface_to(normal_surface, 0, default_height);
+    auto pointer = the_server().create_pointer();
+    pointer.move_to(5, default_height + 5);
+    pointer.left_click();
+    client.roundtrip();
+    ASSERT_THAT(client.keyboard_focused_window(), Ne(static_cast<wl_surface*>(surface)))
+        << "Creating a normal surface did not cause the layer surface in on-demand mode to lose keyboard focus";
+}
+
+TEST_F(LayerSurfaceTest, takes_keyboard_focus_when_interactivity_changes_to_exclusive)
+{
+    auto normal_surface = client.create_visible_surface(100, 100);
+    the_server().move_surface_to(normal_surface, 0, default_height);
+    auto pointer = the_server().create_pointer();
+    pointer.move_to(5, default_height + 5);
+    pointer.left_click();
+    client.roundtrip();
+    ASSERT_THAT(client.keyboard_focused_window(), Eq(static_cast<wl_surface*>(normal_surface)))
+        << "Could not run test because normal surface was not given keyboeard focus";
+
+    zwlr_layer_surface_v1_set_keyboard_interactivity(
+        layer_surface,
+        ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE);
+    zwlr_layer_surface_v1_set_size(layer_surface, default_width, default_height);
+    zwlr_layer_surface_v1_set_anchor(
+        layer_surface,
+        ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT);
+    commit_and_wait_for_configure();
+    surface.attach_visible_buffer(default_width, default_height);
+
+    ASSERT_THAT(client.keyboard_focused_window(), Eq(static_cast<wl_surface*>(normal_surface)))
+        << "Could not run test because normal surface was not given keyboeard focus";
+
+    zwlr_layer_surface_v1_set_keyboard_interactivity(
+        layer_surface,
+        ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_EXCLUSIVE);
+    wl_surface_commit(surface);
+    client.roundtrip();
+
+    ASSERT_THAT(client.keyboard_focused_window(), Eq(static_cast<wl_surface*>(surface)))
+        << "Layer surface did not take keyboard focus when mode changed to exclusive";
+
+    pointer.left_click();
+    client.roundtrip();
+
+    EXPECT_THAT(client.keyboard_focused_window(), Eq(static_cast<wl_surface*>(surface)))
+        << "Layer surface did not hold exclusive keyboard focus";
+}
+
+TEST_F(LayerSurfaceTest, loses_keybaord_focus_when_interactivity_changes_to_none)
+{
+    auto normal_surface = client.create_visible_surface(100, 100);
+    ASSERT_THAT(client.keyboard_focused_window(), Eq(static_cast<wl_surface*>(normal_surface)))
+        << "Could not run test because normal surface was not given keyboeard focus";
+
+    zwlr_layer_surface_v1_set_keyboard_interactivity(
+        layer_surface,
+        ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_EXCLUSIVE);
+    zwlr_layer_surface_v1_set_size(layer_surface, default_width, default_height);
+    zwlr_layer_surface_v1_set_anchor(
+        layer_surface,
+        ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT);
+    commit_and_wait_for_configure();
+    surface.attach_visible_buffer(default_width, default_height);
+
+    ASSERT_THAT(client.keyboard_focused_window(), Eq(static_cast<wl_surface*>(surface)))
+        << "Could not run test because surface not given keyboard focus despite exclusive interactivity";
+
+    zwlr_layer_surface_v1_set_keyboard_interactivity(
+        layer_surface,
+        ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE);
+    wl_surface_commit(surface);
+    client.roundtrip();
+
+    ASSERT_THAT(client.keyboard_focused_window(), Ne(static_cast<wl_surface*>(surface)))
+        << "Layer surface did not lose keyboard focus when interactivity changed to none";
+}
+
 TEST_P(LayerSurfaceLayoutTest, is_initially_positioned_correctly_for_anchor)
 {
     auto const layout = GetParam();
