@@ -130,6 +130,7 @@ GENERATE_PROTOCOL(wlr-foreign-toplevel-management-unstable-v1)
 GENERATE_PROTOCOL(pointer-constraints-unstable-v1)
 GENERATE_PROTOCOL(relative-pointer-unstable-v1)
 GENERATE_PROTOCOL(text-input-unstable-v3)
+GENERATE_PROTOCOL(input-method-unstable-v2)
 
 option(WLCS_BUILD_ASAN "Build a test runner with AddressSanitizer annotations" ON)
 option(WLCS_BUILD_TSAN "Build a test runner with ThreadSanitizer annotations" ON)
