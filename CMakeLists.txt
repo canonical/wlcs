@@ -201,6 +201,7 @@ set(
   tests/xdg_output_v1.cpp
   tests/wlr_foreign_toplevel_management_v1.cpp
   tests/self_test.cpp
+  tests/text_input_v3_with_input_method_v2.cpp
 )
 
 add_library(test_c_compile OBJECT src/test_c_compile.c)
