@@ -39,6 +39,9 @@ public:
         : proxy{proxy},
           owns_wl_object{true}
     {
+        static_assert(
+            WlInterfaceDescriptor<T>::has_specialisation,
+            "Missing specialisation for WlInterfaceDescriptor");
         if (proxy == nullptr)
         {
             BOOST_THROW_EXCEPTION((std::logic_error{"Attempt to construct a WlHandle from null Wayland object"}));
@@ -92,9 +95,6 @@ private:
 template<typename WlType>
 auto wrap_wl_object(WlType* proxy) -> WlHandle<WlType>
 {
-    static_assert(
-        WlInterfaceDescriptor<WlType>::has_specialisation,
-        "Missing specialisation for WlInterfaceDescriptor");
     return WlHandle<WlType>{proxy};
 }
 
