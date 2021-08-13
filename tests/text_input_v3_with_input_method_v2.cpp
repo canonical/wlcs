@@ -29,6 +29,7 @@
 #include "version_specifier.h"
 
 #include <gmock/gmock.h>
+#include <optional>
 
 using namespace testing;
 
