@@ -167,7 +167,7 @@ TEST_F(TextInputV3WithInputMethodV2Test, input_method_can_send_preedit)
     Expectation const a = EXPECT_CALL(text_input, preedit_string(text, cursor_begin, cursor_end));
     // Expected serial is 1 because we've sent exactly 1 commit
     EXPECT_CALL(text_input, done(1)).After(a);
-    zwp_input_method_v2_preedit_string(input_method, text, cursor_begin, cursor_end);
+    zwp_input_method_v2_set_preedit_string(input_method, text, cursor_begin, cursor_end);
     zwp_input_method_v2_commit(input_method, input_method.done_count());
     input_client.roundtrip();
     app_client.roundtrip();
