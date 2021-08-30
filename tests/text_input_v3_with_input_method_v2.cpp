@@ -78,6 +78,7 @@ TEST_F(TextInputV3WithInputMethodV2Test, text_input_enters_surface_on_focus)
 TEST_F(TextInputV3WithInputMethodV2Test, text_input_leaves_surface_on_unfocus)
 {
     create_focussed_surface();
+    // Text input will not .enter() other surface because it belongs to a different client
     EXPECT_CALL(text_input, enter(_)).Times(0);
     EXPECT_CALL(text_input, leave(app_surface.value().operator wl_surface*()));
 
