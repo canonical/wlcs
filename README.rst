@@ -25,7 +25,7 @@ happens-before ordering available.
 
 Instead, ``wlcs`` relies on compositors providing an integration module,
 providing ``wlcs`` with API hooks to start a compositor, connect a client,
-move a window, and so on. This makes both writing aid debugging tests easier -
+move a window, and so on. This makes both writing and debugging tests easier -
 the tests are (generally) in the same address space as the compositor, so there
 is a consistent global clock available, it's easier to poke around in
 compositor internals, and standard debugging tools can follow control flow from
