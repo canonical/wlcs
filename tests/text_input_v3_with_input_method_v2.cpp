@@ -27,6 +27,7 @@
 #include "mock_text_input_v3.h"
 #include "mock_input_method_v2.h"
 #include "version_specifier.h"
+#include "xdg_shell_stable.h"
 
 #include <gmock/gmock.h>
 #include <optional>
@@ -211,5 +212,33 @@ TEST_F(TextInputV3WithInputMethodV2Test, input_method_can_send_preedit)
     zwp_input_method_v2_set_preedit_string(input_method, text, cursor_begin, cursor_end);
     zwp_input_method_v2_commit(input_method, input_method.done_count());
     input_client.roundtrip();
+    app_client.roundtrip();
+}
+
+/// Regression test for https://github.com/MirServer/mir/issues/2189
+TEST_F(TextInputV3WithInputMethodV2Test, text_input_enters_parent_surface_after_child_destroyed)
+{
+    auto parent_surface = std::make_unique<wlcs::Surface>(app_client);
+    EXPECT_CALL(text_input, enter(parent_surface->operator wl_surface*()));
+    auto parent_xdg_surface = std::make_shared<wlcs::XdgSurfaceStable>(app_client, *parent_surface);
+    auto parent_xdg_toplevel = std::make_shared<wlcs::XdgToplevelStable>(*parent_xdg_surface);
+    parent_surface->attach_visible_buffer(20, 20);
+    app_client.roundtrip();
+    Mock::VerifyAndClearExpectations(&text_input);
+
+    {
+        auto child_surface = std::make_unique<wlcs::Surface>(app_client);
+        EXPECT_CALL(text_input, leave(parent_surface->operator wl_surface*()));
+        EXPECT_CALL(text_input, enter(child_surface->operator wl_surface*()));
+        auto child_xdg_surface = std::make_shared<wlcs::XdgSurfaceStable>(app_client, *child_surface);
+        auto child_xdg_toplevel = std::make_shared<wlcs::XdgToplevelStable>(*child_xdg_surface);
+        child_surface->attach_visible_buffer(20, 20);
+        app_client.roundtrip();
+        Mock::VerifyAndClearExpectations(&text_input);
+
+        EXPECT_CALL(text_input, leave(nullptr)); // Child surface will be destroyed by the time the message comes in
+        EXPECT_CALL(text_input, enter(parent_surface->operator wl_surface*()));
+    }
+
     app_client.roundtrip();
 }
