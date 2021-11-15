@@ -232,6 +232,7 @@ TEST_F(TextInputV3WithInputMethodV2Test, text_input_enters_parent_surface_after_
         EXPECT_CALL(text_input, enter(child_surface->operator wl_surface*()));
         auto child_xdg_surface = std::make_shared<wlcs::XdgSurfaceStable>(app_client, *child_surface);
         auto child_xdg_toplevel = std::make_shared<wlcs::XdgToplevelStable>(*child_xdg_surface);
+        xdg_toplevel_set_parent(*child_xdg_toplevel, *parent_xdg_toplevel);
         child_surface->attach_visible_buffer(20, 20);
         app_client.roundtrip();
         Mock::VerifyAndClearExpectations(&text_input);
