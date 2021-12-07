@@ -215,6 +215,49 @@ TEST_F(TextInputV3WithInputMethodV2Test, input_method_can_send_preedit)
     app_client.roundtrip();
 }
 
+TEST_F(TextInputV3WithInputMethodV2Test, text_input_does_not_enter_non_grabbing_popup)
+{
+    auto parent_surface = std::make_unique<wlcs::Surface>(app_client);
+    EXPECT_CALL(text_input, enter(parent_surface->operator wl_surface*()));
+    auto parent_xdg_surface = std::make_shared<wlcs::XdgSurfaceStable>(app_client, *parent_surface);
+    auto parent_xdg_toplevel = std::make_shared<wlcs::XdgToplevelStable>(*parent_xdg_surface);
+    parent_surface->attach_visible_buffer(20, 20);
+    app_client.roundtrip();
+    Mock::VerifyAndClearExpectations(&text_input);
+    auto child_surface = std::make_unique<wlcs::Surface>(app_client);
+    EXPECT_CALL(text_input, leave(parent_surface->operator wl_surface*())).Times(0);
+    EXPECT_CALL(text_input, enter(child_surface->operator wl_surface*())).Times(0);
+    auto child_xdg_surface = std::make_shared<wlcs::XdgSurfaceStable>(app_client, *child_surface);
+    auto child_xdg_toplevel = std::make_shared<wlcs::XdgPopupStable>(
+        *child_xdg_surface,
+        parent_xdg_surface.get(),
+        wlcs::XdgPositionerStable{app_client}.setup_default({20, 20}));
+    child_surface->attach_visible_buffer(20, 20);
+    app_client.roundtrip();
+}
+
+TEST_F(TextInputV3WithInputMethodV2Test, text_input_enters_grabbing_popup)
+{
+    auto parent_surface = std::make_unique<wlcs::Surface>(app_client);
+    EXPECT_CALL(text_input, enter(parent_surface->operator wl_surface*()));
+    auto parent_xdg_surface = std::make_shared<wlcs::XdgSurfaceStable>(app_client, *parent_surface);
+    auto parent_xdg_toplevel = std::make_shared<wlcs::XdgToplevelStable>(*parent_xdg_surface);
+    parent_surface->attach_visible_buffer(20, 20);
+    app_client.roundtrip();
+    Mock::VerifyAndClearExpectations(&text_input);
+    auto child_surface = std::make_unique<wlcs::Surface>(app_client);
+    EXPECT_CALL(text_input, leave(parent_surface->operator wl_surface*()));
+    EXPECT_CALL(text_input, enter(child_surface->operator wl_surface*()));
+    auto child_xdg_surface = std::make_shared<wlcs::XdgSurfaceStable>(app_client, *child_surface);
+    auto child_xdg_popup = std::make_shared<wlcs::XdgPopupStable>(
+        *child_xdg_surface,
+        parent_xdg_surface.get(),
+        wlcs::XdgPositionerStable{app_client}.setup_default({20, 20}));
+    xdg_popup_grab(*child_xdg_popup, app_client.seat(), app_client.latest_serial().value());
+    child_surface->attach_visible_buffer(20, 20);
+    app_client.roundtrip();
+}
+
 /// Regression test for https://github.com/MirServer/mir/issues/2189
 TEST_F(TextInputV3WithInputMethodV2Test, text_input_enters_parent_surface_after_child_destroyed)
 {
