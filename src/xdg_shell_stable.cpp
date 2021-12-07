@@ -108,6 +108,15 @@ wlcs::XdgPositionerStable::~XdgPositionerStable()
     xdg_positioner_destroy(positioner);
 }
 
+auto wlcs::XdgPositionerStable::setup_default(std::pair<int, int> size) -> XdgPositionerStable&
+{
+    xdg_positioner_set_size(positioner, size.first, size.second);
+    xdg_positioner_set_anchor_rect(positioner, 0, 0, 1, 1);
+    xdg_positioner_set_anchor(positioner, ZXDG_POSITIONER_V6_ANCHOR_TOP | ZXDG_POSITIONER_V6_ANCHOR_LEFT);
+    xdg_positioner_set_gravity(positioner, ZXDG_POSITIONER_V6_ANCHOR_BOTTOM | ZXDG_POSITIONER_V6_ANCHOR_RIGHT);
+    return *this;
+}
+
 wlcs::XdgPopupStable::XdgPopupStable(
     XdgSurfaceStable& shell_surface_,
     std::optional<XdgSurfaceStable*> parent,

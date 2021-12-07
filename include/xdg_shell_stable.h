@@ -84,6 +84,7 @@ public:
     XdgPositionerStable(wlcs::Client& client);
     ~XdgPositionerStable();
     operator xdg_positioner*() const {return positioner;}
+    auto setup_default(std::pair<int, int> size) -> XdgPositionerStable&;
 
 private:
     xdg_positioner* const positioner;
