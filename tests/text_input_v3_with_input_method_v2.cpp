@@ -243,8 +243,16 @@ TEST_F(TextInputV3WithInputMethodV2Test, text_input_enters_grabbing_popup)
     auto parent_xdg_surface = std::make_shared<wlcs::XdgSurfaceStable>(app_client, *parent_surface);
     auto parent_xdg_toplevel = std::make_shared<wlcs::XdgToplevelStable>(*parent_xdg_surface);
     parent_surface->attach_visible_buffer(20, 20);
+    the_server().move_surface_to(*parent_surface, 0, 0);
     app_client.roundtrip();
     Mock::VerifyAndClearExpectations(&text_input);
+
+    // This is needed to get a serial, which will be used later on
+    auto pointer = the_server().create_pointer();
+    pointer.move_to(2, 2);
+    pointer.left_click();
+    app_client.roundtrip();
+
     auto child_surface = std::make_unique<wlcs::Surface>(app_client);
     EXPECT_CALL(text_input, leave(parent_surface->operator wl_surface*()));
     EXPECT_CALL(text_input, enter(child_surface->operator wl_surface*()));
