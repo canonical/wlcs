@@ -102,6 +102,42 @@ TEST_F(TextInputV3WithInputMethodV2Test, input_method_can_be_enabled)
     input_client.roundtrip();
 }
 
+TEST_F(TextInputV3WithInputMethodV2Test, input_method_can_be_disabled)
+{
+    create_focussed_surface();
+    Expectation a = EXPECT_CALL(input_method, activate());
+    EXPECT_CALL(input_method, done()).After(a);
+    zwp_text_input_v3_enable(text_input);
+    zwp_text_input_v3_commit(text_input);
+    app_client.roundtrip();
+    input_client.roundtrip();
+    Expectation b = EXPECT_CALL(input_method, deactivate());
+    EXPECT_CALL(input_method, done()).After(a);
+    zwp_text_input_v3_disable(text_input);
+    zwp_text_input_v3_commit(text_input);
+    app_client.roundtrip();
+    input_client.roundtrip();
+}
+
+TEST_F(TextInputV3WithInputMethodV2Test, input_method_disabled_when_text_input_destroyed)
+{
+    create_focussed_surface();
+    {
+        NiceMock<wlcs::MockTextInputV3> text_input{
+            zwp_text_input_manager_v3_get_text_input(text_input_manager, app_client.seat())};
+        Expectation a = EXPECT_CALL(input_method, activate());
+        EXPECT_CALL(input_method, done()).After(a);
+        zwp_text_input_v3_enable(text_input);
+        zwp_text_input_v3_commit(text_input);
+        app_client.roundtrip();
+        input_client.roundtrip();
+        Expectation b = EXPECT_CALL(input_method, deactivate());
+        EXPECT_CALL(input_method, done()).After(a);
+    }
+    app_client.roundtrip();
+    input_client.roundtrip();
+}
+
 TEST_F(TextInputV3WithInputMethodV2Test, text_field_state_can_be_set)
 {
     auto const text = "some text";
