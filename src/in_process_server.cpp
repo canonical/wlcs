@@ -768,6 +768,26 @@ public:
         return surface;
     }
 
+    Surface create_visible_surface(Client& client, int width, int height)
+    {
+        if (shell)
+        {
+            return create_wl_shell_surface(client, width, height);
+        }
+        else if (xdg_shell_stable)
+        {
+            return create_xdg_shell_stable_surface(client, width, height);
+        }
+        else if (xdg_shell_v6)
+        {
+            return create_xdg_shell_v6_surface(client, width, height);
+        }
+        else
+        {
+            throw std::runtime_error("compositor does not support any known shell protocols");
+        }
+    }
+
     wl_shell* the_shell() const
     {
         if (shell)
@@ -1649,7 +1669,7 @@ wlcs::Surface wlcs::Client::create_xdg_shell_stable_surface(int width, int heigh
 
 wlcs::Surface wlcs::Client::create_visible_surface(int width, int height)
 {
-    return impl->create_wl_shell_surface(*this, width, height);
+    return impl->create_visible_surface(*this, width, height);
 }
 
 size_t wlcs::Client::output_count() const
