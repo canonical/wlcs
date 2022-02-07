@@ -30,7 +30,7 @@ namespace
 struct FrameSubmission : StartedInProcessServer
 {
     Client client{the_server()};
-    Surface surface{client};
+    Surface surface{client.create_visible_surface(200, 200)};
 
     void submit_frame(bool& frame_consumed);
 
@@ -63,12 +63,6 @@ void FrameSubmission::wait_for_frame(bool const& consumed_flag)
 
 TEST_F(FrameSubmission, post_one_frame_at_a_time)
 {
-    ShmBuffer buffer{client, 200, 200};
-    wl_surface_attach(surface, buffer, 0, 0);
-
-    auto shell_surface = wl_shell_get_shell_surface(client.shell(), surface);
-    wl_shell_surface_set_toplevel(shell_surface);
-
     for (auto i = 0; i != 10; ++i)
     {
         auto frame_consumed = false;
