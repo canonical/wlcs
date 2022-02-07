@@ -714,7 +714,7 @@ public:
     {
         Surface surface{client};
 
-        wl_shell_surface * shell_surface = wl_shell_get_shell_surface(shell, surface);
+        wl_shell_surface * shell_surface = wl_shell_get_shell_surface(the_shell(), surface);
         surface.run_on_destruction([shell_surface]()
             {
                 wl_shell_surface_destroy(shell_surface);
@@ -770,7 +770,21 @@ public:
 
     wl_shell* the_shell() const
     {
-        return shell;
+        if (shell)
+        {
+            return shell;
+        }
+        else
+        {
+            if (!supported_extensions || !supported_extensions->count("wl_shell"))
+            {
+                BOOST_THROW_EXCEPTION((ExtensionExpectedlyNotSupported{"wl_shell", AnyVersion}));
+            }
+            else
+            {
+                throw std::runtime_error("Failed to bind to wl_shell");
+            }
+        }
     }
 
     zxdg_shell_v6* the_xdg_shell_v6() const
