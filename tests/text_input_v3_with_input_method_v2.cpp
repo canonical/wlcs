@@ -94,8 +94,9 @@ TEST_F(TextInputV3WithInputMethodV2Test, text_input_leaves_surface_on_unfocus)
 TEST_F(TextInputV3WithInputMethodV2Test, input_method_can_be_enabled)
 {
     create_focussed_surface();
-    Expectation a = EXPECT_CALL(input_method, activate());
-    EXPECT_CALL(input_method, done()).After(a);
+    InSequence seq;
+    EXPECT_CALL(input_method, activate());
+    EXPECT_CALL(input_method, done());
     zwp_text_input_v3_enable(text_input);
     zwp_text_input_v3_commit(text_input);
     app_client.roundtrip();
@@ -105,14 +106,15 @@ TEST_F(TextInputV3WithInputMethodV2Test, input_method_can_be_enabled)
 TEST_F(TextInputV3WithInputMethodV2Test, input_method_can_be_disabled)
 {
     create_focussed_surface();
-    Expectation a = EXPECT_CALL(input_method, activate());
-    EXPECT_CALL(input_method, done()).After(a);
+    InSequence seq;
+    EXPECT_CALL(input_method, activate());
+    EXPECT_CALL(input_method, done());
     zwp_text_input_v3_enable(text_input);
     zwp_text_input_v3_commit(text_input);
     app_client.roundtrip();
     input_client.roundtrip();
-    Expectation b = EXPECT_CALL(input_method, deactivate());
-    EXPECT_CALL(input_method, done()).After(a);
+    EXPECT_CALL(input_method, deactivate());
+    EXPECT_CALL(input_method, done());
     zwp_text_input_v3_disable(text_input);
     zwp_text_input_v3_commit(text_input);
     app_client.roundtrip();
@@ -125,14 +127,15 @@ TEST_F(TextInputV3WithInputMethodV2Test, input_method_disabled_when_text_input_d
     {
         NiceMock<wlcs::MockTextInputV3> text_input{
             zwp_text_input_manager_v3_get_text_input(text_input_manager, app_client.seat())};
-        Expectation a = EXPECT_CALL(input_method, activate());
-        EXPECT_CALL(input_method, done()).After(a);
+        InSequence seq;
+        EXPECT_CALL(input_method, activate());
+        EXPECT_CALL(input_method, done());
         zwp_text_input_v3_enable(text_input);
         zwp_text_input_v3_commit(text_input);
         app_client.roundtrip();
         input_client.roundtrip();
-        Expectation b = EXPECT_CALL(input_method, deactivate());
-        EXPECT_CALL(input_method, done()).After(a);
+        EXPECT_CALL(input_method, deactivate());
+        EXPECT_CALL(input_method, done());
     }
     app_client.roundtrip();
     input_client.roundtrip();
@@ -201,9 +204,10 @@ TEST_F(TextInputV3WithInputMethodV2Test, input_method_can_send_preedit)
     app_client.roundtrip();
     input_client.roundtrip();
 
-    Expectation const a = EXPECT_CALL(text_input, preedit_string(text, cursor_begin, cursor_end));
+    InSequence seq;
+    EXPECT_CALL(text_input, preedit_string(text, cursor_begin, cursor_end));
     // Expected serial is 1 because we've sent exactly 1 commit
-    EXPECT_CALL(text_input, done(1)).After(a);
+    EXPECT_CALL(text_input, done(1));
     zwp_input_method_v2_set_preedit_string(input_method, text, cursor_begin, cursor_end);
     zwp_input_method_v2_commit(input_method, input_method.done_count());
     input_client.roundtrip();
