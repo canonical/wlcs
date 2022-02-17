@@ -747,7 +747,7 @@ TEST_P(XdgPopupTest, grabbed_popup_gets_done_event_when_new_toplevel_created)
     manager->client.create_visible_surface(window_width, window_height);
 }
 
-TEST_P(XdgPopupTest, grabbed_popup_does_not_get_keyboard_focus)
+TEST_P(XdgPopupTest, grabbed_popup_gets_keyboard_focus)
 {
     auto const& param = GetParam();
     auto manager = param.build(this);
@@ -768,11 +768,8 @@ TEST_P(XdgPopupTest, grabbed_popup_does_not_get_keyboard_focus)
 
     EXPECT_THAT(
         manager->client.keyboard_focused_window(),
-        Ne(static_cast<wl_surface*>(manager->popup_surface.value())))
-        << "popup given keyboard focus";
-    EXPECT_THAT(
-        manager->client.keyboard_focused_window(),
-        Eq(static_cast<wl_surface*>(manager->surface)));
+        Eq(static_cast<wl_surface*>(manager->popup_surface.value())))
+        << "grabbed popup not given keyboard focus";
 }
 
 TEST_P(XdgPopupTest, non_grabbed_popup_does_not_get_keyboard_focus)
