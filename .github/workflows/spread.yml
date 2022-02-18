@@ -19,8 +19,8 @@ jobs:
       matrix:
         spread-task:
         - lxd:ubuntu-20.04:...:gcc
-        - lxd:ubuntu-21.04:...:gcc
-        - lxd:ubuntu-21.04:...:clang
+        - lxd:ubuntu-21.10:...:gcc
+        - lxd:ubuntu-21.10:...:clang
         - lxd:fedora-34:...:gcc
         - lxd:alpine-3.13:...:gcc
         allow-fail: [false]
