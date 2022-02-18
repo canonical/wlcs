@@ -965,7 +965,7 @@ TEST_P(LayerSurfaceLayoutTest, simple_popup_positioned_correctly)
 
     wlcs::Surface popup_wl_surface{client};
     wlcs::XdgSurfaceStable popup_xdg_surface{client, popup_wl_surface};
-    wlcs::XdgPopupStable popup_xdg_popup{popup_xdg_surface, std::experimental::nullopt, positioner};
+    wlcs::XdgPopupStable popup_xdg_popup{popup_xdg_surface, std::nullopt, positioner};
     zwlr_layer_surface_v1_get_popup(layer_surface, popup_xdg_popup);
 
     int popup_surface_configure_count = 0;

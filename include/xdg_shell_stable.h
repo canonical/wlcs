@@ -131,7 +131,7 @@ class XdgPopupStable
 public:
     XdgPopupStable(
         XdgSurfaceStable& shell_surface_,
-        std::experimental::optional<XdgSurfaceStable*> parent,
+        std::optional<XdgSurfaceStable*> parent,
         XdgPositionerStable& positioner);
     XdgPopupStable(XdgPopupStable const&) = delete;
     XdgPopupStable& operator=(XdgPopupStable const&) = delete;
