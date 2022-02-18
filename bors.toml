@@ -1,4 +1,10 @@
-status = [ "Bors" ]
+status = [
+           "BuildAndTest (lxd:ubuntu-20.04:...:gcc)",
+           "BuildAndTest (lxd:ubuntu-21.04:...:gcc)",
+           "BuildAndTest (lxd:ubuntu-21.04:...:clang)",
+           "BuildAndTest (lxd:fedora-34:...:clang)",
+           "BuildAndTest (lxd:alpine-3.13:...:clang)"
+         ]
 block-labels = [ "no-merge" ]
 timeout-sec = 1800
 delete-merged-branches = true
