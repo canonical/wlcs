@@ -15,7 +15,7 @@ on:
 jobs:
   BuildAndTest:
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         spread-task:
         - lxd:ubuntu-20.04:...:gcc
