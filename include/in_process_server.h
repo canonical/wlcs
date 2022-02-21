@@ -220,9 +220,9 @@ struct OutputState
     }
 
     wl_output* output;
-    std::experimental::optional<std::pair<int, int>> geometry_position;
-    std::experimental::optional<std::pair<int, int>> mode_size;
-    std::experimental::optional<int> scale;
+    std::optional<std::pair<int, int>> geometry_position;
+    std::optional<std::pair<int, int>> mode_size;
+    std::optional<int> scale;
 };
 
 class Client
@@ -261,7 +261,7 @@ public:
     wl_surface* touched_window() const;
     std::pair<wl_fixed_t, wl_fixed_t> pointer_position() const;
     std::pair<wl_fixed_t, wl_fixed_t> touch_position() const;
-    std::experimental::optional<uint32_t> latest_serial() const;
+    std::optional<uint32_t> latest_serial() const;
 
     using PointerEnterNotifier =
         std::function<bool(wl_surface*, wl_fixed_t x, wl_fixed_t y)>;
