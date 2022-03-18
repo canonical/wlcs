@@ -225,8 +225,8 @@ TEST_F(TextInputV3WithInputMethodV2Test, text_input_does_not_enter_non_grabbing_
     app_client.roundtrip();
     Mock::VerifyAndClearExpectations(&text_input);
     auto child_surface = std::make_unique<wlcs::Surface>(app_client);
-    EXPECT_CALL(text_input, leave(parent_surface->operator wl_surface*())).Times(0);
-    EXPECT_CALL(text_input, enter(child_surface->operator wl_surface*())).Times(0);
+    EXPECT_CALL(text_input, leave(_)).Times(0);
+    EXPECT_CALL(text_input, enter(_)).Times(0);
     auto child_xdg_surface = std::make_shared<wlcs::XdgSurfaceStable>(app_client, *child_surface);
     auto child_xdg_toplevel = std::make_shared<wlcs::XdgPopupStable>(
         *child_xdg_surface,
