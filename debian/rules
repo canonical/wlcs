@@ -10,14 +10,7 @@ COMMON_CONFIGURE_OPTIONS =\
   -DWLCS_BUILD_UBSAN=ON \
   -DWLCS_BUILD_TSAN=ON
 
-ifeq ($(filter i386 armhf, $(DEB_HOST_ARCH)),)
-  ifeq ($(DEB_DISTRIBUTION),xenial)
-    ifneq ($(filter arm64 ppc64el, $(DEB_HOST_ARCH)),)
-      # arm64 on 16.04 does not have tsan
-      COMMON_CONFIGURE_OPTIONS += -DWLCS_BUILD_TSAN=OFF
-    endif
-  endif
-else
+ifneq ($(filter i386 armhf, $(DEB_HOST_ARCH)),)
   # i386 and armhf do not have tsan
   COMMON_CONFIGURE_OPTIONS += -DWLCS_BUILD_TSAN=OFF
 endif
