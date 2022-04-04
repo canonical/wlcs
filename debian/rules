@@ -15,6 +15,15 @@ ifneq ($(filter i386 armhf, $(DEB_HOST_ARCH)),)
   COMMON_CONFIGURE_OPTIONS += -DWLCS_BUILD_TSAN=OFF
 endif
 
+ifeq ($(DEB_HOST_ARCH), riscv64)
+  # riscv64 does not have sanitizers
+  ifeq ($(DEB_DISTRIBUTION), focal)
+    COMMON_CONFIGURE_OPTIONS += -DWLCS_BUILD_ASAN=OFF
+    COMMON_CONFIGURE_OPTIONS += -DWLCS_BUILD_TSAN=OFF
+  endif
+  COMMON_CONFIGURE_OPTIONS += -DWLCS_BUILD_UBSAN=OFF
+endif
+
 override_dh_auto_configure:
 	dh_auto_configure -- $(COMMON_CONFIGURE_OPTIONS)
 
