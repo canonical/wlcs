@@ -44,7 +44,13 @@ jobs:
           dput \
           python3-launchpadlib
 
+    - name: Set up Launchpad credentials
+      uses: DamianReeves/write-file-action@v1.0
+      with:
+        path: lp_credentials
+        contents: ${{ secrets.LAUNCHPAD_CREDENTIALS }}
+
     - name: Upload to PPA
       env:
         RELEASE: ${{ matrix.release }}
-      run: tools/ppa-upload.sh
+      run: tools/ppa-upload.sh lp_credentials
