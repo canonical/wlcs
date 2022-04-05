@@ -19,9 +19,9 @@ ifeq ($(DEB_HOST_ARCH), riscv64)
   # riscv64 does not have sanitizers
   ifeq ($(DEB_DISTRIBUTION), focal)
     COMMON_CONFIGURE_OPTIONS += -DWLCS_BUILD_ASAN=OFF
-    COMMON_CONFIGURE_OPTIONS += -DWLCS_BUILD_TSAN=OFF
   endif
   COMMON_CONFIGURE_OPTIONS += -DWLCS_BUILD_UBSAN=OFF
+  COMMON_CONFIGURE_OPTIONS += -DWLCS_BUILD_TSAN=OFF
 endif
 
 override_dh_auto_configure:
