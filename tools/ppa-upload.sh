@@ -103,7 +103,7 @@ series = ubuntu.getSeries(name_or_version=os.environ['RELEASE'])
 
 mir_team = lp.people["mir-team"]
 rc_ppa = mir_team.getPPAByName(name="wlcs-rc")
-release_ppa = mir_team.getPPAByName(name="wlcs")
+release_ppa = mir_team.getPPAByName(name="release")
 
 release_ppa.copyPackage(source_name="wlcs",
                         version=sys.argv[1],
