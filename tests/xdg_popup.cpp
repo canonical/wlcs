@@ -198,7 +198,7 @@ public:
     }
 
     virtual auto popup_position() const -> std::optional<std::pair<int, int>> = 0;
-    virtual auto child() -> std::unique_ptr<XdgPopupManagerBase> = 0;
+    virtual auto create_child_popup() -> std::unique_ptr<XdgPopupManagerBase> = 0;
     virtual void dispatch_until_popup_configure() = 0;
 
     MOCK_METHOD0(popup_done, void());
@@ -308,7 +308,7 @@ public:
         return std::make_pair(state.value().x, state.value().y);
     }
 
-    auto child() -> std::unique_ptr<XdgPopupManagerBase> override
+    auto create_child_popup() -> std::unique_ptr<XdgPopupManagerBase> override
     {
         return std::make_unique<XdgPopupStableManager>(the_server, client, &popup_xdg_surface.value());
     }
@@ -424,7 +424,7 @@ public:
         return std::make_pair(state.value().x, state.value().y);
     }
 
-    auto child() -> std::unique_ptr<XdgPopupManagerBase> override
+    auto create_child_popup() -> std::unique_ptr<XdgPopupManagerBase> override
     {
         return std::make_unique<XdgPopupV6Manager>(the_server, client, &popup_xdg_surface.value());
     }
@@ -532,7 +532,7 @@ public:
         return std::make_pair(state.value().x, state.value().y);
     }
 
-    auto child() -> std::unique_ptr<XdgPopupManagerBase> override
+    auto create_child_popup() -> std::unique_ptr<XdgPopupManagerBase> override
     {
         return std::make_unique<XdgPopupStableManager>(the_server, client, &popup_xdg_surface.value());
     }
@@ -796,7 +796,7 @@ TEST_P(XdgPopupTest, grabbed_popups_get_done_events_in_correct_order)
         .with_grab();
     top_popup_manager->map_popup(positioner);
     top_popup_manager->client->roundtrip();
-    auto sub_popup_manager = top_popup_manager->child();
+    auto sub_popup_manager = top_popup_manager->create_child_popup();
     sub_popup_manager->map_popup(positioner);
     top_popup_manager->client->roundtrip();
 
