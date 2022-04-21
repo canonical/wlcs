@@ -790,6 +790,7 @@ TEST_P(XdgPopupTest, grabbed_popups_get_done_events_in_correct_order)
     top_popup_manager->client->roundtrip();
 
     auto positioner = PositionerParams{}
+        .with_anchor_rect(20, 20, 1, 1)
         .with_size(30, 30)
         .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
         .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT)
@@ -804,8 +805,9 @@ TEST_P(XdgPopupTest, grabbed_popups_get_done_events_in_correct_order)
     EXPECT_CALL(*sub_popup_manager, popup_done());
     EXPECT_CALL(*top_popup_manager, popup_done());
 
-    // Create a new toplevel, which will dismiss the popups
-    top_popup_manager->client->create_visible_surface(window_width, window_height);
+    // Click outside the popups to dismiss
+    pointer.left_click();
+    top_popup_manager->client->roundtrip();
 }
 
 TEST_P(XdgPopupTest, grabbed_popup_gets_keyboard_focus)
