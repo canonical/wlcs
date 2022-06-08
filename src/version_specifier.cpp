@@ -18,14 +18,12 @@
 
 #include "version_specifier.h"
 
-using std::experimental::optional;
-
 wlcs::ExactlyVersion::ExactlyVersion(uint32_t version) noexcept
     : version{version}
 {
 }
 
-auto wlcs::ExactlyVersion::select_version(uint32_t max_version) const -> optional<uint32_t>
+auto wlcs::ExactlyVersion::select_version(uint32_t max_version) const -> std::optional<uint32_t>
 {
     if (max_version < version)
     {
@@ -44,7 +42,7 @@ wlcs::AtLeastVersion::AtLeastVersion(uint32_t version) noexcept
 {
 }
 
-auto wlcs::AtLeastVersion::select_version(uint32_t max_version) const -> optional<uint32_t>
+auto wlcs::AtLeastVersion::select_version(uint32_t max_version) const -> std::optional<uint32_t>
 {
     if (max_version < version)
     {
