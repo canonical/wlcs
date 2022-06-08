@@ -909,7 +909,7 @@ public:
         {
             expected_to_be_supported =
                 supported_extensions->count(to_bind.name) &&
-                version.select_version(supported_extensions->at(to_bind.name));
+                version.select_version(supported_extensions->at(to_bind.name), to_bind.version);
         }
 
         /* TODO: Mark tests using globals which exist, but are listed as unsupported as
@@ -920,7 +920,7 @@ public:
         auto const global = globals.find(to_bind.name);
         if (global != globals.end())
         {
-            auto const version_to_bind = version.select_version(global->second.version);
+            auto const version_to_bind = version.select_version(global->second.version, to_bind.version);
             if (version_to_bind)
             {
                 auto global_proxy = wl_registry_bind(registry, global->second.id, &to_bind, version_to_bind.value());

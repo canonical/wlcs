@@ -17,19 +17,35 @@
  */
 
 #include "version_specifier.h"
+#include "boost/throw_exception.hpp"
+#include <stdexcept>
 
 wlcs::ExactlyVersion::ExactlyVersion(uint32_t version) noexcept
     : version{version}
 {
 }
 
-auto wlcs::ExactlyVersion::select_version(uint32_t max_version) const -> std::optional<uint32_t>
+auto wlcs::ExactlyVersion::select_version(
+    uint32_t max_available_version,
+    uint32_t max_supported_version) const -> std::optional<uint32_t>
 {
-    if (max_version < version)
+    if (version > max_supported_version)
+    {
+        BOOST_THROW_EXCEPTION(std::logic_error(
+            "Required version " +
+            std::to_string(version) +
+            " is higher than the highest version supported by WLCS (" +
+            std::to_string(max_supported_version) +
+            ")"));
+    }
+    else if (version > max_available_version)
     {
         return {};
     }
-    return {version};
+    else
+    {
+        return {version};
+    }
 }
 
 auto wlcs::ExactlyVersion::describe() const -> std::string
@@ -42,13 +58,27 @@ wlcs::AtLeastVersion::AtLeastVersion(uint32_t version) noexcept
 {
 }
 
-auto wlcs::AtLeastVersion::select_version(uint32_t max_version) const -> std::optional<uint32_t>
+auto wlcs::AtLeastVersion::select_version(
+    uint32_t max_available_version,
+    uint32_t max_supported_version) const -> std::optional<uint32_t>
 {
-    if (max_version < version)
+    if (version > max_supported_version)
+    {
+        BOOST_THROW_EXCEPTION(std::logic_error(
+            "Required version " +
+            std::to_string(version) +
+            " is higher than the highest version supported by WLCS (" +
+            std::to_string(max_supported_version) +
+            ")"));
+    }
+    else if (version > max_available_version)
     {
         return {};
     }
-    return {max_version};
+    else
+    {
+        return {std::min(max_available_version, max_supported_version)};
+    }
 }
 
 auto wlcs::AtLeastVersion::describe() const -> std::string
