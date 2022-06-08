@@ -140,9 +140,37 @@ TEST_F(SelfTest, acquiring_unsupported_extension_version_is_xfail)
 
     Client client{the_server()};
 
-    client.bind_if_supported(wl_shell_interface, AtLeastVersion{wl_shell_interface.version + 1u});
+    wl_interface interface_with_unsupported_version = wl_shell_interface;
+    interface_with_unsupported_version.version += 1;
+    client.bind_if_supported(
+        interface_with_unsupported_version,
+        AtLeastVersion{static_cast<uint32_t>(interface_with_unsupported_version.version)});
 
     FAIL() << "We should have (x)failed at acquiring the interface";
+}
+
+TEST_F(SelfTest, does_not_acquire_version_newer_than_wlcs_supports)
+{
+    auto const extension_list = the_server().supported_extensions();
+
+    if (!extension_list)
+    {
+        ::testing::Test::RecordProperty("wlcs-skip-test", "Compositor Integration module is too old for expected extension failures");
+        FAIL() << "Requires unsupported feature from module under test";
+    }
+
+    Client client{the_server()};
+
+    auto const proxy_latest = static_cast<wl_seat*>(client.bind_if_supported(wl_seat_interface, AnyVersion));
+    ASSERT_THAT(wl_seat_get_version(proxy_latest), Gt(1));
+
+    wl_interface interface_with_old_version = wl_seat_interface;
+    interface_with_old_version.version = wl_seat_get_version(proxy_latest) - 1;
+    auto const proxy_old = static_cast<wl_seat*>(client.bind_if_supported(interface_with_old_version, AnyVersion));
+    EXPECT_THAT(wl_seat_get_version(proxy_old), Eq(interface_with_old_version.version));
+
+    wl_seat_destroy(proxy_latest);
+    wl_seat_destroy(proxy_old);
 }
 
 TEST_F(SelfTest, dispatch_until_times_out_on_failure)
