@@ -1486,34 +1486,37 @@ private:
     {
         using namespace std::literals::string_literals;
 
+        static auto const safe_bind = []
+            (wl_registry* registry, uint32_t name, const wl_interface* iface, uint32_t version)
+        {
+            return wl_registry_bind(registry, name, iface, std::min(version, static_cast<uint32_t>(iface->version)));
+        };
+
         auto me = static_cast<Impl*>(ctx);
         me->global_type_names[id] = interface;
         me->globals[interface] = Global{id, version};
 
         if ("wl_shm"s == interface)
         {
-            me->shm = static_cast<struct wl_shm*>(
-                wl_registry_bind(registry, id, &wl_shm_interface, version));
+            me->shm = static_cast<struct wl_shm*>(safe_bind(registry, id, &wl_shm_interface, version));
         }
         else if ("wl_compositor"s == interface)
         {
             me->compositor = static_cast<struct wl_compositor*>(
-                wl_registry_bind(registry, id, &wl_compositor_interface, version));
+                safe_bind(registry, id, &wl_compositor_interface, version));
         }
         else if ("wl_subcompositor"s == interface)
         {
             me->subcompositor = static_cast<struct wl_subcompositor*>(
-                wl_registry_bind(registry, id, &wl_subcompositor_interface, version));
+                safe_bind(registry, id, &wl_subcompositor_interface, version));
         }
         else if ("wl_shell"s == interface)
         {
-            me->shell = static_cast<struct wl_shell*>(
-                wl_registry_bind(registry, id, &wl_shell_interface, version));
+            me->shell = static_cast<wl_shell*>(safe_bind(registry, id, &wl_shell_interface, version));
         }
         else if ("wl_seat"s == interface)
         {
-            me->seat = static_cast<struct wl_seat*>(
-                wl_registry_bind(registry, id, &wl_seat_interface, version));
+            me->seat = static_cast<struct wl_seat*>(safe_bind(registry, id, &wl_seat_interface, version));
 
             wl_seat_add_listener(me->seat, &seat_listener, me);
             // Ensure we receive the initial seat events.
@@ -1521,8 +1524,7 @@ private:
         }
         else if ("wl_output"s == interface)
         {
-            auto wl_output = static_cast<struct wl_output*>(
-                wl_registry_bind(registry, id, &wl_output_interface, version));
+            auto wl_output = static_cast<struct wl_output*>(safe_bind(registry, id, &wl_output_interface, version));
             auto output = std::make_unique<Output>(wl_output);
             wl_output_add_listener(wl_output, &Output::listener, output.get());
             me->outputs.push_back(move(output));
@@ -1532,13 +1534,11 @@ private:
         }
         else if ("zxdg_shell_v6"s == interface)
         {
-            me->xdg_shell_v6 = static_cast<struct zxdg_shell_v6*>(
-                wl_registry_bind(registry, id, &zxdg_shell_v6_interface, version));
+            me->xdg_shell_v6 = static_cast<zxdg_shell_v6*>(safe_bind(registry, id, &zxdg_shell_v6_interface, version));
         }
         else if ("xdg_wm_base"s == interface)
         {
-            me->xdg_shell_stable = static_cast<struct xdg_wm_base*>(
-                wl_registry_bind(registry, id, &xdg_wm_base_interface, version));
+            me->xdg_shell_stable = static_cast<xdg_wm_base*>(safe_bind(registry, id, &xdg_wm_base_interface, version));
         }
     }
 
