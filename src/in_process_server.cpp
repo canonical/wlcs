@@ -737,8 +737,8 @@ public:
 
         surface.run_on_destruction([xdg_surface, xdg_toplevel]() mutable
             {
-                xdg_surface.reset();
                 xdg_toplevel.reset();
+                xdg_surface.reset();
             });
 
         wl_surface_commit(surface);
@@ -757,8 +757,8 @@ public:
 
         surface.run_on_destruction([xdg_surface, xdg_toplevel]() mutable
             {
-                xdg_surface.reset();
                 xdg_toplevel.reset();
+                xdg_surface.reset();
             });
 
         wl_surface_commit(surface);
