@@ -809,7 +809,21 @@ public:
 
     zxdg_shell_v6* the_xdg_shell_v6() const
     {
-        return xdg_shell_v6;
+        if (xdg_shell_v6)
+        {
+            return xdg_shell_v6;
+        }
+        else
+        {
+            if (!supported_extensions || !supported_extensions->count("zxdg_shell_v6"))
+            {
+                BOOST_THROW_EXCEPTION((ExtensionExpectedlyNotSupported{"zxdg_shell_v6", AnyVersion}));
+            }
+            else
+            {
+                throw std::runtime_error("Failed to bind to zxdg_shell_v6");
+            }
+        }
     }
 
     xdg_wm_base* the_xdg_shell_stable() const
