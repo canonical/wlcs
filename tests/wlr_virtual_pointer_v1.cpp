@@ -161,7 +161,7 @@ TEST_F(VirtualPointerV1Test, when_virutal_pointer_scrolls_with_steps_client_sees
     EXPECT_CALL(listener, axis_source(_)).Times(AnyNumber());
     EXPECT_CALL(listener, frame()).Times(AtLeast(1));
     auto const handle = zwlr_virtual_pointer_manager_v1_create_virtual_pointer(manager, nullptr);
-    zwlr_virtual_pointer_v1_axis_discrete(handle, 0, WL_POINTER_AXIS_HORIZONTAL_SCROLL, 4, wl_fixed_from_int(5));
+    zwlr_virtual_pointer_v1_axis_discrete(handle, 0, WL_POINTER_AXIS_HORIZONTAL_SCROLL, wl_fixed_from_int(5), 4);
     zwlr_virtual_pointer_v1_frame(handle);
     send_client.roundtrip();
     receive_client.roundtrip();
