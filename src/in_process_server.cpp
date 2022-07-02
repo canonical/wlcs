@@ -1358,11 +1358,11 @@ private:
         &Impl::pointer_leave,
         &Impl::pointer_motion,
         &Impl::pointer_button,
-        nullptr,    // axis
+        [](auto...){},  // axis
         &Impl::pointer_frame,    // frame
-        nullptr,    // axis_source
-        nullptr,    // axis_stop
-        nullptr     // axis_discrete
+        [](auto...){},  // axis_source
+        [](auto...){},  // axis_stop
+        [](auto...){},  // axis_discrete
     };
 
     static void touch_down(
