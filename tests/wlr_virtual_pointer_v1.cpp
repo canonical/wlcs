@@ -131,6 +131,32 @@ TEST_F(VirtualPointerV1Test, when_virutal_pointer_is_moved_client_sees_motion)
     receive_client.roundtrip();
 }
 
+TEST_F(VirtualPointerV1Test, when_virutal_pointer_is_moved_multiple_times_client_sees_motion)
+{
+    int const motion1_x = 7;
+    int const motion1_y = 22;
+    int const motion2_x = 5;
+    int const motion2_y = -12;
+
+    auto const handle = zwlr_virtual_pointer_manager_v1_create_virtual_pointer(manager, nullptr);
+
+    EXPECT_CALL(listener, motion(_, _, _)).Times(AnyNumber());
+    EXPECT_CALL(listener, frame()).Times(AnyNumber());
+    zwlr_virtual_pointer_v1_motion(handle, 0, wl_fixed_from_int(motion1_x), wl_fixed_from_int(motion1_y));
+    zwlr_virtual_pointer_v1_frame(handle);
+    send_client.roundtrip();
+    receive_client.roundtrip();
+
+    EXPECT_CALL(listener, motion(_,
+        wl_fixed_from_int(pointer_start_x + motion1_x + motion2_x),
+        wl_fixed_from_int(pointer_start_y + motion1_y + motion2_y)));
+    EXPECT_CALL(listener, frame()).Times(AtLeast(1));
+    zwlr_virtual_pointer_v1_motion(handle, 0, wl_fixed_from_int(motion2_x), wl_fixed_from_int(motion2_y));
+    zwlr_virtual_pointer_v1_frame(handle);
+    send_client.roundtrip();
+    receive_client.roundtrip();
+}
+
 TEST_F(VirtualPointerV1Test, when_virutal_pointer_clicks_client_sees_button)
 {
     EXPECT_CALL(listener, button(_, _, BTN_LEFT, true));
