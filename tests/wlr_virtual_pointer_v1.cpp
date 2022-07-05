@@ -157,12 +157,65 @@ TEST_F(VirtualPointerV1Test, when_virutal_pointer_is_moved_multiple_times_client
     receive_client.roundtrip();
 }
 
-TEST_F(VirtualPointerV1Test, when_virutal_pointer_clicks_client_sees_button)
+TEST_F(VirtualPointerV1Test, when_virutal_pointer_left_clicks_client_sees_button_down)
 {
-    EXPECT_CALL(listener, button(_, _, BTN_LEFT, true));
+    EXPECT_CALL(listener, button(_, _, BTN_LEFT, WL_POINTER_BUTTON_STATE_PRESSED));
     EXPECT_CALL(listener, frame()).Times(AtLeast(1));
     auto const handle = zwlr_virtual_pointer_manager_v1_create_virtual_pointer(manager, nullptr);
     zwlr_virtual_pointer_v1_button(handle, 0, BTN_LEFT, WL_POINTER_BUTTON_STATE_PRESSED);
+    zwlr_virtual_pointer_v1_frame(handle);
+    send_client.roundtrip();
+    receive_client.roundtrip();
+}
+
+TEST_F(VirtualPointerV1Test, when_virutal_pointer_left_releases_client_sees_button_up)
+{
+    EXPECT_CALL(listener, button(_, _, _, _)).Times(AnyNumber());
+    EXPECT_CALL(listener, frame()).Times(AnyNumber());
+    auto const handle = zwlr_virtual_pointer_manager_v1_create_virtual_pointer(manager, nullptr);
+    zwlr_virtual_pointer_v1_button(handle, 0, BTN_LEFT, WL_POINTER_BUTTON_STATE_PRESSED);
+    zwlr_virtual_pointer_v1_frame(handle);
+    send_client.roundtrip();
+    receive_client.roundtrip();
+    Mock::VerifyAndClearExpectations(&listener);
+
+    EXPECT_CALL(listener, button(_, _, BTN_LEFT, WL_POINTER_BUTTON_STATE_RELEASED));
+    EXPECT_CALL(listener, frame()).Times(AtLeast(1));
+    zwlr_virtual_pointer_v1_button(handle, 0, BTN_LEFT, WL_POINTER_BUTTON_STATE_RELEASED);
+    zwlr_virtual_pointer_v1_frame(handle);
+    send_client.roundtrip();
+    receive_client.roundtrip();
+}
+
+TEST_F(VirtualPointerV1Test, when_virutal_pointer_given_multiple_button_presses_at_once_client_sees_all)
+{
+    EXPECT_CALL(listener, button(_, _, BTN_LEFT, WL_POINTER_BUTTON_STATE_PRESSED));
+    EXPECT_CALL(listener, button(_, _, BTN_MIDDLE, WL_POINTER_BUTTON_STATE_PRESSED));
+    EXPECT_CALL(listener, frame()).Times(AtLeast(1));
+    auto const handle = zwlr_virtual_pointer_manager_v1_create_virtual_pointer(manager, nullptr);
+    zwlr_virtual_pointer_v1_button(handle, 0, BTN_LEFT, WL_POINTER_BUTTON_STATE_PRESSED);
+    zwlr_virtual_pointer_v1_button(handle, 0, BTN_MIDDLE, WL_POINTER_BUTTON_STATE_PRESSED);
+    zwlr_virtual_pointer_v1_frame(handle);
+    send_client.roundtrip();
+    receive_client.roundtrip();
+}
+
+TEST_F(VirtualPointerV1Test, when_virutal_pointer_presses_and_releases_different_buttons_on_same_frame_client_sees_correct_events)
+{
+    EXPECT_CALL(listener, button(_, _, _, _)).Times(AnyNumber());
+    EXPECT_CALL(listener, frame()).Times(AnyNumber());
+    auto const handle = zwlr_virtual_pointer_manager_v1_create_virtual_pointer(manager, nullptr);
+    zwlr_virtual_pointer_v1_button(handle, 0, BTN_LEFT, WL_POINTER_BUTTON_STATE_PRESSED);
+    zwlr_virtual_pointer_v1_frame(handle);
+    send_client.roundtrip();
+    receive_client.roundtrip();
+    Mock::VerifyAndClearExpectations(&listener);
+
+    EXPECT_CALL(listener, button(_, _, BTN_LEFT, WL_POINTER_BUTTON_STATE_RELEASED));
+    EXPECT_CALL(listener, button(_, _, BTN_RIGHT, WL_POINTER_BUTTON_STATE_PRESSED));
+    EXPECT_CALL(listener, frame()).Times(AtLeast(1));
+    zwlr_virtual_pointer_v1_button(handle, 0, BTN_LEFT, WL_POINTER_BUTTON_STATE_RELEASED);
+    zwlr_virtual_pointer_v1_button(handle, 0, BTN_RIGHT, WL_POINTER_BUTTON_STATE_PRESSED);
     zwlr_virtual_pointer_v1_frame(handle);
     send_client.roundtrip();
     receive_client.roundtrip();
