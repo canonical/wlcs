@@ -131,6 +131,7 @@ GENERATE_PROTOCOL(pointer-constraints-unstable-v1)
 GENERATE_PROTOCOL(relative-pointer-unstable-v1)
 GENERATE_PROTOCOL(text-input-unstable-v3)
 GENERATE_PROTOCOL(input-method-unstable-v2)
+GENERATE_PROTOCOL(wlr-virtual-pointer-unstable-v1)
 
 option(WLCS_BUILD_ASAN "Build a test runner with AddressSanitizer annotations" ON)
 option(WLCS_BUILD_TSAN "Build a test runner with ThreadSanitizer annotations" ON)
@@ -202,7 +203,15 @@ set(
   tests/wlr_foreign_toplevel_management_v1.cpp
   tests/self_test.cpp
   tests/text_input_v3_with_input_method_v2.cpp
+  tests/wlr_virtual_pointer_v1.cpp
 )
+
+# g++ 9.4 (on 20.04) hates the MOCK_METHOD macro
+# Neither gnu-zero-variadic-macro-arguments nor variadic-macro help,
+# we just have to drop pedantic...
+set_property(
+    SOURCE tests/wlr_virtual_pointer_v1.cpp
+    PROPERTY COMPILE_OPTIONS -Wno-pedantic)
 
 add_library(test_c_compile OBJECT src/test_c_compile.c)
 
