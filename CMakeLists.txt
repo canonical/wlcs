@@ -137,6 +137,32 @@ option(WLCS_BUILD_ASAN "Build a test runner with AddressSanitizer annotations" O
 option(WLCS_BUILD_TSAN "Build a test runner with ThreadSanitizer annotations" ON)
 option(WLCS_BUILD_UBSAN "Build a test runner with UndefinedBehaviourSanitizer annotations" ON)
 
+set(WLCS_TESTS
+  tests/test_bad_buffer.cpp
+  tests/pointer_constraints.cpp
+  tests/copy_cut_paste.cpp
+  tests/gtk_primary_selection.cpp
+  tests/test_surface_events.cpp
+  tests/touches.cpp
+  tests/wl_output.cpp
+  tests/surface_input_regions.cpp
+  tests/frame_submission.cpp
+  tests/primary_selection.cpp
+  tests/relative_pointer.cpp
+  tests/subsurfaces.cpp
+  tests/xdg_surface_v6.cpp
+  tests/xdg_toplevel_v6.cpp
+  tests/xdg_surface_stable.cpp
+  tests/xdg_toplevel_stable.cpp
+  tests/xdg_popup.cpp
+  tests/wlr_layer_shell_v1.cpp
+  tests/xdg_output_v1.cpp
+  tests/wlr_foreign_toplevel_management_v1.cpp
+  tests/self_test.cpp
+  tests/text_input_v3_with_input_method_v2.cpp
+  tests/wlr_virtual_pointer_v1.cpp
+)
+
 set(
   WLCS_SOURCES
 
@@ -180,38 +206,15 @@ set(
   src/input_method.cpp
 
   ${PROTOCOL_SOURCES}
-
-  tests/test_bad_buffer.cpp
-  tests/pointer_constraints.cpp
-  tests/copy_cut_paste.cpp
-  tests/gtk_primary_selection.cpp
-  tests/test_surface_events.cpp
-  tests/touches.cpp
-  tests/wl_output.cpp
-  tests/surface_input_regions.cpp
-  tests/frame_submission.cpp
-  tests/primary_selection.cpp
-  tests/relative_pointer.cpp
-  tests/subsurfaces.cpp
-  tests/xdg_surface_v6.cpp
-  tests/xdg_toplevel_v6.cpp
-  tests/xdg_surface_stable.cpp
-  tests/xdg_toplevel_stable.cpp
-  tests/xdg_popup.cpp
-  tests/wlr_layer_shell_v1.cpp
-  tests/xdg_output_v1.cpp
-  tests/wlr_foreign_toplevel_management_v1.cpp
-  tests/self_test.cpp
-  tests/text_input_v3_with_input_method_v2.cpp
-  tests/wlr_virtual_pointer_v1.cpp
+  ${WLCS_TESTS}
 )
 
 # g++ 9.4 (on 20.04) hates the MOCK_METHOD macro
-# Neither gnu-zero-variadic-macro-arguments nor variadic-macro help,
-# we just have to drop pedantic...
-set_property(
-    SOURCE tests/wlr_virtual_pointer_v1.cpp
-    PROPERTY COMPILE_OPTIONS -Wno-pedantic)
+if (CMAKE_COMPILER_IS_GNUCXX AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 10)
+  # Neither gnu-zero-variadic-macro-arguments nor variadic-macro help,
+  # we just have to drop pedantic...
+  set_property(SOURCE ${WLCS_TESTS} PROPERTY COMPILE_OPTIONS -Wno-pedantic)
+endif()
 
 add_library(test_c_compile OBJECT src/test_c_compile.c)
 
