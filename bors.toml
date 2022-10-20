@@ -1,6 +1,5 @@
 status = [
            "BuildAndTest (lxd:ubuntu-20.04:...:gcc)",
-           "BuildAndTest (lxd:ubuntu-21.10:...:gcc)",
            "BuildAndTest (lxd:ubuntu-22.04:...:gcc)",
            "BuildAndTest (lxd:ubuntu-22.04:...:clang)",
            "BuildAndTest (lxd:fedora-35:...:gcc)",
