@@ -68,6 +68,7 @@ struct PrimarySelection : StartedInProcessServer
 {
     SourceApp   source_app{the_server()};
     SinkApp     sink_app{the_server()};
+    Surface     surface{sink_app.create_visible_surface(10, 10)};
 
     void TearDown() override
     {
