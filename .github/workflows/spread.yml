@@ -51,7 +51,7 @@ jobs:
         sudo snap connect spread:lxd lxd:lxd
 
     - name: Check out code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Run Spread task
       env:
