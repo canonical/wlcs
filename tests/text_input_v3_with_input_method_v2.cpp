@@ -73,7 +73,7 @@ TEST_F(TextInputV3WithInputMethodV2Test, text_input_enters_surface_on_focus)
     EXPECT_CALL(text_input, enter(_))
         .WillOnce(SaveArg<0>(&entered));
     create_focussed_surface();
-    EXPECT_THAT(entered, Eq(app_surface.value().operator wl_surface*()));
+    EXPECT_THAT(entered, Eq(app_surface.value().wl_surface()));
 }
 
 TEST_F(TextInputV3WithInputMethodV2Test, text_input_leaves_surface_on_unfocus)
@@ -81,7 +81,7 @@ TEST_F(TextInputV3WithInputMethodV2Test, text_input_leaves_surface_on_unfocus)
     create_focussed_surface();
     // Text input will not .enter() other surface because it belongs to a different client
     EXPECT_CALL(text_input, enter(_)).Times(0);
-    EXPECT_CALL(text_input, leave(app_surface.value().operator wl_surface*()));
+    EXPECT_CALL(text_input, leave(app_surface.value().wl_surface()));
 
     // Create a 2nd client with a focused surface
     wlcs::Client other_client{the_server()};
@@ -218,7 +218,7 @@ TEST_F(TextInputV3WithInputMethodV2Test, input_method_can_send_preedit)
 TEST_F(TextInputV3WithInputMethodV2Test, text_input_does_not_enter_non_grabbing_popup)
 {
     auto parent_surface = std::make_unique<wlcs::Surface>(app_client);
-    EXPECT_CALL(text_input, enter(parent_surface->operator wl_surface*()));
+    EXPECT_CALL(text_input, enter(parent_surface->wl_surface()));
     auto parent_xdg_surface = std::make_shared<wlcs::XdgSurfaceStable>(app_client, *parent_surface);
     auto parent_xdg_toplevel = std::make_shared<wlcs::XdgToplevelStable>(*parent_xdg_surface);
     parent_surface->attach_visible_buffer(20, 20);
@@ -239,7 +239,7 @@ TEST_F(TextInputV3WithInputMethodV2Test, text_input_does_not_enter_non_grabbing_
 TEST_F(TextInputV3WithInputMethodV2Test, text_input_enters_grabbing_popup)
 {
     auto parent_surface = std::make_unique<wlcs::Surface>(app_client);
-    EXPECT_CALL(text_input, enter(parent_surface->operator wl_surface*()));
+    EXPECT_CALL(text_input, enter(parent_surface->wl_surface()));
     auto parent_xdg_surface = std::make_shared<wlcs::XdgSurfaceStable>(app_client, *parent_surface);
     auto parent_xdg_toplevel = std::make_shared<wlcs::XdgToplevelStable>(*parent_xdg_surface);
     parent_surface->attach_visible_buffer(20, 20);
@@ -254,8 +254,8 @@ TEST_F(TextInputV3WithInputMethodV2Test, text_input_enters_grabbing_popup)
     app_client.roundtrip();
 
     auto child_surface = std::make_unique<wlcs::Surface>(app_client);
-    EXPECT_CALL(text_input, leave(parent_surface->operator wl_surface*()));
-    EXPECT_CALL(text_input, enter(child_surface->operator wl_surface*()));
+    EXPECT_CALL(text_input, leave(parent_surface->wl_surface()));
+    EXPECT_CALL(text_input, enter(child_surface->wl_surface()));
     auto child_xdg_surface = std::make_shared<wlcs::XdgSurfaceStable>(app_client, *child_surface);
     auto child_xdg_popup = std::make_shared<wlcs::XdgPopupStable>(
         *child_xdg_surface,
@@ -270,7 +270,7 @@ TEST_F(TextInputV3WithInputMethodV2Test, text_input_enters_grabbing_popup)
 TEST_F(TextInputV3WithInputMethodV2Test, text_input_enters_parent_surface_after_child_destroyed)
 {
     auto parent_surface = std::make_unique<wlcs::Surface>(app_client);
-    EXPECT_CALL(text_input, enter(parent_surface->operator wl_surface*()));
+    EXPECT_CALL(text_input, enter(parent_surface->wl_surface()));
     auto parent_xdg_surface = std::make_shared<wlcs::XdgSurfaceStable>(app_client, *parent_surface);
     auto parent_xdg_toplevel = std::make_shared<wlcs::XdgToplevelStable>(*parent_xdg_surface);
     parent_surface->attach_visible_buffer(20, 20);
@@ -279,8 +279,8 @@ TEST_F(TextInputV3WithInputMethodV2Test, text_input_enters_parent_surface_after_
 
     {
         auto child_surface = std::make_unique<wlcs::Surface>(app_client);
-        EXPECT_CALL(text_input, leave(parent_surface->operator wl_surface*()));
-        EXPECT_CALL(text_input, enter(child_surface->operator wl_surface*()));
+        EXPECT_CALL(text_input, leave(parent_surface->wl_surface()));
+        EXPECT_CALL(text_input, enter(child_surface->wl_surface()));
         auto child_xdg_surface = std::make_shared<wlcs::XdgSurfaceStable>(app_client, *child_surface);
         auto child_xdg_toplevel = std::make_shared<wlcs::XdgToplevelStable>(*child_xdg_surface);
         xdg_toplevel_set_parent(*child_xdg_toplevel, *parent_xdg_toplevel);
@@ -289,7 +289,7 @@ TEST_F(TextInputV3WithInputMethodV2Test, text_input_enters_parent_surface_after_
         Mock::VerifyAndClearExpectations(&text_input);
 
         EXPECT_CALL(text_input, leave(nullptr)); // Child surface will be destroyed by the time the message comes in
-        EXPECT_CALL(text_input, enter(parent_surface->operator wl_surface*()));
+        EXPECT_CALL(text_input, enter(parent_surface->wl_surface()));
     }
 
     app_client.roundtrip();

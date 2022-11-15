@@ -90,7 +90,7 @@ public:
           listener{receive_client.seat()},
           manager{send_client.bind_if_supported<zwlr_virtual_pointer_manager_v1>(wlcs::AnyVersion)}
     {
-        EXPECT_CALL(listener, enter(_, surface.operator wl_surface*(), _, _));
+        EXPECT_CALL(listener, enter(_, surface.wl_surface(), _, _));
         EXPECT_CALL(listener, motion(_, _, _)).Times(AnyNumber());
         EXPECT_CALL(listener, frame()).Times(AnyNumber());
         the_server().move_surface_to(surface, 0, 0);

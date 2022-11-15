@@ -1865,7 +1865,7 @@ public:
         wl_surface_destroy(surface_);
     }
 
-    wl_surface* surface() const
+    ::wl_surface* surface() const
     {
         return surface_;
     }
@@ -1940,7 +1940,7 @@ private:
         &frame_callback
     };
 
-    static void on_enter(void* data, wl_surface* /*wl_surface*/, wl_output* output)
+    static void on_enter(void* data, ::wl_surface* /*wl_surface*/, wl_output* output)
     {
         auto const self = static_cast<Impl*>(data);
 
@@ -1955,7 +1955,7 @@ private:
         }
     }
 
-    static void on_leave(void* data, wl_surface* /*wl_surface*/, wl_output* output)
+    static void on_leave(void* data, ::wl_surface* /*wl_surface*/, wl_output* output)
     {
         auto const self = static_cast<Impl*>(data);
 
@@ -1994,7 +1994,7 @@ wlcs::Surface::~Surface() = default;
 
 wlcs::Surface::Surface(Surface&&) = default;
 
-wlcs::Surface::operator wl_surface*() const
+wlcs::Surface::operator ::wl_surface*() const
 {
     return impl->surface();
 }
