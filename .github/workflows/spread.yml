@@ -17,15 +17,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        spread-task:
-        - lxd:ubuntu-20.04:...:gcc
-        - lxd:ubuntu-22.04:...:gcc
-        - lxd:ubuntu-22.04:...:clang
-        - lxd:fedora-35:...:gcc
-        - lxd:alpine-3.15:...:gcc
-        - lxd:ubuntu-devel:...:gcc
-        - lxd:ubuntu-devel:...:clang
-        - lxd:alpine-edge:...:gcc
+        include:
+          - distro: alpine
+            release: 3.15
+          - distro: alpine
+            release: edge
+          - distro: fedora
+            release: 35
+          - distro: fedora
+            release: 34
+          - distro:: fedora
+            release: rawhide
+          - distro: ubuntu
+            release: 20.04
+          - distro: ubuntu
+            release: 22.04
+          - distro: ubuntu
+            release: devel
 
     runs-on: ubuntu-latest
 
@@ -35,25 +43,39 @@ jobs:
 
     steps:
     - name: Set up LXD
-      run: |
-        set -euo pipefail 
-        sudo adduser $USER lxd
-        sudo apt-get remove --yes lxd
-        sudo snap install lxd
-        sg lxd -c 'lxd init --auto'
-
-    - name: Set up Spread
-      run: |
-        set -euo pipefail 
-        curl -s -O https://people.canonical.com/~chrishr/spread.snap
-        sudo snap run lxd init --auto
-        sudo snap install --dangerous spread.snap
-        sudo snap connect spread:lxd lxd:lxd
+      uses: whywaita/setup-lxd@v1
 
     - name: Check out code
       uses: actions/checkout@v3
 
-    - name: Run Spread task
-      env:
-        LXD_DIR: /var/snap/lxd/common/lxd
-      run: sg lxd -c 'snap run spread -v ${{ matrix.spread-task }}'
+    - name: Prepare Testbed
+      run: |
+        set -euo pipefail
+        if [[ "${{ matrix.distro }}" -eq "ubuntu" ]]
+        then
+          if [[ "${{ matrix.release}}" -eq "devel" ]]
+          then
+            SOURCE=ubuntu-daily:
+          else
+            SOURCE=ubuntu:
+          fi
+        else
+          SOURCE=images:${{ matrix.distro }}
+        fi
+        
+        CONTAINER=testbed
+        lxc launch ${SOURCE}:${{ matrix.release }} ${CONTAINER}
+        
+        # Mount source into the container
+        SOURCEDIR=$(lxc exec ${CONTAINER} -- mktemp --directory)
+        echo "SOURCEDIR=${SOURCEDIR}" >> $GITHUB_ENV
+        lxc config device add ${CONTAINER} sourcedir disk source=$(pwd) path=${SOURCEDIR}
+        lxc restart ${CONTAINER}
+      
+        sh tools/test/prepare-${{ matrix.distro }}.sh ${CONTAINER}
+
+    - name: Run Tests
+      run: |
+        set -euo pipefail
+        
+        sh tools/test/run-${{ matrix.distro }}.sh ${CONTAINER} ${{ env.SOURCEDIR }} $(mktemp --directory)
