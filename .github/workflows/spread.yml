@@ -45,10 +45,8 @@ jobs:
     - name: Set up Spread
       run: |
         set -euo pipefail 
-        curl -s -O https://people.canonical.com/~chrishr/spread.snap
+        sudo snap install spread-mir-ci --beta
         sudo snap run lxd init --auto
-        sudo snap install --dangerous spread.snap
-        sudo snap connect spread:lxd lxd:lxd
 
     - name: Check out code
       uses: actions/checkout@v3
@@ -56,4 +54,4 @@ jobs:
     - name: Run Spread task
       env:
         LXD_DIR: /var/snap/lxd/common/lxd
-      run: sg lxd -c 'snap run spread -v ${{ matrix.spread-task }}'
+      run: sg lxd -c 'snap run spread-mir-ci.spread -v ${{ matrix.spread-task }}'
