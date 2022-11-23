@@ -1541,7 +1541,7 @@ private:
             auto wl_output = static_cast<struct wl_output*>(safe_bind(registry, id, &wl_output_interface, version));
             auto output = std::make_unique<Output>(wl_output);
             wl_output_add_listener(wl_output, &Output::listener, output.get());
-            me->outputs.push_back(move(output));
+            me->outputs.push_back(std::move(output));
 
             // Ensure we receive the initial output events.
             me->server_roundtrip();
