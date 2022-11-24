@@ -20,7 +20,8 @@ jobs:
         spread-task:
         - lxd:ubuntu-20.04:...:gcc
         - lxd:ubuntu-22.04:...:gcc
-        - lxd:ubuntu-22.04:...:clang
+        - lxd:ubuntu-22.10:...:gcc
+        - lxd:ubuntu-22.10:...:clang
         - lxd:fedora-35:...:gcc
         - lxd:alpine-3.15:...:gcc
         - lxd:ubuntu-devel:...:gcc
