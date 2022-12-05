@@ -56,6 +56,18 @@ public:
     }
 };
 
+namespace
+{
+auto interface_description_if_valid(wl_interface const* interface) -> std::string
+{
+    if (interface)
+    {
+        using namespace std::literals::string_literals;
+        return interface->name + " v"s + std::to_string(interface->version);
+    }
+    return "<UNKNOWN INTERFACE>";
+}
+}
 wlcs::ProtocolError::ProtocolError(wl_interface const* interface, uint32_t code)
     : std::system_error(EPROTO, std::system_category(), "Wayland protocol error"),
       interface_{interface},
@@ -63,10 +75,7 @@ wlcs::ProtocolError::ProtocolError(wl_interface const* interface, uint32_t code)
       message{
           std::string{"Wayland protocol error: "} +
           std::to_string(code) +
-          " on interface " +
-          interface_->name +
-          " v" +
-          std::to_string(interface->version)}
+          " on interface " + interface_description_if_valid(interface)}
     {
     }
 
