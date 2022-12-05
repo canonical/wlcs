@@ -28,7 +28,7 @@ jobs:
         - lxd:ubuntu-devel:...:clang
         - lxd:alpine-edge:...:gcc
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     env:
       DEBFULLNAME: "Mir CI Bot"
