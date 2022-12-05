@@ -56,6 +56,35 @@ public:
     }
 };
 
+wlcs::ProtocolError::ProtocolError(wl_interface const* interface, uint32_t code)
+    : std::system_error(EPROTO, std::system_category(), "Wayland protocol error"),
+      interface_{interface},
+      code_{code},
+      message{
+          std::string{"Wayland protocol error: "} +
+          std::to_string(code) +
+          " on interface " +
+          interface_->name +
+          " v" +
+          std::to_string(interface->version)}
+    {
+    }
+
+char const* wlcs::ProtocolError::what() const noexcept
+{
+    return message.c_str();
+}
+
+uint32_t wlcs::ProtocolError::error_code() const
+{
+    return code_;
+}
+
+wl_interface const* wlcs::ProtocolError::interface() const
+{
+    return interface_;
+}
+
 wlcs::ExtensionExpectedlyNotSupported::ExtensionExpectedlyNotSupported(char const* extension, VersionSpecifier const& version)
     : std::runtime_error{
         std::string{"Extension: "} +
