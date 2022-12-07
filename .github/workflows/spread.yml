@@ -3,7 +3,7 @@ name: Spread
 on:
   push:
     branches:
-    - master
+    - main
     - staging
     - trying
     - release/[0-9]+.[0-9]+
