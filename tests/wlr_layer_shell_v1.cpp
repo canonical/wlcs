@@ -41,6 +41,11 @@ public:
     {
     }
 
+    ~LayerSurfaceTest()
+    {
+        client.roundtrip();
+    }
+
     void commit_and_wait_for_configure()
     {
         wl_surface_commit(surface);
