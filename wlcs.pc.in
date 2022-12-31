@@ -1,7 +1,7 @@
 prefix=@CMAKE_INSTALL_PREFIX@
 exec_prefix=@CMAKE_INSTALL_FULL_BINDIR@
 libexecdir=@CMAKE_INSTALL_FULL_LIBEXECDIR@
-includedir=${prefix}/include
+includedir=@CMAKE_INSTALL_FULL_INCLUDEDIR@
 
 test_runner=${libexecdir}/wlcs/wlcs
 
