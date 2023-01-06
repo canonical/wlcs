@@ -1,3 +1,18 @@
+wlcs (1.5.0-0ubuntu0) UNRELEASED; urgency=medium
+
+  * New upstream release. Notable changes:
+    + Tests for zwlr_virtual_pointer_v1
+    + Use maximum shared version when binding globals (Fixes #234)
+    + Make zxdg_shell_v6 ExpectedlyNotSupported if not in supported_extensions
+      (Fixes #237)
+    + Destroy xdg_toplevel before xdg_surface on cleanup
+    + Fixup CMakeLists.txt so tests can use MOCK_METHOD
+    + c++20
+    + Fix BadBufferTest.test_truncated_shm_file protocol error
+    + Fix CMake install dir usage in pkgconfig, honour CMAKE_INSTALL_INCLUDEDIR
+
+ -- Alan Griffiths <alan@octopull.co.uk>  Fri, 6 Jan 2023 11:40:13 +0000
+
 wlcs (1.4.0-0ubuntu0) UNRELEASED; urgency=medium
 
   * New upstream release. Notable changes:
