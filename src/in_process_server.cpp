@@ -35,7 +35,7 @@
 #include <memory>
 #include <vector>
 #include <algorithm>
-#include <experimental/optional>
+#include <optional>
 #include <map>
 #include <unordered_map>
 #include <chrono>
@@ -497,7 +497,7 @@ private:
         std::shared_ptr<ThreadProxy> proxy;
     };
 
-    static std::experimental::optional<ThreadContext> make_context_if_needed(WlcsDisplayServer const& server)
+    static std::optional<ThreadContext> make_context_if_needed(WlcsDisplayServer const& server)
     {
         if (server.version >= 3)
         {
@@ -525,7 +525,7 @@ private:
     };
 
     std::unique_ptr<WlcsDisplayServer, void(*)(WlcsDisplayServer*)> const server;
-    std::experimental::optional<ThreadContext> thread_context;
+    std::optional<ThreadContext> thread_context;
     std::shared_ptr<WlcsServerIntegration const> const hooks;
     std::shared_ptr<std::unordered_map<std::string, uint32_t> const> const supported_extensions_;
 
@@ -921,7 +921,7 @@ public:
             BOOST_THROW_EXCEPTION(std::runtime_error("More than one touches"));
     };
 
-    std::experimental::optional<uint32_t> latest_serial() const
+    std::optional<uint32_t> latest_serial() const
     {
         return latest_serial_;
     }
@@ -955,7 +955,7 @@ public:
 
     void* bind_if_supported(wl_interface const& to_bind, VersionSpecifier const& version) const
     {
-        std::experimental::optional<bool> expected_to_be_supported{};
+        std::optional<bool> expected_to_be_supported{};
 
         if (supported_extensions)
         {
@@ -1247,7 +1247,7 @@ private:
                 << "Got wl_pointer.leave with surface " << surface
                 << " instead of " << me->current_pointer_location.value().surface;
 
-        me->pending_pointer_location = std::experimental::nullopt;
+        me->pending_pointer_location = std::nullopt;
         me->pending_pointer_leave = true;
     }
 
@@ -1292,7 +1292,7 @@ private:
                 FAIL() << "Pointer tried to leave when it was not on a surface";
 
             wl_surface* old_surface = me->current_pointer_location.value().surface;
-            me->current_pointer_location = std::experimental::nullopt;
+            me->current_pointer_location = std::nullopt;
             me->pending_pointer_leave = false;
 
             me->notify_of_pointer_leave(old_surface);
@@ -1302,7 +1302,7 @@ private:
         {
             auto const old_pointer_location = me->current_pointer_location;
             me->current_pointer_location = me->pending_pointer_location;
-            me->pending_pointer_location = std::experimental::nullopt;
+            me->pending_pointer_location = std::nullopt;
 
             if (!old_pointer_location)
             {
@@ -1640,14 +1640,14 @@ private:
         std::pair<wl_fixed_t, wl_fixed_t> coordinates;
     };
     wl_surface* keyboard_focused_surface = nullptr;
-    std::experimental::optional<SurfaceLocation> current_pointer_location;
-    std::experimental::optional<SurfaceLocation> pending_pointer_location;
+    std::optional<SurfaceLocation> current_pointer_location;
+    std::optional<SurfaceLocation> pending_pointer_location;
     bool pending_pointer_leave{false};
     std::map<uint32_t, std::pair<uint32_t, bool>> pending_buttons; ///< Maps button id to the serial and if it's down
     std::map<int, SurfaceLocation> current_touches; ///< Touches that have gotten a frame event
     std::map<int, SurfaceLocation> pending_touches; ///< Touches that have gotten down or motion events without a frame
     std::set<int> pending_up_touches; ///< Touches that have gotten up events without a frame
-    std::experimental::optional<uint32_t> latest_serial_;
+    std::optional<uint32_t> latest_serial_;
 
     std::vector<PointerEnterNotifier> enter_notifiers;
     std::vector<PointerLeaveNotifier> leave_notifiers;
@@ -1785,7 +1785,7 @@ std::pair<wl_fixed_t, wl_fixed_t> wlcs::Client::touch_position() const
     return impl->touch_position();
 }
 
-std::experimental::optional<uint32_t> wlcs::Client::latest_serial() const
+std::optional<uint32_t> wlcs::Client::latest_serial() const
 {
     return impl->latest_serial();
 }

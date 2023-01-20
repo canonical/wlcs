@@ -65,8 +65,8 @@ private:
     }
 
     bool dirty_{false};
-    std::experimental::optional<std::string> title_;
-    std::experimental::optional<std::string> app_id_;
+    std::optional<std::string> title_;
+    std::optional<std::string> app_id_;
     std::vector<wl_output*> outputs_;
     bool maximized_{false}, minimized_{false}, activated_{false}, fullscreen_{false};
 
@@ -249,7 +249,7 @@ public:
 
     auto toplevel(std::string const& app_id) -> ForeignToplevelHandle const&
     {
-        std::experimental::optional<ForeignToplevelHandle const*> match;
+        std::optional<ForeignToplevelHandle const*> match;
         for (auto const& i : manager.toplevels())
         {
             if (i->app_id() == app_id)

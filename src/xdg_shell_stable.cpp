@@ -94,7 +94,7 @@ wlcs::XdgPositionerStable::~XdgPositionerStable()
 
 wlcs::XdgPopupStable::XdgPopupStable(
     XdgSurfaceStable& shell_surface_,
-    std::experimental::optional<XdgSurfaceStable*> parent,
+    std::optional<XdgSurfaceStable*> parent,
     XdgPositionerStable& positioner)
     : shell_surface{&shell_surface_},
       popup{xdg_surface_get_popup(
