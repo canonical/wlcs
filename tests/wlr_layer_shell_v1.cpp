@@ -261,8 +261,8 @@ class LayerSurfaceLayoutTest:
 
 struct LayerLayerParams
 {
-    std::experimental::optional<zwlr_layer_shell_v1_layer> below;
-    std::experimental::optional<zwlr_layer_shell_v1_layer> above;
+    std::optional<zwlr_layer_shell_v1_layer> below;
+    std::optional<zwlr_layer_shell_v1_layer> above;
 };
 
 std::ostream& operator<<(std::ostream& os, const LayerLayerParams& layer)
@@ -310,7 +310,7 @@ public:
     {
         SurfaceOnLayer(
             wlcs::Client& client,
-            std::experimental::optional<zwlr_layer_shell_v1_layer> layer)
+            std::optional<zwlr_layer_shell_v1_layer> layer)
             : surface{layer ? wlcs::Surface{client} : client.create_visible_surface(width, height)}
         {
             if (layer)
@@ -322,7 +322,7 @@ public:
         }
 
         wlcs::Surface surface;
-        std::experimental::optional<wlcs::LayerSurfaceV1> layer_surface;
+        std::optional<wlcs::LayerSurfaceV1> layer_surface;
     };
 
     LayerSurfaceLayerTest()
@@ -965,7 +965,7 @@ TEST_P(LayerSurfaceLayoutTest, simple_popup_positioned_correctly)
 
     wlcs::Surface popup_wl_surface{client};
     wlcs::XdgSurfaceStable popup_xdg_surface{client, popup_wl_surface};
-    wlcs::XdgPopupStable popup_xdg_popup{popup_xdg_surface, std::experimental::nullopt, positioner};
+    wlcs::XdgPopupStable popup_xdg_popup{popup_xdg_surface, std::nullopt, positioner};
     zwlr_layer_surface_v1_get_popup(layer_surface, popup_xdg_popup);
 
     int popup_surface_configure_count = 0;
@@ -1112,10 +1112,10 @@ INSTANTIATE_TEST_SUITE_P(
         LayerLayerParams{ZWLR_LAYER_SHELL_V1_LAYER_TOP, ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY},
         LayerLayerParams{ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND, ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY},
         LayerLayerParams{ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM, ZWLR_LAYER_SHELL_V1_LAYER_TOP},
-        LayerLayerParams{ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND, std::experimental::nullopt},
-        LayerLayerParams{ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM, std::experimental::nullopt},
-        LayerLayerParams{std::experimental::nullopt, ZWLR_LAYER_SHELL_V1_LAYER_TOP},
-        LayerLayerParams{std::experimental::nullopt, ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY}
+        LayerLayerParams{ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND, std::nullopt},
+        LayerLayerParams{ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM, std::nullopt},
+        LayerLayerParams{std::nullopt, ZWLR_LAYER_SHELL_V1_LAYER_TOP},
+        LayerLayerParams{std::nullopt, ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY}
     ));
 
 // TODO: test it gets put on a specified output

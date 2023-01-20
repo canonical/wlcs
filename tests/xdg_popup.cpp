@@ -120,10 +120,10 @@ struct PositionerParams
 
     std::pair<int, int> popup_size; // will default to XdgPopupStableTestBase::popup_(width|height) if nullopt
     std::pair<std::pair<int, int>, std::pair<int, int>> anchor_rect; // will default to the full window rect
-    std::experimental::optional<xdg_positioner_anchor> anchor_stable;
-    std::experimental::optional<xdg_positioner_gravity> gravity_stable;
-    std::experimental::optional<xdg_positioner_constraint_adjustment> constraint_adjustment_stable;
-    std::experimental::optional<std::pair<int, int>> offset;
+    std::optional<xdg_positioner_anchor> anchor_stable;
+    std::optional<xdg_positioner_gravity> gravity_stable;
+    std::optional<xdg_positioner_constraint_adjustment> constraint_adjustment_stable;
+    std::optional<std::pair<int, int>> offset;
     bool grab{false};
 };
 
@@ -194,10 +194,10 @@ public:
     void unmap_popup()
     {
         clear_popup();
-        popup_surface = std::experimental::nullopt;
+        popup_surface = std::nullopt;
     }
 
-    virtual auto popup_position() const -> std::experimental::optional<std::pair<int, int>> = 0;
+    virtual auto popup_position() const -> std::optional<std::pair<int, int>> = 0;
     virtual void dispatch_until_popup_configure() = 0;
 
     MOCK_METHOD0(popup_done, void());
@@ -206,9 +206,9 @@ public:
 
     wlcs::Client client;
     wlcs::Surface surface;
-    std::experimental::optional<wlcs::Surface> popup_surface;
+    std::optional<wlcs::Surface> popup_surface;
 
-    std::experimental::optional<State> state;
+    std::optional<State> state;
 
 protected:
     virtual void setup_popup(PositionerParams const& params) = 0;
@@ -291,11 +291,11 @@ public:
 
     void clear_popup() override
     {
-        popup = std::experimental::nullopt;
-        popup_xdg_surface = std::experimental::nullopt;
+        popup = std::nullopt;
+        popup_xdg_surface = std::nullopt;
     }
 
-    auto popup_position() const -> std::experimental::optional<std::pair<int, int>> override
+    auto popup_position() const -> std::optional<std::pair<int, int>> override
     {
         return std::make_pair(state.value().x, state.value().y);
     }
@@ -303,8 +303,8 @@ public:
     wlcs::XdgSurfaceStable xdg_shell_surface;
     wlcs::XdgToplevelStable toplevel;
 
-    std::experimental::optional<wlcs::XdgSurfaceStable> popup_xdg_surface;
-    std::experimental::optional<wlcs::XdgPopupStable> popup;
+    std::optional<wlcs::XdgSurfaceStable> popup_xdg_surface;
+    std::optional<wlcs::XdgPopupStable> popup;
 
     int popup_surface_configure_count{0};
 };
@@ -395,11 +395,11 @@ public:
 
     void clear_popup() override
     {
-        popup = std::experimental::nullopt;
-        popup_xdg_surface = std::experimental::nullopt;
+        popup = std::nullopt;
+        popup_xdg_surface = std::nullopt;
     }
 
-    auto popup_position() const -> std::experimental::optional<std::pair<int, int>> override
+    auto popup_position() const -> std::optional<std::pair<int, int>> override
     {
         return std::make_pair(state.value().x, state.value().y);
     }
@@ -407,8 +407,8 @@ public:
     wlcs::XdgSurfaceV6 xdg_shell_surface;
     wlcs::XdgToplevelV6 toplevel;
 
-    std::experimental::optional<wlcs::XdgSurfaceV6> popup_xdg_surface;
-    std::experimental::optional<wlcs::XdgPopupV6> popup;
+    std::optional<wlcs::XdgSurfaceV6> popup_xdg_surface;
+    std::optional<wlcs::XdgPopupV6> popup;
 
     int popup_surface_configure_count{0};
 };
@@ -471,7 +471,7 @@ public:
 
 
         popup_xdg_surface.emplace(client, popup_surface.value());
-        popup.emplace(popup_xdg_surface.value(), std::experimental::nullopt, positioner);
+        popup.emplace(popup_xdg_surface.value(), std::nullopt, positioner);
         zwlr_layer_surface_v1_get_popup(layer_surface, popup.value());
         if (param.grab)
         {
@@ -497,19 +497,19 @@ public:
 
     void clear_popup() override
     {
-        popup = std::experimental::nullopt;
-        popup_xdg_surface = std::experimental::nullopt;
+        popup = std::nullopt;
+        popup_xdg_surface = std::nullopt;
     }
 
-    auto popup_position() const -> std::experimental::optional<std::pair<int, int>> override
+    auto popup_position() const -> std::optional<std::pair<int, int>> override
     {
         return std::make_pair(state.value().x, state.value().y);
     }
 
     wlcs::LayerSurfaceV1 layer_surface;
 
-    std::experimental::optional<wlcs::XdgSurfaceStable> popup_xdg_surface;
-    std::experimental::optional<wlcs::XdgPopupStable> popup;
+    std::optional<wlcs::XdgSurfaceStable> popup_xdg_surface;
+    std::optional<wlcs::XdgPopupStable> popup;
 
     int popup_surface_configure_count{0};
 };
@@ -531,11 +531,11 @@ TEST_P(XdgPopupPositionerTest, xdg_shell_stable_popup_placed_correctly)
 
     ASSERT_THAT(
         manager->popup_position(),
-        Ne(std::experimental::nullopt)) << "popup configure event not sent";
+        Ne(std::nullopt)) << "popup configure event not sent";
 
     ASSERT_THAT(
         manager->popup_position(),
-        Eq(std::experimental::make_optional(param.expected_positon))) << "popup placed in incorrect position";
+        Eq(std::make_optional(param.expected_positon))) << "popup placed in incorrect position";
 }
 
 TEST_P(XdgPopupPositionerTest, xdg_shell_unstable_v6_popup_placed_correctly)
@@ -547,11 +547,11 @@ TEST_P(XdgPopupPositionerTest, xdg_shell_unstable_v6_popup_placed_correctly)
 
     ASSERT_THAT(
         manager->popup_position(),
-        Ne(std::experimental::nullopt)) << "popup configure event not sent";
+        Ne(std::nullopt)) << "popup configure event not sent";
 
     ASSERT_THAT(
         manager->popup_position(),
-        Eq(std::experimental::make_optional(param.expected_positon))) << "popup placed in incorrect position";
+        Eq(std::make_optional(param.expected_positon))) << "popup placed in incorrect position";
 }
 
 TEST_P(XdgPopupPositionerTest, layer_shell_popup_placed_correctly)
@@ -563,11 +563,11 @@ TEST_P(XdgPopupPositionerTest, layer_shell_popup_placed_correctly)
 
     ASSERT_THAT(
         manager->popup_position(),
-        Ne(std::experimental::nullopt)) << "popup configure event not sent";
+        Ne(std::nullopt)) << "popup configure event not sent";
 
     ASSERT_THAT(
         manager->popup_position(),
-        Eq(std::experimental::make_optional(param.expected_positon))) << "popup placed in incorrect position";
+        Eq(std::make_optional(param.expected_positon))) << "popup placed in incorrect position";
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -842,7 +842,7 @@ TEST_F(XdgPopupTest, zero_size_anchor_rect_stable)
 
     ASSERT_THAT(
         manager->popup_position(),
-        Eq(std::experimental::make_optional(
+        Eq(std::make_optional(
             std::make_pair(
                 (window_width - popup_width) / 2,
                 (window_height - popup_height) / 2)))) << "popup placed in incorrect position";
@@ -861,7 +861,7 @@ TEST_P(XdgPopupTest, popup_configure_is_valid)
     manager->map_popup(positioner);
     manager->client.roundtrip();
 
-    ASSERT_THAT(manager->state, Ne(std::experimental::nullopt));
+    ASSERT_THAT(manager->state, Ne(std::nullopt));
     EXPECT_THAT(manager->state.value().width, Gt(0));
     EXPECT_THAT(manager->state.value().height, Gt(0));
 }
