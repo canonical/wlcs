@@ -65,7 +65,7 @@ private:
 
     std::chrono::steady_clock::time_point current_test_start;
     ::testing::TestInfo const* current_test_info;
-    std::experimental::optional<std::vector<std::string>> current_skip_reasons;
+    std::optional<std::vector<std::string>> current_skip_reasons;
 
     std::unordered_set<std::string> failed_test_names;
     std::unordered_set<std::string> skipped_test_names;

@@ -223,7 +223,7 @@ private:
         std::unordered_map<wl_resource*, std::weak_ptr<mir::scene::Surface>> surface_map;
         std::unordered_map<std::shared_ptr<mir::frontend::BufferStream>, wl_resource*> stream_map;
 
-        std::experimental::optional<wl_client*> latest_client;
+        std::optional<wl_client*> latest_client;
         std::unordered_map<ClientFd, wl_client*> client_session_map;
         std::unordered_map<wl_client*, ResourceListener> resource_listener;
     };
