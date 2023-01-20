@@ -51,10 +51,10 @@ class XdgOutputV1
 public:
     struct State
     {
-        std::experimental::optional<std::pair<int, int>> logical_position;
-        std::experimental::optional<std::pair<int, int>> logical_size;
-        std::experimental::optional<std::string> name;
-        std::experimental::optional<std::string> description;
+        std::optional<std::pair<int, int>> logical_position;
+        std::optional<std::pair<int, int>> logical_size;
+        std::optional<std::string> name;
+        std::optional<std::string> description;
     };
 
     XdgOutputV1(XdgOutputManagerV1& manager, size_t output_index);
