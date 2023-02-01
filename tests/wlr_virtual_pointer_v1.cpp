@@ -49,6 +49,7 @@ public:
     MOCK_METHOD(void, axis_source, (uint32_t axis_source));
     MOCK_METHOD(void, axis_stop, (uint32_t time, uint32_t axis));
     MOCK_METHOD(void, axis_discrete, (uint32_t axis, int32_t discrete));
+    MOCK_METHOD(void, axis_value120, (uint32_t axis, int32_t value120));
 
 private:
     wl_pointer* const proxy;
@@ -69,6 +70,7 @@ PointerListener::PointerListener(wl_seat* seat)
         FORWARD_TO_MOCK(axis_source),
         FORWARD_TO_MOCK(axis_stop),
         FORWARD_TO_MOCK(axis_discrete),
+        FORWARD_TO_MOCK(axis_value120),
     };
 #undef FORWARD_TO_MOCK
     wl_pointer_add_listener(proxy, &listener, this);
