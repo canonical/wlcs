@@ -114,7 +114,7 @@ public:
 };
 }
 
-TEST_F(VirtualPointerV1Test, when_virutal_pointer_is_moved_client_sees_motion)
+TEST_F(VirtualPointerV1Test, when_virtual_pointer_is_moved_client_sees_motion)
 {
     int const motion_x = 7;
     int const motion_y = 22;
@@ -131,7 +131,7 @@ TEST_F(VirtualPointerV1Test, when_virutal_pointer_is_moved_client_sees_motion)
     receive_client.roundtrip();
 }
 
-TEST_F(VirtualPointerV1Test, when_virutal_pointer_is_moved_multiple_times_client_sees_motion)
+TEST_F(VirtualPointerV1Test, when_virtual_pointer_is_moved_multiple_times_client_sees_motion)
 {
     int const motion1_x = 7;
     int const motion1_y = 22;
@@ -157,7 +157,7 @@ TEST_F(VirtualPointerV1Test, when_virutal_pointer_is_moved_multiple_times_client
     receive_client.roundtrip();
 }
 
-TEST_F(VirtualPointerV1Test, when_virutal_pointer_left_clicks_client_sees_button_down)
+TEST_F(VirtualPointerV1Test, when_virtual_pointer_left_clicks_client_sees_button_down)
 {
     EXPECT_CALL(listener, button(_, _, BTN_LEFT, WL_POINTER_BUTTON_STATE_PRESSED));
     EXPECT_CALL(listener, frame()).Times(AtLeast(1));
@@ -168,7 +168,7 @@ TEST_F(VirtualPointerV1Test, when_virutal_pointer_left_clicks_client_sees_button
     receive_client.roundtrip();
 }
 
-TEST_F(VirtualPointerV1Test, when_virutal_pointer_left_releases_client_sees_button_up)
+TEST_F(VirtualPointerV1Test, when_virtual_pointer_left_releases_client_sees_button_up)
 {
     EXPECT_CALL(listener, button(_, _, _, _)).Times(AnyNumber());
     EXPECT_CALL(listener, frame()).Times(AnyNumber());
@@ -187,7 +187,7 @@ TEST_F(VirtualPointerV1Test, when_virutal_pointer_left_releases_client_sees_butt
     receive_client.roundtrip();
 }
 
-TEST_F(VirtualPointerV1Test, when_virutal_pointer_given_multiple_button_presses_at_once_client_sees_all)
+TEST_F(VirtualPointerV1Test, when_virtual_pointer_given_multiple_button_presses_at_once_client_sees_all)
 {
     EXPECT_CALL(listener, button(_, _, BTN_LEFT, WL_POINTER_BUTTON_STATE_PRESSED));
     EXPECT_CALL(listener, button(_, _, BTN_MIDDLE, WL_POINTER_BUTTON_STATE_PRESSED));
@@ -200,7 +200,7 @@ TEST_F(VirtualPointerV1Test, when_virutal_pointer_given_multiple_button_presses_
     receive_client.roundtrip();
 }
 
-TEST_F(VirtualPointerV1Test, when_virutal_pointer_presses_and_releases_different_buttons_on_same_frame_client_sees_correct_events)
+TEST_F(VirtualPointerV1Test, when_virtual_pointer_presses_and_releases_different_buttons_on_same_frame_client_sees_correct_events)
 {
     EXPECT_CALL(listener, button(_, _, _, _)).Times(AnyNumber());
     EXPECT_CALL(listener, frame()).Times(AnyNumber());
@@ -221,7 +221,7 @@ TEST_F(VirtualPointerV1Test, when_virutal_pointer_presses_and_releases_different
     receive_client.roundtrip();
 }
 
-TEST_F(VirtualPointerV1Test, when_virutal_pointer_scrolls_client_sees_axis)
+TEST_F(VirtualPointerV1Test, when_virtual_pointer_scrolls_client_sees_axis)
 {
     EXPECT_CALL(listener, axis(_, WL_POINTER_AXIS_VERTICAL_SCROLL, wl_fixed_from_int(5)));
     EXPECT_CALL(listener, axis_source(_)).Times(AnyNumber());
@@ -233,7 +233,7 @@ TEST_F(VirtualPointerV1Test, when_virutal_pointer_scrolls_client_sees_axis)
     receive_client.roundtrip();
 }
 
-TEST_F(VirtualPointerV1Test, when_virutal_pointer_scrolls_with_steps_client_sees_axis_descrete)
+TEST_F(VirtualPointerV1Test, when_virtual_pointer_scrolls_with_steps_client_sees_axis_descrete)
 {
     EXPECT_CALL(listener, axis(_, WL_POINTER_AXIS_HORIZONTAL_SCROLL, wl_fixed_from_int(5)));
     EXPECT_CALL(listener, axis_discrete(WL_POINTER_AXIS_HORIZONTAL_SCROLL, 4));
@@ -246,7 +246,7 @@ TEST_F(VirtualPointerV1Test, when_virutal_pointer_scrolls_with_steps_client_sees
     receive_client.roundtrip();
 }
 
-TEST_F(VirtualPointerV1Test, when_virutal_pointer_specifies_axis_source_client_sees_axis_source)
+TEST_F(VirtualPointerV1Test, when_virtual_pointer_specifies_axis_source_client_sees_axis_source)
 {
     EXPECT_CALL(listener, axis(_, _, _)).Times(AnyNumber());
     EXPECT_CALL(listener, axis_source(WL_POINTER_AXIS_SOURCE_CONTINUOUS));
@@ -278,7 +278,7 @@ TEST_F(VirtualPointerV1Test, if_frame_is_not_sent_client_sees_no_events)
     receive_client.roundtrip();
 }
 
-TEST_F(VirtualPointerV1Test, when_virutal_pointer_is_moved_with_absolute_coordinates_with_the_extent_of_the_output_client_sees_motion)
+TEST_F(VirtualPointerV1Test, when_virtual_pointer_is_moved_with_absolute_coordinates_with_the_extent_of_the_output_client_sees_motion)
 {
     ASSERT_THAT(send_client.output_count(), Ge(1u));
     wlcs::XdgOutputManagerV1 xdg_output_manager{send_client};
@@ -303,7 +303,7 @@ TEST_F(VirtualPointerV1Test, when_virutal_pointer_is_moved_with_absolute_coordin
     receive_client.roundtrip();
 }
 
-TEST_F(VirtualPointerV1Test, when_virutal_pointer_is_moved_with_absolute_coordinates_with_the_extent_twice_of_the_output_client_sees_motion)
+TEST_F(VirtualPointerV1Test, when_virtual_pointer_is_moved_with_absolute_coordinates_with_the_extent_twice_of_the_output_client_sees_motion)
 {
     ASSERT_THAT(send_client.output_count(), Ge(1u));
     wlcs::XdgOutputManagerV1 xdg_output_manager{send_client};
