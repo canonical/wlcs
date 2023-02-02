@@ -223,8 +223,6 @@ struct OutputState
     std::optional<std::pair<int, int>> geometry_position;
     std::optional<std::pair<int, int>> mode_size;
     std::optional<int> scale;
-    std::optional<const char*> name;
-    std::optional<const char*> description;
 };
 
 class Client

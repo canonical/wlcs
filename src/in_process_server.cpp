@@ -1136,25 +1136,11 @@ public:
             me->pending.scale = factor;
         }
 
-        static void name_thunk(void* ctx, struct wl_output */*wl_output*/, const char* name)
-        {
-            auto me = static_cast<Output*>(ctx);
-            me->pending.name = name;
-        }
-
-        static void description_thunk(void* ctx, struct wl_output */*wl_output*/, const char* description)
-        {
-            auto me = static_cast<Output*>(ctx);
-            me->pending.description = description;
-        }
-
         static constexpr wl_output_listener listener = {
             &Impl::Output::geometry_thunk,
             &Impl::Output::mode_thunk,
             &Impl::Output::done_thunk,
             &Impl::Output::scale_thunk,
-            &Impl::Output::name_thunk,
-            &Impl::Output::description_thunk,
         };
     };
 
@@ -1415,7 +1401,6 @@ private:
         [](auto...){},  // axis_source
         [](auto...){},  // axis_stop
         [](auto...){},  // axis_discrete
-        [](auto...){}, // axis_value120
     };
 
     static void touch_down(
