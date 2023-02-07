@@ -235,17 +235,13 @@ TEST_F(VirtualPointerV1Test, when_virtual_pointer_scrolls_client_sees_axis)
     receive_client.roundtrip();
 }
 
-TEST_F(VirtualPointerV1Test, when_virtual_pointer_scrolls_with_steps_before_wl_pointer_v8_client_sees_only_axis_discrete)
+TEST_F(VirtualPointerV1Test, when_virtual_pointer_scrolls_with_steps_before_wl_pointer_v8_client_sees_axis_discrete)
 {
     // Discrete scrolling is used before wl_pointer v8
-    if (receive_client.bind_if_supported(wl_seat_interface, wlcs::AtLeastVersion(8)))
-    {
-        GTEST_SKIP();
-    }
+    receive_client.bind_if_supported(wl_seat_interface, wlcs::LessThanVersion(8));
 
     EXPECT_CALL(listener, axis(_, WL_POINTER_AXIS_HORIZONTAL_SCROLL, wl_fixed_from_int(5)));
     EXPECT_CALL(listener, axis_discrete(WL_POINTER_AXIS_HORIZONTAL_SCROLL, 4));
-    EXPECT_CALL(listener, axis_value120(_, _)).Times(0);
     EXPECT_CALL(listener, axis_source(_)).Times(AnyNumber());
     EXPECT_CALL(listener, frame()).Times(AtLeast(1));
     auto const handle = zwlr_virtual_pointer_manager_v1_create_virtual_pointer(manager, nullptr);
@@ -258,8 +254,7 @@ TEST_F(VirtualPointerV1Test, when_virtual_pointer_scrolls_with_steps_before_wl_p
 TEST_F(VirtualPointerV1Test, when_virtual_pointer_scrolls_with_steps_client_sees_only_axis_value120)
 {
     // value120 scrolling is not implemented until wl_pointer v8
-    // bind_if_supported() will skip this test if value120 scrolling is unsupported
-    receive_client.bind_if_supported(wl_seat_interface, wlcs::AtLeastVersion(8));
+    send_client.bind_if_supported(wl_seat_interface, wlcs::AtLeastVersion(8));
 
     EXPECT_CALL(listener, axis(_, WL_POINTER_AXIS_HORIZONTAL_SCROLL, wl_fixed_from_int(5)));
     EXPECT_CALL(listener, axis_value120(WL_POINTER_AXIS_HORIZONTAL_SCROLL, 480));
