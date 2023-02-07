@@ -107,16 +107,16 @@ auto wlcs::LessThanVersion::select_version(
             ")"));
     }
 
-    if (lesser_version <= max_available_version)
+    if (max_available_version == 0)
+    {
+        return {};
+    }
+    else if (lesser_version <= max_available_version)
     {
         return {std::min(lesser_version, max_supported_version)};
     }
-    else 
-    {
-        return max_available_version;
-    }
 
-    return {};
+    return max_available_version;
 }
 
 auto wlcs::LessThanVersion::describe() const -> std::string
