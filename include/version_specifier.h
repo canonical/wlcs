@@ -63,6 +63,19 @@ private:
     uint32_t const version;
 };
 
+class LessThanVersion : public VersionSpecifier
+{
+public:
+    explicit LessThanVersion(uint32_t version) noexcept;
+
+    auto select_version(
+        uint32_t max_available_version,
+        uint32_t max_supported_version) const -> std::optional<uint32_t> override;
+    auto describe() const -> std::string override;
+private:
+    uint32_t const version;
+};
+
 extern VersionSpecifier const& AnyVersion;
 }
 
