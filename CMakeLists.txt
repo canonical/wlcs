@@ -281,6 +281,10 @@ install(
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
+include(JoinPaths)
+join_paths(PKGCONFIG_BINDIR "\${prefix}" "${CMAKE_INSTALL_BINDIR}")
+join_paths(PKGCONFIG_LIBEXECDIR "\${prefix}" "${CMAKE_INSTALL_LIBEXECDIR}")
+join_paths(PKGCONFIG_INCLUDEDIR "\${prefix}" "${CMAKE_INSTALL_INCLUDEDIR}")
 configure_file(
   wlcs.pc.in
   ${CMAKE_CURRENT_BINARY_DIR}/wlcs.pc
