@@ -95,13 +95,13 @@ auto wlcs::LessThanVersion::select_version(
     uint32_t max_available_version,
     uint32_t max_supported_version) const -> std::optional<uint32_t>
 {
-    auto const lesser_version = version - 1;
+    auto const max_allowed_version = version - 1;
 
-    if (lesser_version > max_supported_version)
+    if (max_allowed_version > max_supported_version)
     {
         BOOST_THROW_EXCEPTION(std::logic_error(
             "Required version " +
-            std::to_string(lesser_version) +
+            std::to_string(max_allowed_version) +
             " is higher than the highest version supported by WLCS (" +
             std::to_string(max_supported_version) +
             ")"));
@@ -111,9 +111,9 @@ auto wlcs::LessThanVersion::select_version(
     {
         return {};
     }
-    else if (lesser_version <= max_available_version)
+    else if (max_allowed_version <= max_available_version)
     {
-        return {std::min(lesser_version, max_supported_version)};
+        return {std::min(max_allowed_version, max_supported_version)};
     }
 
     return max_available_version;

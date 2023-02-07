@@ -1415,7 +1415,7 @@ private:
         [](auto...){},  // axis_source
         [](auto...){},  // axis_stop
         [](auto...){},  // axis_discrete
-        [](auto...){}, // axis_value120
+        [](auto...){},  // axis_value120
     };
 
     static void touch_down(
