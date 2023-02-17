@@ -69,6 +69,8 @@ public:
 
     MOCK_METHOD(void, configure, (int32_t width, int32_t height, wl_array* states));
     MOCK_METHOD(void, close, ());
+    MOCK_METHOD(void, configure_bounds, (int32_t width, int32_t height));
+    MOCK_METHOD(void, wm_capabilities, (wl_array* capabilities));
 
     operator xdg_toplevel*() const {return toplevel;}
 
@@ -100,6 +102,7 @@ public:
 
     MOCK_METHOD(void, configure, (int32_t x, int32_t y, int32_t width, int32_t height));
     MOCK_METHOD(void, done, ());
+    MOCK_METHOD(void, repositioned, (uint32_t token));
 
     operator xdg_popup*() const {return popup;}
 
