@@ -870,7 +870,7 @@ TEST_P(LayerSurfaceLayoutTest, maximized_xdg_toplevel_is_shrunk_for_exclusive_zo
     wlcs::Surface other_surface{client};
     wlcs::XdgSurfaceStable xdg_surface{client, other_surface};
     wlcs::XdgToplevelStable toplevel{xdg_surface};
-    toplevel.add_configure_notification([&](int32_t w, int32_t h, wl_array* /*states*/)
+    ON_CALL(toplevel, configure).WillByDefault([&](auto w, auto h, wl_array* /*states*/)
         {
             if (w != width || h != height)
             {
@@ -884,7 +884,7 @@ TEST_P(LayerSurfaceLayoutTest, maximized_xdg_toplevel_is_shrunk_for_exclusive_zo
                 xdg_surface_set_window_geometry(xdg_surface, 0, 0, w, h);
             }
         });
-    xdg_surface.add_configure_notification([&](uint32_t serial)
+    ON_CALL(xdg_surface, configure).WillByDefault([&](uint32_t serial)
         {
             xdg_surface_ack_configure(xdg_surface, serial);
             wl_surface_commit(other_surface);
@@ -970,12 +970,12 @@ TEST_P(LayerSurfaceLayoutTest, simple_popup_positioned_correctly)
 
     int popup_surface_configure_count = 0;
     Vec2 popup_configured_position;
-    popup_xdg_surface.add_configure_notification([&](uint32_t serial)
+    ON_CALL(popup_xdg_surface, configure).WillByDefault([&](uint32_t serial)
         {
             xdg_surface_ack_configure(popup_xdg_surface, serial);
             popup_surface_configure_count++;
         });
-    popup_xdg_popup.add_configure_notification([&](int32_t x, int32_t y, int32_t, int32_t)
+    ON_CALL(popup_xdg_popup, configure).WillByDefault([&](int32_t x, int32_t y, int32_t, int32_t)
         {
             popup_configured_position.first = x;
             popup_configured_position.second = y;

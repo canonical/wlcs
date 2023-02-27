@@ -51,19 +51,16 @@ TEST_F(XdgSurfaceStableTest, gets_configure_event)
     wlcs::Surface surface{client};
     wlcs::XdgSurfaceStable xdg_surface{client, surface};
 
-    int surface_configure_count{0};
-    xdg_surface.add_configure_notification([&](uint32_t serial)
+    EXPECT_CALL(xdg_surface, configure)
+        .WillOnce([&](auto serial)
         {
             xdg_surface_ack_configure(xdg_surface, serial);
-            surface_configure_count++;
         });
 
     wlcs::XdgToplevelStable toplevel{xdg_surface};
     surface.attach_buffer(600, 400);
 
     client.roundtrip();
-
-    EXPECT_THAT(surface_configure_count, Eq(1));
 }
 
 TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_existing_role_is_an_error)

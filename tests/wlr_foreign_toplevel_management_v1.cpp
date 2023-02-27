@@ -467,10 +467,9 @@ TEST_F(ForeignToplevelHandleTest, gets_activated)
 TEST_F(ForeignToplevelHandleTest, can_maximize_foreign)
 {
     wlcs::XdgToplevelStable::State state{0, 0, nullptr};
-    xdg_toplevel.add_configure_notification(
-        [&state](int32_t width, int32_t height, struct wl_array *states)
+    ON_CALL(xdg_toplevel, configure).WillByDefault([&state](auto... args)
         {
-            state = wlcs::XdgToplevelStable::State{width, height, states};
+            state = wlcs::XdgToplevelStable::State{args...};
         });
     xdg_toplevel_unset_maximized(xdg_toplevel);
     surface.attach_visible_buffer(w, h);
@@ -489,10 +488,9 @@ TEST_F(ForeignToplevelHandleTest, can_maximize_foreign)
 TEST_F(ForeignToplevelHandleTest, can_unmaximize_foreign)
 {
     wlcs::XdgToplevelStable::State state{0, 0, nullptr};
-    xdg_toplevel.add_configure_notification(
-        [&state](int32_t width, int32_t height, struct wl_array *states)
+    ON_CALL(xdg_toplevel, configure).WillByDefault([&state](auto... args)
         {
-            state = wlcs::XdgToplevelStable::State{width, height, states};
+            state = wlcs::XdgToplevelStable::State{args...};
         });
     xdg_toplevel_set_maximized(xdg_toplevel);
     surface.attach_visible_buffer(w, h);
@@ -511,10 +509,9 @@ TEST_F(ForeignToplevelHandleTest, can_unmaximize_foreign)
 TEST_F(ForeignToplevelHandleTest, can_fullscreen_foreign)
 {
     wlcs::XdgToplevelStable::State state{0, 0, nullptr};
-    xdg_toplevel.add_configure_notification(
-        [&state](int32_t width, int32_t height, struct wl_array *states)
+    ON_CALL(xdg_toplevel, configure).WillByDefault([&state](auto... args)
         {
-            state = wlcs::XdgToplevelStable::State{width, height, states};
+            state = wlcs::XdgToplevelStable::State{args...};
         });
     surface.attach_visible_buffer(w, h);
     client.roundtrip();
@@ -532,10 +529,9 @@ TEST_F(ForeignToplevelHandleTest, can_fullscreen_foreign)
 TEST_F(ForeignToplevelHandleTest, can_unfullscreen_foreign)
 {
     wlcs::XdgToplevelStable::State state{0, 0, nullptr};
-    xdg_toplevel.add_configure_notification(
-        [&state](int32_t width, int32_t height, struct wl_array *states)
+    ON_CALL(xdg_toplevel, configure).WillByDefault([&state](auto... args)
         {
-            state = wlcs::XdgToplevelStable::State{width, height, states};
+            state = wlcs::XdgToplevelStable::State{args...};
         });
     xdg_toplevel_set_fullscreen(xdg_toplevel, nullptr);
     surface.attach_visible_buffer(w, h);
@@ -624,10 +620,9 @@ TEST_F(ForeignToplevelHandleTest, can_unminimize_foreign)
 TEST_F(ForeignToplevelHandleTest, can_unminimize_foreign_to_restored)
 {
     wlcs::XdgToplevelStable::State state{0, 0, nullptr};
-    xdg_toplevel.add_configure_notification(
-        [&state](int32_t width, int32_t height, struct wl_array *states)
+    ON_CALL(xdg_toplevel, configure).WillByDefault([&state](auto... args)
         {
-            state = wlcs::XdgToplevelStable::State{width, height, states};
+            state = wlcs::XdgToplevelStable::State{args...};
         });
     surface.attach_visible_buffer(w, h);
     xdg_toplevel_unset_maximized(xdg_toplevel);
@@ -653,10 +648,9 @@ TEST_F(ForeignToplevelHandleTest, can_unminimize_foreign_to_restored)
 TEST_F(ForeignToplevelHandleTest, can_unminimize_foreign_to_maximized)
 {
     wlcs::XdgToplevelStable::State state{0, 0, nullptr};
-    xdg_toplevel.add_configure_notification(
-        [&state](int32_t width, int32_t height, struct wl_array *states)
+    ON_CALL(xdg_toplevel, configure).WillByDefault([&state](auto... args)
         {
-            state = wlcs::XdgToplevelStable::State{width, height, states};
+            state = wlcs::XdgToplevelStable::State{args...};
         });
     surface.attach_visible_buffer(w, h);
     xdg_toplevel_set_maximized(xdg_toplevel);
@@ -760,10 +754,9 @@ TEST_F(ForeignToplevelHandleTest, gets_unminimized_when_fullscreened)
 TEST_F(ForeignToplevelHandleTest, can_unfullscreen_foreign_to_restored)
 {
     wlcs::XdgToplevelStable::State state{0, 0, nullptr};
-    xdg_toplevel.add_configure_notification(
-        [&state](int32_t width, int32_t height, struct wl_array *states)
+    ON_CALL(xdg_toplevel, configure).WillByDefault([&state](auto... args)
         {
-            state = wlcs::XdgToplevelStable::State{width, height, states};
+            state = wlcs::XdgToplevelStable::State{args...};
         });
     xdg_toplevel_unset_maximized(xdg_toplevel);
     surface.attach_visible_buffer(w, h);
@@ -792,10 +785,9 @@ TEST_F(ForeignToplevelHandleTest, can_unfullscreen_foreign_to_restored)
 TEST_F(ForeignToplevelHandleTest, can_unfullscreen_foreign_to_maximized)
 {
     wlcs::XdgToplevelStable::State state{0, 0, nullptr};
-    xdg_toplevel.add_configure_notification(
-        [&state](int32_t width, int32_t height, struct wl_array *states)
+    ON_CALL(xdg_toplevel, configure).WillByDefault([&state](auto... args)
         {
-            state = wlcs::XdgToplevelStable::State{width, height, states};
+            state = wlcs::XdgToplevelStable::State{args...};
         });
     xdg_toplevel_set_maximized(xdg_toplevel);
     surface.attach_visible_buffer(w, h);
@@ -824,10 +816,9 @@ TEST_F(ForeignToplevelHandleTest, can_unfullscreen_foreign_to_maximized)
 TEST_F(ForeignToplevelHandleTest, can_maximize_foreign_while_fullscreen)
 {
     wlcs::XdgToplevelStable::State state{0, 0, nullptr};
-    xdg_toplevel.add_configure_notification(
-        [&state](int32_t width, int32_t height, struct wl_array *states)
+    ON_CALL(xdg_toplevel, configure).WillByDefault([&state](auto... args)
         {
-            state = wlcs::XdgToplevelStable::State{width, height, states};
+            state = wlcs::XdgToplevelStable::State{args...};
         });
     xdg_toplevel_unset_maximized(xdg_toplevel);
     surface.attach_visible_buffer(w, h);
@@ -863,10 +854,9 @@ TEST_F(ForeignToplevelHandleTest, can_maximize_foreign_while_fullscreen)
 TEST_F(ForeignToplevelHandleTest, can_activate_foreign)
 {
     wlcs::XdgToplevelStable::State state{0, 0, nullptr};
-    xdg_toplevel.add_configure_notification(
-        [&state](int32_t width, int32_t height, struct wl_array *states)
+    ON_CALL(xdg_toplevel, configure).WillByDefault([&state](auto... args)
         {
-            state = wlcs::XdgToplevelStable::State{width, height, states};
+            state = wlcs::XdgToplevelStable::State{args...};
         });
     std::string app_id = "fake.wlcs.app.id";
     xdg_toplevel_set_app_id(xdg_toplevel, app_id.c_str());
@@ -895,21 +885,15 @@ TEST_F(ForeignToplevelHandleTest, can_activate_foreign)
 
 TEST_F(ForeignToplevelHandleTest, can_close_foreign)
 {
-    bool should_close{false};
-    xdg_toplevel.add_close_notification(
-        [&should_close]()
-        {
-            should_close = true;
-        });
+    EXPECT_CALL(xdg_toplevel, close()).Times(0);
+
     surface.attach_visible_buffer(w, h);
     client.roundtrip();
 
-    EXPECT_THAT(should_close, Eq(false));
+    EXPECT_CALL(xdg_toplevel, close()).Times(1);
 
     zwlr_foreign_toplevel_handle_v1_close(toplevel());
     client.roundtrip();
-
-    EXPECT_THAT(should_close, Eq(true));
 }
 
 // TODO: test toplevel outputs

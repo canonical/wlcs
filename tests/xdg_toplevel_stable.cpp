@@ -48,15 +48,15 @@ public:
           xdg_shell_surface{client, surface},
           toplevel{xdg_shell_surface}
     {
-        xdg_shell_surface.add_configure_notification([&](uint32_t serial)
+        ON_CALL(xdg_shell_surface, configure).WillByDefault([&](auto serial)
             {
                 xdg_surface_ack_configure(xdg_shell_surface, serial);
                 surface_configure_count++;
             });
 
-        toplevel.add_configure_notification([this](int32_t width, int32_t height, struct wl_array *states)
+        ON_CALL(toplevel, configure).WillByDefault([&](auto... args)
             {
-                state = wlcs::XdgToplevelStable::State{width, height, states};
+                state = wlcs::XdgToplevelStable::State{args...};
             });
 
         wl_surface_commit(surface);
