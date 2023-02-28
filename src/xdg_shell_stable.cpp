@@ -18,7 +18,7 @@
 
 #include "xdg_shell_stable.h"
 
-using namespace ::testing;
+using namespace testing;
 
 // XdgSurfaceStable
 

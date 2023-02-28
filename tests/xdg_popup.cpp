@@ -379,16 +379,15 @@ public:
             zxdg_popup_v6_grab(popup.value().popup, client.seat(), client.latest_serial().value());
         }
 
-        popup.value().add_close_notification([this](){ popup_done(); });
-        popup_xdg_surface.value().add_configure_notification([&](uint32_t serial)
+        ON_CALL(popup.value(), done).WillByDefault([this](){ popup_done(); });
+        ON_CALL(popup_xdg_surface.value(), configure).WillByDefault([&](auto serial)
             {
                 zxdg_surface_v6_ack_configure(popup_xdg_surface.value(), serial);
                 popup_surface_configure_count++;
             });
-
-        popup.value().add_configure_notification([this](int32_t x, int32_t y, int32_t width, int32_t height)
+        ON_CALL(popup.value(), configure).WillByDefault([this](auto... args)
             {
-                state = State{x, y, width, height};
+                state = State{args...};
             });
     }
 
