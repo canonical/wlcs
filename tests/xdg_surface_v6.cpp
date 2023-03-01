@@ -48,17 +48,13 @@ TEST_F(XdgSurfaceV6Test, gets_configure_event)
     wlcs::Surface surface{client};
     wlcs::XdgSurfaceV6 xdg_surface{client, surface};
 
-    int surface_configure_count{0};
-    xdg_surface.add_configure_notification([&](uint32_t serial)
+    EXPECT_CALL(xdg_surface, configure).WillOnce([&](uint32_t serial)
         {
             zxdg_surface_v6_ack_configure(xdg_surface, serial);
-            surface_configure_count++;
         });
 
     wlcs::XdgToplevelV6 toplevel{xdg_surface};
     surface.attach_buffer(600, 400);
 
     client.roundtrip();
-
-    EXPECT_THAT(surface_configure_count, Eq(1));
 }
