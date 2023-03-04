@@ -1129,6 +1129,5 @@ INSTANTIATE_TEST_SUITE_P(
 // TODO: test that error is raised when incomplete positioner is used (positioner without size and anchor rect set)
 // TODO: test set_size
 // TODO: test that set_window_geometry affects anchor rect
-// TODO: test set_constraint_adjustment
 // TODO: test set_offset
 // TODO: test that a zero size anchor rect fails on v6
