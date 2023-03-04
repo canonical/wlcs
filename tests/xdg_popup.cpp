@@ -197,7 +197,6 @@ public:
         popup_surface = std::nullopt;
     }
 
-    virtual auto popup_position() const -> std::optional<std::pair<int, int>> = 0;
     virtual void dispatch_until_popup_configure() = 0;
 
     MOCK_METHOD0(popup_done, void());
@@ -292,11 +291,6 @@ public:
     {
         popup = std::nullopt;
         popup_xdg_surface = std::nullopt;
-    }
-
-    auto popup_position() const -> std::optional<std::pair<int, int>> override
-    {
-        return std::make_pair(state.value().x, state.value().y);
     }
 
     wlcs::XdgSurfaceStable xdg_shell_surface;
@@ -397,11 +391,6 @@ public:
         popup_xdg_surface = std::nullopt;
     }
 
-    auto popup_position() const -> std::optional<std::pair<int, int>> override
-    {
-        return std::make_pair(state.value().x, state.value().y);
-    }
-
     wlcs::XdgSurfaceV6 xdg_shell_surface;
     wlcs::XdgToplevelV6 toplevel;
 
@@ -498,11 +487,6 @@ public:
         popup_xdg_surface = std::nullopt;
     }
 
-    auto popup_position() const -> std::optional<std::pair<int, int>> override
-    {
-        return std::make_pair(state.value().x, state.value().y);
-    }
-
     wlcs::LayerSurfaceV1 layer_surface;
 
     std::optional<wlcs::XdgSurfaceStable> popup_xdg_surface;
@@ -527,12 +511,12 @@ TEST_P(XdgPopupPositionerTest, xdg_shell_stable_popup_placed_correctly)
     manager->map_popup(param.positioner);
 
     ASSERT_THAT(
-        manager->popup_position(),
+        manager->state,
         Ne(std::nullopt)) << "popup configure event not sent";
 
-    ASSERT_THAT(
-        manager->popup_position(),
-        Eq(std::make_optional(param.expected_positon))) << "popup placed in incorrect position";
+    EXPECT_THAT(
+        std::make_pair(manager->state.value().x, manager->state.value().y),
+        Eq(param.expected_positon)) << "popup placed in incorrect position";
 }
 
 TEST_P(XdgPopupPositionerTest, xdg_shell_unstable_v6_popup_placed_correctly)
@@ -543,12 +527,12 @@ TEST_P(XdgPopupPositionerTest, xdg_shell_unstable_v6_popup_placed_correctly)
     manager->map_popup(param.positioner);
 
     ASSERT_THAT(
-        manager->popup_position(),
+        manager->state,
         Ne(std::nullopt)) << "popup configure event not sent";
 
-    ASSERT_THAT(
-        manager->popup_position(),
-        Eq(std::make_optional(param.expected_positon))) << "popup placed in incorrect position";
+    EXPECT_THAT(
+        std::make_pair(manager->state.value().x, manager->state.value().y),
+        Eq(param.expected_positon)) << "popup placed in incorrect position";
 }
 
 TEST_P(XdgPopupPositionerTest, layer_shell_popup_placed_correctly)
@@ -559,12 +543,12 @@ TEST_P(XdgPopupPositionerTest, layer_shell_popup_placed_correctly)
     manager->map_popup(param.positioner);
 
     ASSERT_THAT(
-        manager->popup_position(),
+        manager->state,
         Ne(std::nullopt)) << "popup configure event not sent";
 
-    ASSERT_THAT(
-        manager->popup_position(),
-        Eq(std::make_optional(param.expected_positon))) << "popup placed in incorrect position";
+    EXPECT_THAT(
+        std::make_pair(manager->state.value().x, manager->state.value().y),
+        Eq(param.expected_positon)) << "popup placed in incorrect position";
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -838,11 +822,10 @@ TEST_F(XdgPopupTest, zero_size_anchor_rect_stable)
     manager->client.roundtrip();
 
     ASSERT_THAT(
-        manager->popup_position(),
-        Eq(std::make_optional(
-            std::make_pair(
-                (window_width - popup_width) / 2,
-                (window_height - popup_height) / 2)))) << "popup placed in incorrect position";
+        std::make_pair(manager->state.value().x, manager->state.value().y),
+        Eq(std::make_pair(
+            (window_width - popup_width) / 2,
+            (window_height - popup_height) / 2))) << "popup placed in incorrect position";
 }
 
 // regression test for https://github.com/MirServer/mir/issues/836
