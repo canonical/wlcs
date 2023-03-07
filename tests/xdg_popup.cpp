@@ -114,7 +114,7 @@ struct PositionerParams
     auto with_anchor_rect(int x, int y, int w, int h) -> PositionerParams& { anchor_rect = {{x, y}, {w, h}}; return *this; }
     auto with_anchor(xdg_positioner_anchor value) -> PositionerParams& { anchor_stable = {value}; return *this; }
     auto with_gravity(xdg_positioner_gravity value) -> PositionerParams& { gravity_stable = {value}; return *this; }
-    auto with_constraint_adjustment(xdg_positioner_constraint_adjustment value) -> PositionerParams& { constraint_adjustment_stable = {value}; return *this; }
+    auto with_constraint_adjustment(uint32_t value) -> PositionerParams& { constraint_adjustment_stable = static_cast<xdg_positioner_constraint_adjustment>(value); return *this; }
     auto with_offset(int x, int y) -> PositionerParams& { offset = {{x, y}}; return *this; }
     auto with_grab(bool enable = true) -> PositionerParams& { grab = enable; return *this; }
 
@@ -132,13 +132,32 @@ struct PositionerTestParams
     PositionerTestParams(std::string name, int expected_x, int expected_y, PositionerParams const& positioner)
         : name{name},
           expected_positon{expected_x, expected_y},
-          positioner{positioner}
+          expected_size{popup_width, popup_height},
+          positioner{positioner},
+          parent_position_func{std::nullopt}
+    {
+    }
+
+    PositionerTestParams(
+        std::string name,
+        int expected_x, int expected_y,
+        int expected_width, int expected_height,
+        PositionerParams const& positioner,
+        std::function<std::pair<int, int>(int, int)> parent_position_func)
+        : name{name},
+          expected_positon{expected_x, expected_y},
+          expected_size{expected_width, expected_height},
+          positioner{positioner},
+          parent_position_func{std::move(parent_position_func)}
     {
     }
 
     std::string name;
     std::pair<int, int> expected_positon;
+    std::pair<int, int> expected_size;
     PositionerParams positioner;
+    /// parent_position_func is called with the size of the output
+    std::optional<std::function<std::pair<int, int>(int output_width, int output_height)>> parent_position_func;
 };
 
 std::ostream& operator<<(std::ostream& out, PositionerTestParams const& param)
@@ -191,13 +210,21 @@ public:
         client.dispatch_until([&surface_rendered]() { return surface_rendered; });
     }
 
+    void set_parent_position(
+        std::function<std::pair<int, int>(int output_width, int output_height)> const& parent_position_func)
+    {
+        auto const output_size = client.output_state(0).mode_size.value();
+        auto const parent_position = parent_position_func(output_size.first, output_size.second);
+        the_server.move_surface_to(surface, parent_position.first, parent_position.second);
+        client.roundtrip();
+    }
+
     void unmap_popup()
     {
         clear_popup();
         popup_surface = std::nullopt;
     }
 
-    virtual auto popup_position() const -> std::optional<std::pair<int, int>> = 0;
     virtual void dispatch_until_popup_configure() = 0;
 
     MOCK_METHOD0(popup_done, void());
@@ -292,11 +319,6 @@ public:
     {
         popup = std::nullopt;
         popup_xdg_surface = std::nullopt;
-    }
-
-    auto popup_position() const -> std::optional<std::pair<int, int>> override
-    {
-        return std::make_pair(state.value().x, state.value().y);
     }
 
     wlcs::XdgSurfaceStable xdg_shell_surface;
@@ -397,11 +419,6 @@ public:
         popup_xdg_surface = std::nullopt;
     }
 
-    auto popup_position() const -> std::optional<std::pair<int, int>> override
-    {
-        return std::make_pair(state.value().x, state.value().y);
-    }
-
     wlcs::XdgSurfaceV6 xdg_shell_surface;
     wlcs::XdgToplevelV6 toplevel;
 
@@ -498,11 +515,6 @@ public:
         popup_xdg_surface = std::nullopt;
     }
 
-    auto popup_position() const -> std::optional<std::pair<int, int>> override
-    {
-        return std::make_pair(state.value().x, state.value().y);
-    }
-
     wlcs::LayerSurfaceV1 layer_surface;
 
     std::optional<wlcs::XdgSurfaceStable> popup_xdg_surface;
@@ -524,15 +536,23 @@ TEST_P(XdgPopupPositionerTest, xdg_shell_stable_popup_placed_correctly)
     auto manager = std::make_unique<XdgPopupStableManager>(this);
     auto const& param = GetParam();
 
+    if (param.parent_position_func)
+    {
+        manager->set_parent_position(param.parent_position_func.value());
+    }
     manager->map_popup(param.positioner);
 
     ASSERT_THAT(
-        manager->popup_position(),
+        manager->state,
         Ne(std::nullopt)) << "popup configure event not sent";
 
-    ASSERT_THAT(
-        manager->popup_position(),
-        Eq(std::make_optional(param.expected_positon))) << "popup placed in incorrect position";
+    EXPECT_THAT(
+        std::make_pair(manager->state.value().x, manager->state.value().y),
+        Eq(param.expected_positon)) << "popup placed in incorrect position";
+
+    EXPECT_THAT(
+        std::make_pair(manager->state.value().width, manager->state.value().height),
+        Eq(param.expected_size)) << "popup has incorrect size";
 }
 
 TEST_P(XdgPopupPositionerTest, xdg_shell_unstable_v6_popup_placed_correctly)
@@ -540,15 +560,23 @@ TEST_P(XdgPopupPositionerTest, xdg_shell_unstable_v6_popup_placed_correctly)
     auto manager = std::make_unique<XdgPopupV6Manager>(this);
     auto const& param = GetParam();
 
+    if (param.parent_position_func)
+    {
+        manager->set_parent_position(param.parent_position_func.value());
+    }
     manager->map_popup(param.positioner);
 
     ASSERT_THAT(
-        manager->popup_position(),
+        manager->state,
         Ne(std::nullopt)) << "popup configure event not sent";
 
-    ASSERT_THAT(
-        manager->popup_position(),
-        Eq(std::make_optional(param.expected_positon))) << "popup placed in incorrect position";
+    EXPECT_THAT(
+        std::make_pair(manager->state.value().x, manager->state.value().y),
+        Eq(param.expected_positon)) << "popup placed in incorrect position";
+
+    EXPECT_THAT(
+        std::make_pair(manager->state.value().width, manager->state.value().height),
+        Eq(param.expected_size)) << "popup has incorrect size";
 }
 
 TEST_P(XdgPopupPositionerTest, layer_shell_popup_placed_correctly)
@@ -556,15 +584,23 @@ TEST_P(XdgPopupPositionerTest, layer_shell_popup_placed_correctly)
     auto manager = std::make_unique<LayerV1PopupManager>(this);
     auto const& param = GetParam();
 
+    if (param.parent_position_func)
+    {
+        manager->set_parent_position(param.parent_position_func.value());
+    }
     manager->map_popup(param.positioner);
 
     ASSERT_THAT(
-        manager->popup_position(),
+        manager->state,
         Ne(std::nullopt)) << "popup configure event not sent";
 
-    ASSERT_THAT(
-        manager->popup_position(),
-        Eq(std::make_optional(param.expected_positon))) << "popup placed in incorrect position";
+    EXPECT_THAT(
+        std::make_pair(manager->state.value().x, manager->state.value().y),
+        Eq(param.expected_positon)) << "popup placed in incorrect position";
+
+    EXPECT_THAT(
+        std::make_pair(manager->state.value().width, manager->state.value().height),
+        Eq(param.expected_size)) << "popup has incorrect size";
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -656,6 +692,205 @@ INSTANTIATE_TEST_SUITE_P(
 
         PositionerTestParams{"offset anchor rect", (window_width - 40 - popup_width) / 2, (window_height - 80 - popup_height) / 2,
             PositionerParams().with_anchor_rect(20, 20, window_width - 80, window_height - 120)}
+    ));
+
+INSTANTIATE_TEST_SUITE_P(
+    ConstraintAdjustmentNone,
+    XdgPopupPositionerTest,
+    testing::Values(
+        PositionerTestParams{"middle of screen",
+            -popup_width, -popup_height,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_TOP_LEFT)
+                .with_constraint_adjustment(XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_NONE),
+            [](int width, int height){ return std::make_pair((width - window_width) / 2, (height - window_height) / 2); }},
+        PositionerTestParams{"off top left edge",
+            -popup_width, -popup_height,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_TOP_LEFT)
+                .with_constraint_adjustment(XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_NONE),
+            [](int /*width*/, int /*height*/){ return std::make_pair(5, 5); }},
+        PositionerTestParams{"off top right edge",
+            window_width, -popup_height,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_TOP_RIGHT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_TOP_RIGHT)
+                .with_constraint_adjustment(XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_NONE),
+            [](int width, int /*height*/){ return std::make_pair(width - window_width - 5, 5); }},
+        PositionerTestParams{"off bottom left edge",
+            -popup_width, window_height,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM_LEFT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_LEFT)
+                .with_constraint_adjustment(XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_NONE),
+            [](int /*width*/, int height){ return std::make_pair(5, height - window_height - 5); }},
+        PositionerTestParams{"off bottom right edge",
+            window_width, window_height,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM_RIGHT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT)
+                .with_constraint_adjustment(XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_NONE),
+            [](int width, int height){ return std::make_pair(width - window_width - 5, height - window_height - 5); }}
+    ));
+
+INSTANTIATE_TEST_SUITE_P(
+    ConstraintAdjustmentSlide,
+    XdgPopupPositionerTest,
+    testing::Values(
+        PositionerTestParams{"middle of screen",
+            -popup_width, -popup_height,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_TOP_LEFT)
+                .with_constraint_adjustment(
+                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_Y),
+            [](int width, int height){ return std::make_pair((width - window_width) / 2, (height - window_height) / 2); }},
+        PositionerTestParams{"off top left edge",
+            -5, -5,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_TOP_LEFT)
+                .with_constraint_adjustment(
+                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_Y),
+            [](int /*width*/, int /*height*/){ return std::make_pair(5, 5); }},
+        PositionerTestParams{"off top right edge",
+            window_width - popup_width + 5, -5,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_TOP_RIGHT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_TOP_RIGHT)
+                .with_constraint_adjustment(
+                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_Y),
+            [](int width, int /*height*/){ return std::make_pair(width - window_width - 5, 5); }},
+        PositionerTestParams{"off bottom left edge", -5,
+            window_height - popup_height + 5,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM_LEFT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_LEFT)
+                .with_constraint_adjustment(
+                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_Y),
+            [](int /*width*/, int height){ return std::make_pair(5, height - window_height - 5); }},
+        PositionerTestParams{"off bottom right edge",
+            window_width - popup_width + 5, window_height - popup_height + 5,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM_RIGHT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT)
+                .with_constraint_adjustment(
+                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_Y),
+            [](int width, int height){ return std::make_pair(width - window_width - 5, height - window_height - 5); }}
+    ));
+
+INSTANTIATE_TEST_SUITE_P(
+    ConstraintAdjustmentFlip,
+    XdgPopupPositionerTest,
+    testing::Values(
+        PositionerTestParams{"middle of screen",
+            -popup_width, -popup_height,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_TOP_LEFT)
+                .with_constraint_adjustment(
+                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_Y),
+            [](int width, int height){ return std::make_pair((width - window_width) / 2, (height - window_height) / 2); }},
+        PositionerTestParams{"off top left edge",
+            window_width, window_height,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_TOP_LEFT)
+                .with_constraint_adjustment(
+                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_Y),
+            [](int /*width*/, int /*height*/){ return std::make_pair(5, 5); }},
+        PositionerTestParams{"off top right edge",
+            -popup_width, window_height,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_TOP_RIGHT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_TOP_RIGHT)
+                .with_constraint_adjustment(
+                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_Y),
+            [](int width, int /*height*/){ return std::make_pair(width - window_width - 5, 5); }},
+        PositionerTestParams{"off bottom left edge",
+            window_width, -popup_height,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM_LEFT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_LEFT)
+                .with_constraint_adjustment(
+                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_Y),
+            [](int /*width*/, int height){ return std::make_pair(5, height - window_height - 5); }},
+        PositionerTestParams{"off bottom right edge",
+            -popup_width, -popup_height,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM_RIGHT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT)
+                .with_constraint_adjustment(
+                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_Y),
+            [](int width, int height){ return std::make_pair(width - window_width - 5, height - window_height - 5); }}
+    ));
+
+INSTANTIATE_TEST_SUITE_P(
+    ConstraintAdjustmentResize,
+    XdgPopupPositionerTest,
+    testing::Values(
+        PositionerTestParams{"middle of screen",
+            -popup_width, -popup_height,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_TOP_LEFT)
+                .with_constraint_adjustment(
+                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_RESIZE_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_RESIZE_Y),
+            [](int width, int height){ return std::make_pair((width - window_width) / 2, (height - window_height) / 2); }},
+        PositionerTestParams{"off top left edge",
+            -5, -5,
+            5, 5,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_TOP_LEFT)
+                .with_constraint_adjustment(
+                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_RESIZE_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_RESIZE_Y),
+            [](int /*width*/, int /*height*/){ return std::make_pair(5, 5); }},
+        PositionerTestParams{"off top right edge",
+            window_width, -5,
+            5, 5,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_TOP_RIGHT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_TOP_RIGHT)
+                .with_constraint_adjustment(
+                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_RESIZE_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_RESIZE_Y),
+            [](int width, int /*height*/){ return std::make_pair(width - window_width - 5, 5); }},
+        PositionerTestParams{"off bottom left edge",
+            -5, window_height,
+            5, 5,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM_LEFT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_LEFT)
+                .with_constraint_adjustment(
+                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_RESIZE_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_RESIZE_Y),
+            [](int /*width*/, int height){ return std::make_pair(5, height - window_height - 5); }},
+        PositionerTestParams{"off bottom right edge",
+            window_width, window_height,
+            5, 5,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM_RIGHT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT)
+                .with_constraint_adjustment(
+                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_RESIZE_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_RESIZE_Y),
+            [](int width, int height){ return std::make_pair(width - window_width - 5, height - window_height - 5); }}
     ));
 
 struct XdgPopupTestParam
@@ -838,11 +1073,10 @@ TEST_F(XdgPopupTest, zero_size_anchor_rect_stable)
     manager->client.roundtrip();
 
     ASSERT_THAT(
-        manager->popup_position(),
-        Eq(std::make_optional(
-            std::make_pair(
-                (window_width - popup_width) / 2,
-                (window_height - popup_height) / 2)))) << "popup placed in incorrect position";
+        std::make_pair(manager->state.value().x, manager->state.value().y),
+        Eq(std::make_pair(
+            (window_width - popup_width) / 2,
+            (window_height - popup_height) / 2))) << "popup placed in incorrect position";
 }
 
 // regression test for https://github.com/MirServer/mir/issues/836
@@ -895,6 +1129,5 @@ INSTANTIATE_TEST_SUITE_P(
 // TODO: test that error is raised when incomplete positioner is used (positioner without size and anchor rect set)
 // TODO: test set_size
 // TODO: test that set_window_geometry affects anchor rect
-// TODO: test set_constraint_adjustment
 // TODO: test set_offset
 // TODO: test that a zero size anchor rect fails on v6
