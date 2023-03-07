@@ -805,7 +805,7 @@ INSTANTIATE_TEST_SUITE_P(
                     XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_Y),
             [](int width, int height){ return std::make_pair((width - window_width) / 2, (height - window_height) / 2); }},
         PositionerTestParams{"off top left edge",
-            0, 0,
+            window_width, window_height,
             popup_width, popup_height,
             PositionerParams()
                 .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
@@ -814,7 +814,7 @@ INSTANTIATE_TEST_SUITE_P(
                     XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_Y),
             [](int /*width*/, int /*height*/){ return std::make_pair(5, 5); }},
         PositionerTestParams{"off top right edge",
-            window_width - popup_width, 0,
+            -popup_width, window_height,
             popup_width, popup_height,
             PositionerParams()
                 .with_anchor(XDG_POSITIONER_ANCHOR_TOP_RIGHT)
@@ -822,8 +822,8 @@ INSTANTIATE_TEST_SUITE_P(
                 .with_constraint_adjustment(
                     XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_Y),
             [](int width, int /*height*/){ return std::make_pair(width - window_width - 5, 5); }},
-        PositionerTestParams{"off bottom left edge", 0,
-            window_height - popup_height,
+        PositionerTestParams{"off bottom left edge",
+            window_width, -popup_height,
             popup_width, popup_height,
             PositionerParams()
                 .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM_LEFT)
@@ -832,7 +832,7 @@ INSTANTIATE_TEST_SUITE_P(
                     XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_Y),
             [](int /*width*/, int height){ return std::make_pair(5, height - window_height - 5); }},
         PositionerTestParams{"off bottom right edge",
-            window_width - popup_width, window_height - popup_height,
+            -popup_width, -popup_height,
             popup_width, popup_height,
             PositionerParams()
                 .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM_RIGHT)
