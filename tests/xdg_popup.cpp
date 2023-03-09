@@ -545,6 +545,29 @@ public:
     int popup_surface_configure_count{0};
 };
 
+auto surface_actually_at_location(
+    wlcs::Server& server,
+    wlcs::Client& client,
+    wl_surface* surface,
+    std::pair<int, int> location) -> bool
+{
+    auto pointer = server.create_pointer();
+    int offset_x = 1, offset_y = 1;
+    if (location.first < 0)
+    {
+        offset_x -= location.first;
+    }
+    if (location.second < 0)
+    {
+        offset_y -= location.second;
+    }
+    pointer.move_to(location.first + offset_x, location.second + offset_y);
+    client.roundtrip();
+    return (
+        client.window_under_cursor() == surface &&
+        client.pointer_position() == std::make_pair(wl_fixed_from_int(offset_x), wl_fixed_from_int(offset_y)));
+}
+
 }
 
 class XdgPopupPositionerTest:
@@ -575,6 +598,16 @@ TEST_P(XdgPopupPositionerTest, xdg_shell_stable_popup_placed_correctly)
     EXPECT_THAT(
         std::make_pair(manager->state.value().width, manager->state.value().height),
         Eq(param.expected_size)) << "popup has incorrect size";
+
+    EXPECT_THAT(
+        surface_actually_at_location(
+            the_server(),
+            manager->client,
+            manager->popup_surface.value(),
+            std::make_pair(
+                manager->parent_position().first + param.expected_positon.first,
+                manager->parent_position().second + param.expected_positon.second)),
+        IsTrue());
 }
 
 TEST_P(XdgPopupPositionerTest, xdg_shell_unstable_v6_popup_placed_correctly)
@@ -599,6 +632,16 @@ TEST_P(XdgPopupPositionerTest, xdg_shell_unstable_v6_popup_placed_correctly)
     EXPECT_THAT(
         std::make_pair(manager->state.value().width, manager->state.value().height),
         Eq(param.expected_size)) << "popup has incorrect size";
+
+    EXPECT_THAT(
+        surface_actually_at_location(
+            the_server(),
+            manager->client,
+            manager->popup_surface.value(),
+            std::make_pair(
+                manager->parent_position().first + param.expected_positon.first,
+                manager->parent_position().second + param.expected_positon.second)),
+        IsTrue());
 }
 
 TEST_P(XdgPopupPositionerTest, layer_shell_popup_placed_correctly)
@@ -623,6 +666,16 @@ TEST_P(XdgPopupPositionerTest, layer_shell_popup_placed_correctly)
     EXPECT_THAT(
         std::make_pair(manager->state.value().width, manager->state.value().height),
         Eq(param.expected_size)) << "popup has incorrect size";
+
+    EXPECT_THAT(
+        surface_actually_at_location(
+            the_server(),
+            manager->client,
+            manager->popup_surface.value(),
+            std::make_pair(
+                manager->parent_position().first + param.expected_positon.first,
+                manager->parent_position().second + param.expected_positon.second)),
+        IsTrue());
 }
 
 INSTANTIATE_TEST_SUITE_P(
