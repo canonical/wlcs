@@ -176,12 +176,13 @@ public:
         int height;
     };
 
-    static int const window_x = 500, window_y = 500;
+    static int const window_x, window_y;
 
     XdgPopupManagerBase(wlcs::InProcessServer* const in_process_server)
         : the_server{in_process_server->the_server()},
           client{the_server},
-          surface{client}
+          surface{client},
+          parent_position_{window_x, window_y}
     {
         surface.add_frame_callback([this](auto) { surface_rendered = true; });
     }
@@ -194,7 +195,7 @@ public:
         surface_rendered = false;
         wl_surface_commit(surface);
         client.dispatch_until([this]() { return surface_rendered; });
-        the_server.move_surface_to(surface, window_x, window_y);
+        the_server.move_surface_to(surface, parent_position_.first, parent_position_.second);
     }
 
     void map_popup(PositionerParams const& params)
@@ -214,9 +215,14 @@ public:
         std::function<std::pair<int, int>(int output_width, int output_height)> const& parent_position_func)
     {
         auto const output_size = client.output_state(0).mode_size.value();
-        auto const parent_position = parent_position_func(output_size.first, output_size.second);
-        the_server.move_surface_to(surface, parent_position.first, parent_position.second);
+        parent_position_ = parent_position_func(output_size.first, output_size.second);
+        the_server.move_surface_to(surface, parent_position_.first, parent_position_.second);
         client.roundtrip();
+    }
+
+    auto parent_position() -> std::pair<int, int>
+    {
+        return parent_position_;
     }
 
     void unmap_popup()
@@ -235,6 +241,7 @@ public:
     wlcs::Surface surface;
     std::optional<wlcs::Surface> popup_surface;
 
+    std::pair<int, int> parent_position_;
     std::optional<State> state;
 
 protected:
@@ -243,6 +250,9 @@ protected:
 
     bool surface_rendered{true};
 };
+
+int const XdgPopupManagerBase::window_x = 500;
+int const XdgPopupManagerBase::window_y = 500;
 
 class XdgPopupStableManager : public XdgPopupManagerBase
 {
