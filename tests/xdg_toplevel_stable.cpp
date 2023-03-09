@@ -27,6 +27,7 @@
 
 #include "helpers.h"
 #include "in_process_server.h"
+#include "version_specifier.h"
 #include "xdg_shell_stable.h"
 
 #include <gmock/gmock.h>
@@ -97,6 +98,18 @@ public:
 }
 
 using XdgToplevelStableTest = wlcs::InProcessServer;
+
+TEST_F(XdgToplevelStableTest, wm_capabilities_are_sent)
+{
+    wlcs::Client client{the_server()};
+    client.bind_if_supported<xdg_wm_base>(wlcs::AtLeastVersion{XDG_TOPLEVEL_WM_CAPABILITIES_SINCE_VERSION});
+    wlcs::Surface surface{client};
+    wlcs::XdgSurfaceStable xdg_shell_surface{client, surface};
+    wlcs::XdgToplevelStable toplevel{xdg_shell_surface};
+    EXPECT_CALL(toplevel, wm_capabilities).Times(1);
+    client.roundtrip();
+    surface.attach_buffer(100, 100);
+}
 
 // there *could* be a bug in these tests, but also the window manager may not be behaving properly
 // lets take another look when we've updated the window manager
