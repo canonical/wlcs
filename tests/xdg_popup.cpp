@@ -337,6 +337,21 @@ public:
         ON_CALL(popup.value(), done()).WillByDefault([this](){ popup_done(); });
     }
 
+    void move_parent_using_pointer(std::pair<int, int> to)
+    {
+        auto pointer = the_server.create_pointer();
+        pointer.move_to(parent_position_.first + 1, parent_position_.second + 1);
+        pointer.left_button_down();
+        client.roundtrip();
+        ASSERT_THAT(client.window_under_cursor(), Eq(surface.operator wl_surface*()));
+        xdg_toplevel_move(toplevel, client.seat(), client.latest_serial().value());
+        client.roundtrip();
+        pointer.move_to(to.first + 1, to.second + 1);
+        parent_position_ = to;
+        pointer.left_button_up();
+        client.roundtrip();
+    }
+
     void clear_popup() override
     {
         popup = std::nullopt;
@@ -1170,6 +1185,133 @@ TEST_P(XdgPopupTest, popup_configure_is_valid)
     ASSERT_THAT(manager->state, Ne(std::nullopt));
     EXPECT_THAT(manager->state.value().width, Gt(0));
     EXPECT_THAT(manager->state.value().height, Gt(0));
+}
+
+TEST_F(XdgPopupTest, when_parent_surface_is_moved_a_reactive_popup_is_moved)
+{
+    XdgPopupStableManager manager{this};
+
+    manager.client.bind_if_supported<xdg_wm_base>(wlcs::AtLeastVersion{XDG_POSITIONER_SET_REACTIVE_SINCE_VERSION});
+
+    auto positioner = PositionerParams{}
+        .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
+        .with_gravity(XDG_POSITIONER_GRAVITY_TOP_LEFT)
+        .with_constraint_adjustment(
+            XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_Y)
+        .with_reactive();
+
+    manager.map_popup(positioner);
+    // repositioned should not be called unless reposition is called
+    EXPECT_CALL(manager.popup.value(), repositioned).Times(0);
+    manager.client.roundtrip();
+
+    ASSERT_THAT(
+        manager.state,
+        Ne(std::nullopt)) << "popup configure event not sent";
+
+    ASSERT_THAT(
+        std::make_pair(manager.state.value().x, manager.state.value().y),
+        Eq(std::make_pair(-popup_width, -popup_height))) << "popup initially placed in incorrect position";
+
+    manager.move_parent_using_pointer({5, 5});
+
+    ASSERT_THAT(
+        std::make_pair(manager.state.value().x, manager.state.value().y),
+        Ne(std::make_pair(-popup_width, -popup_height))) << "reactive popup was not moved";
+
+    EXPECT_THAT(
+        std::make_pair(manager.state.value().x, manager.state.value().y),
+        Eq(std::make_pair(-5, -5))) << "reactive popup placed in incorrect position";
+
+    EXPECT_THAT(
+        surface_actually_at_location(
+            the_server(),
+            manager.client,
+            manager.popup_surface.value(),
+            std::make_pair(0, 0)),
+        IsTrue());
+}
+
+TEST_F(XdgPopupTest, when_parent_surface_is_moved_a_nonreactive_popup_is_not_moved)
+{
+    XdgPopupStableManager manager{this};
+
+    manager.client.bind_if_supported<xdg_wm_base>(wlcs::AtLeastVersion{XDG_POSITIONER_SET_REACTIVE_SINCE_VERSION});
+
+    auto positioner = PositionerParams{}
+        .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
+        .with_gravity(XDG_POSITIONER_GRAVITY_TOP_LEFT)
+        .with_constraint_adjustment(
+            XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_Y);
+
+    manager.map_popup(positioner);
+    // repositioned should not be called unless reposition is called
+    EXPECT_CALL(manager.popup.value(), repositioned).Times(0);
+    manager.client.roundtrip();
+
+    ASSERT_THAT(
+        manager.state,
+        Ne(std::nullopt)) << "popup configure event not sent";
+
+    ASSERT_THAT(
+        std::make_pair(manager.state.value().x, manager.state.value().y),
+        Eq(std::make_pair(-popup_width, -popup_height))) << "popup initially placed in incorrect position";
+
+    manager.move_parent_using_pointer({5, 5});
+
+    EXPECT_THAT(
+        std::make_pair(manager.state.value().x, manager.state.value().y),
+        Eq(std::make_pair(-popup_width, -popup_height))) << "nonreactive popup was moved";
+
+    EXPECT_THAT(
+        surface_actually_at_location(
+            the_server(),
+            manager.client,
+            manager.popup_surface.value(),
+            std::make_pair(5 - popup_width, 5 - popup_height)),
+        IsTrue());
+}
+
+TEST_F(XdgPopupTest, popup_can_be_repositioned)
+{
+    XdgPopupStableManager manager{this};
+
+    manager.client.bind_if_supported<xdg_wm_base>(wlcs::AtLeastVersion{XDG_POPUP_REPOSITION_SINCE_VERSION});
+
+    auto positioner_a = PositionerParams{}
+        .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
+        .with_gravity(XDG_POSITIONER_GRAVITY_TOP_LEFT);
+
+    manager.map_popup(positioner_a);
+    EXPECT_CALL(manager.popup.value(), repositioned).Times(0);
+    manager.client.roundtrip();
+
+    auto positioner_b = PositionerParams{}
+        .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM_RIGHT)
+        .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
+    wlcs::XdgPositionerStable xdg_positioner{manager.client};
+    XdgPopupStableManager::setup_positioner(xdg_positioner, positioner_b);
+    xdg_popup_reposition(manager.popup.value(), xdg_positioner, 1);
+    EXPECT_CALL(manager.popup.value(), repositioned(1));
+    manager.client.roundtrip();
+
+    ASSERT_THAT(
+        manager.state,
+        Ne(std::nullopt)) << "popup configure event not sent";
+
+    EXPECT_THAT(
+        std::make_pair(manager.state.value().x, manager.state.value().y),
+        Eq(std::make_pair(window_width, window_height)));
+
+    EXPECT_THAT(
+        surface_actually_at_location(
+            the_server(),
+            manager.client,
+            manager.popup_surface.value(),
+            std::make_pair(
+                manager.parent_position().first + window_width,
+                manager.parent_position().second + window_height)),
+        IsTrue());
 }
 
 INSTANTIATE_TEST_SUITE_P(
