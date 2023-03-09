@@ -44,8 +44,7 @@ wlcs::LayerSurfaceV1::LayerSurfaceV1(
             uint32_t height)
             {
                 auto self = static_cast<LayerSurfaceV1*>(data);
-                self->last_width_ = (int)width;
-                self->last_height_ = (int)height;
+                self->last_size_ = {width, height};
                 self->configure_count++;
                 (void)zwlr_layer_surface_v1;
                 (void)serial;
