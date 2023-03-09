@@ -67,11 +67,6 @@ public:
         dispatch_until_configure();
     }
 
-    ~ConfigurationWindow()
-    {
-        client.roundtrip();
-    }
-
     void dispatch_until_configure()
     {
         client.dispatch_until(
