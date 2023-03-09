@@ -444,6 +444,51 @@ TEST_F(XdgToplevelStableTest, null_parent_can_be_set)
     client.roundtrip();
 }
 
+TEST_F(XdgToplevelStableTest, when_parent_is_set_to_self_error_is_raised)
+{
+    wlcs::Client client{the_server()};
+    ConfigurationWindow window{client};
+    xdg_toplevel_set_parent(window, window);
+    wl_surface_commit(window);
+    try
+    {
+        client.roundtrip();
+    }
+    catch (wlcs::ProtocolError const& err)
+    {
+        return;
+    }
+    FAIL() << "Protocol error not raised";
+}
+
+TEST_F(XdgToplevelStableTest, when_parent_is_set_to_child_descendant_error_is_raised)
+{
+    wlcs::Client client{the_server()};
+    ConfigurationWindow parent{client};
+    ConfigurationWindow child{client};
+    xdg_toplevel_set_parent(child, parent);
+    wl_surface_commit(child);
+    client.roundtrip();
+
+    ConfigurationWindow grandchild{client};
+    xdg_toplevel_set_parent(grandchild, child);
+    wl_surface_commit(grandchild);
+    client.roundtrip();
+
+    xdg_toplevel_set_parent(parent, grandchild);
+    wl_surface_commit(parent);
+
+    try
+    {
+        client.roundtrip();
+    }
+    catch (wlcs::ProtocolError const& err)
+    {
+        return;
+    }
+    FAIL() << "Protocol error not raised";
+}
+
 using XdgToplevelStableConfigurationTest = wlcs::InProcessServer;
 
 TEST_F(XdgToplevelStableConfigurationTest, defaults)
