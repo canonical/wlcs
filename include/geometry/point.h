@@ -14,16 +14,14 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef MIR_GEOMETRY_POINT_H_
-#define MIR_GEOMETRY_POINT_H_
+#ifndef WLCS_GEOMETRY_POINT_H_
+#define WLCS_GEOMETRY_POINT_H_
 
 #include "forward.h"
 #include "dimensions.h"
 #include <ostream>
 
-namespace mir
-{
-namespace geometry
+namespace wlcs
 {
 namespace generic
 {
@@ -96,6 +94,5 @@ std::ostream& operator<<(std::ostream& out, Point<T> const& value)
 
 }
 }
-}
 
-#endif // MIR_GEOMETRY_POINT_H_
+#endif // WLCS_GEOMETRY_POINT_H_

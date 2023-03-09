@@ -14,8 +14,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef MIR_GEOMETRY_DIMENSIONS_H_
-#define MIR_GEOMETRY_DIMENSIONS_H_
+#ifndef WLCS_GEOMETRY_DIMENSIONS_H_
+#define WLCS_GEOMETRY_DIMENSIONS_H_
 
 #include "forward.h"
 
@@ -23,9 +23,7 @@
 #include <type_traits>
 #include <cstdint>
 
-namespace mir
-{
-namespace geometry
+namespace wlcs
 {
 namespace generic
 {
@@ -255,7 +253,6 @@ template<typename T>
 inline constexpr generic::DeltaX<T> as_delta(generic::Width<T> const& w) { return generic::DeltaX<T>{w.as_value()}; }
 template<typename T>
 inline constexpr generic::DeltaY<T> as_delta(generic::Height<T> const& h) { return generic::DeltaY<T>{h.as_value()}; }
-} // namespace geometry
-} // namespace mir
+} // namespace wlcs
 
-#endif // MIR_GEOMETRY_DIMENSIONS_H_
+#endif // WLCS_GEOMETRY_DIMENSIONS_H_

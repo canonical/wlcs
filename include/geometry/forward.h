@@ -14,14 +14,10 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef MIR_GEOMETRY_FORWARD_H_
-#define MIR_GEOMETRY_FORWARD_H_
+#ifndef WLCS_GEOMETRY_FORWARD_H_
+#define WLCS_GEOMETRY_FORWARD_H_
 
-namespace mir
-{
-/// Basic geometry types. Types for dimensions, displacements, etc.
-/// and the operations that they support.
-namespace geometry
+namespace wlcs
 {
 /// These tag types determine what type of dimension a value holds and what operations are possible with it. They are
 /// only used as template parameters, are never instantiated and should only require forward declarations, but some
@@ -88,6 +84,5 @@ using SizeF = generic::Size<float>;
 using DisplacementF = generic::Displacement<float>;
 using RectangleF = generic::Rectangle<int>;
 }
-}
 
-#endif // MIR_GEOMETRY_FORWARD_H_
+#endif // WLCS_GEOMETRY_FORWARD_H_

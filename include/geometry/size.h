@@ -14,16 +14,14 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef MIR_GEOMETRY_SIZE_H_
-#define MIR_GEOMETRY_SIZE_H_
+#ifndef WLCS_GEOMETRY_SIZE_H_
+#define WLCS_GEOMETRY_SIZE_H_
 
 #include "forward.h"
 #include "dimensions.h"
 #include <ostream>
 
-namespace mir
-{
-namespace geometry
+namespace wlcs
 {
 namespace generic
 {
@@ -105,6 +103,5 @@ inline constexpr Point<T> as_point(Size<T> const& size)
 }
 }
 }
-}
 
-#endif // MIR_GEOMETRY_SIZE_H_
+#endif // WLCS_GEOMETRY_SIZE_H_
