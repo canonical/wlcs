@@ -116,6 +116,7 @@ struct PositionerParams
     auto with_gravity(xdg_positioner_gravity value) -> PositionerParams& { gravity_stable = {value}; return *this; }
     auto with_constraint_adjustment(uint32_t value) -> PositionerParams& { constraint_adjustment_stable = static_cast<xdg_positioner_constraint_adjustment>(value); return *this; }
     auto with_offset(int x, int y) -> PositionerParams& { offset = {{x, y}}; return *this; }
+    auto with_reactive(bool enable = true) -> PositionerParams& { reactive = enable; return *this; }
     auto with_grab(bool enable = true) -> PositionerParams& { grab = enable; return *this; }
 
     std::pair<int, int> popup_size; // will default to XdgPopupStableTestBase::popup_(width|height) if nullopt
@@ -124,6 +125,7 @@ struct PositionerParams
     std::optional<xdg_positioner_gravity> gravity_stable;
     std::optional<xdg_positioner_constraint_adjustment> constraint_adjustment_stable;
     std::optional<std::pair<int, int>> offset;
+    bool reactive{false};
     bool grab{false};
 };
 
@@ -274,10 +276,8 @@ public:
             });
     }
 
-    void setup_popup(PositionerParams const& param) override
+    static void setup_positioner(wlcs::XdgPositionerStable& positioner, PositionerParams const& param)
     {
-        wlcs::XdgPositionerStable positioner{client};
-
         // size must always be set
         xdg_positioner_set_size(positioner, param.popup_size.first, param.popup_size.second);
 
@@ -300,6 +300,18 @@ public:
 
         if (param.offset)
             xdg_positioner_set_offset(positioner, param.offset.value().first, param.offset.value().second);
+
+        if (param.reactive)
+        {
+            ASSERT_THAT(xdg_positioner_get_version(positioner), Gt(XDG_POSITIONER_SET_REACTIVE_SINCE_VERSION));
+            xdg_positioner_set_reactive(positioner);
+        }
+    }
+
+    void setup_popup(PositionerParams const& param) override
+    {
+        wlcs::XdgPositionerStable positioner{client};
+        setup_positioner(positioner, param);
 
         popup_xdg_surface.emplace(client, popup_surface.value());
 
