@@ -303,7 +303,10 @@ public:
 
         if (param.reactive)
         {
-            ASSERT_THAT(xdg_positioner_get_version(positioner), Gt(XDG_POSITIONER_SET_REACTIVE_SINCE_VERSION));
+            if (xdg_positioner_get_version(positioner) < XDG_POSITIONER_SET_REACTIVE_SINCE_VERSION)
+            {
+                BOOST_THROW_EXCEPTION(std::logic_error("XDG shell version does not support reactive popups"));
+            }
             xdg_positioner_set_reactive(positioner);
         }
     }
@@ -343,7 +346,10 @@ public:
         pointer.move_to(parent_position_.first + 1, parent_position_.second + 1);
         pointer.left_button_down();
         client.roundtrip();
-        ASSERT_THAT(client.window_under_cursor(), Eq(surface.operator wl_surface*()));
+        if (client.window_under_cursor() != surface)
+        {
+            BOOST_THROW_EXCEPTION(std::runtime_error("surface not detected at expected position"));
+        }
         xdg_toplevel_move(toplevel, client.seat(), client.latest_serial().value());
         client.roundtrip();
         pointer.move_to(to.first + 1, to.second + 1);
