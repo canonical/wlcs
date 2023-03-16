@@ -103,7 +103,6 @@ TEST_F(XdgToplevelStableTest, wm_capabilities_are_sent)
     wlcs::XdgToplevelStable toplevel{xdg_shell_surface};
     EXPECT_CALL(toplevel, wm_capabilities).Times(1);
     client.roundtrip();
-    surface.attach_buffer(100, 100);
 }
 
 // there *could* be a bug in these tests, but also the window manager may not be behaving properly
