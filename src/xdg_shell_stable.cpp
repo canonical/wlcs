@@ -68,6 +68,10 @@ wlcs::XdgToplevelStable::State::State(int32_t width, int32_t height, struct wl_a
                 break;
             case XDG_TOPLEVEL_STATE_ACTIVATED:
                 activated = true;
+            case XDG_TOPLEVEL_STATE_TILED_LEFT:
+            case XDG_TOPLEVEL_STATE_TILED_RIGHT:
+            case XDG_TOPLEVEL_STATE_TILED_BOTTOM:
+            case XDG_TOPLEVEL_STATE_TILED_TOP:
                 break;
         }
     }
@@ -78,10 +82,14 @@ wlcs::XdgToplevelStable::XdgToplevelStable(XdgSurfaceStable& shell_surface_)
 {
     EXPECT_CALL(*this, configure).Times(AnyNumber());
     EXPECT_CALL(*this, close).Times(AnyNumber());
+    EXPECT_CALL(*this, configure_bounds).Times(AnyNumber());
+    EXPECT_CALL(*this, wm_capabilities).Times(AnyNumber());
     toplevel = xdg_surface_get_toplevel(*shell_surface);
     static struct xdg_toplevel_listener const listener = {
         [](void* data, auto, auto... args) { static_cast<XdgToplevelStable*>(data)->configure(args...); },
-        [](void* data, auto, auto... args) { static_cast<XdgToplevelStable*>(data)->close(args...); }};
+        [](void* data, auto, auto... args) { static_cast<XdgToplevelStable*>(data)->close(args...); },
+        [](void* data, auto, auto... args) { static_cast<XdgToplevelStable*>(data)->configure_bounds(args...); },
+        [](void* data, auto, auto... args) { static_cast<XdgToplevelStable*>(data)->wm_capabilities(args...); }};
     xdg_toplevel_add_listener(toplevel, &listener, this);
 }
 
@@ -112,9 +120,11 @@ wlcs::XdgPopupStable::XdgPopupStable(
 {
     EXPECT_CALL(*this, configure).Times(AnyNumber());
     EXPECT_CALL(*this, done).Times(AnyNumber());
+    EXPECT_CALL(*this, repositioned).Times(AnyNumber());
     static struct xdg_popup_listener const listener = {
         [](void* data, auto, auto... args) { static_cast<XdgPopupStable*>(data)->configure(args...); },
-        [](void* data, auto, auto... args) { static_cast<XdgPopupStable*>(data)->done(args...); }};
+        [](void* data, auto, auto... args) { static_cast<XdgPopupStable*>(data)->done(args...); },
+        [](void* data, auto, auto... args) { static_cast<XdgPopupStable*>(data)->repositioned(args...); }};
     xdg_popup_add_listener(popup, &listener, this);
 }
 
