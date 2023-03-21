@@ -18,18 +18,17 @@ jobs:
       fail-fast: false
       matrix:
         spread-task:
-        - lxd:ubuntu-20.04:...:gcc
         - lxd:ubuntu-22.04:...:gcc
         - lxd:ubuntu-22.10:...:gcc
         - lxd:ubuntu-22.10:...:clang
         - lxd:fedora-36:...:gcc
         - lxd:fedora-37:...:gcc
-        - lxd:alpine-3.15:...:gcc
+        - lxd:alpine-3.17:...:gcc
         - lxd:ubuntu-devel:...:gcc
         - lxd:ubuntu-devel:...:clang
         - lxd:alpine-edge:...:gcc
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     env:
       DEBFULLNAME: "Mir CI Bot"
@@ -37,12 +36,7 @@ jobs:
 
     steps:
     - name: Set up LXD
-      run: |
-        set -euo pipefail 
-        sudo adduser $USER lxd
-        sudo apt-get remove --yes lxd
-        sudo snap install lxd
-        sg lxd -c 'lxd init --auto'
+      uses: canonical/setup-lxd@main
 
     - name: Set up Spread
       run: |
@@ -54,6 +48,4 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Run Spread task
-      env:
-        LXD_DIR: /var/snap/lxd/common/lxd
-      run: sg lxd -c 'snap run spread-mir-ci.spread -v ${{ matrix.spread-task }}'
+      run: snap run spread-mir-ci.spread -v ${{ matrix.spread-task }}

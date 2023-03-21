@@ -5,14 +5,13 @@ kill-timeout: 50m
 backends:
     lxd:
         systems:
-            - ubuntu-20.04
             - ubuntu-22.04
             - ubuntu-22.10
             - ubuntu-devel:
                 image: ubuntu-daily:devel/amd64
             - fedora-36
             - fedora-37
-            - alpine-3.15
+            - alpine-3.17
             - alpine-edge
 
 suites:
