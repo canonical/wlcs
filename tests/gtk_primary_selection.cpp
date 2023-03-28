@@ -34,8 +34,7 @@ char const any_mime_data[] = "AnyMimeData";
 
 struct SourceApp : Client
 {
-    // Can't use "using Client::Client;" because Xenial
-    explicit SourceApp(Server& server) : Client{server} {}
+    using Client::Client;
 
     WlHandle<gtk_primary_selection_device_manager> manager{
         this->bind_if_supported<gtk_primary_selection_device_manager>(AnyVersion)};
