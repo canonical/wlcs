@@ -228,7 +228,7 @@ TEST_F(TextInputV3WithInputMethodV2Test, text_input_does_not_enter_non_grabbing_
     EXPECT_CALL(text_input, leave(_)).Times(0);
     EXPECT_CALL(text_input, enter(_)).Times(0);
     auto child_xdg_surface = std::make_shared<wlcs::XdgSurfaceStable>(app_client, *child_surface);
-    auto child_xdg_toplevel = std::make_shared<wlcs::XdgPopupStable>(
+    auto child_xdg_popup = std::make_shared<wlcs::XdgPopupStable>(
         *child_xdg_surface,
         parent_xdg_surface.get(),
         wlcs::XdgPositionerStable{app_client}.setup_default({20, 20}));
@@ -238,6 +238,7 @@ TEST_F(TextInputV3WithInputMethodV2Test, text_input_does_not_enter_non_grabbing_
 
 TEST_F(TextInputV3WithInputMethodV2Test, text_input_enters_grabbing_popup)
 {
+    InSequence seq;
     auto parent_surface = std::make_unique<wlcs::Surface>(app_client);
     EXPECT_CALL(text_input, enter(parent_surface->wl_surface()));
     auto parent_xdg_surface = std::make_shared<wlcs::XdgSurfaceStable>(app_client, *parent_surface);
@@ -269,6 +270,7 @@ TEST_F(TextInputV3WithInputMethodV2Test, text_input_enters_grabbing_popup)
 /// Regression test for https://github.com/MirServer/mir/issues/2189
 TEST_F(TextInputV3WithInputMethodV2Test, text_input_enters_parent_surface_after_child_destroyed)
 {
+    InSequence seq;
     auto parent_surface = std::make_unique<wlcs::Surface>(app_client);
     EXPECT_CALL(text_input, enter(parent_surface->wl_surface()));
     auto parent_xdg_surface = std::make_shared<wlcs::XdgSurfaceStable>(app_client, *parent_surface);
