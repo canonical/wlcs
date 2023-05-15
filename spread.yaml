@@ -7,11 +7,14 @@ backends:
         systems:
             - ubuntu-22.04
             - ubuntu-22.10
+            - ubuntu-23.04
             - ubuntu-devel:
                 image: ubuntu-daily:devel/amd64
             - fedora-36
             - fedora-37
+            - fedora-38
             - alpine-3.17
+            - alpine-3.18
             - alpine-edge
 
 suites:
