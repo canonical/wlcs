@@ -34,7 +34,7 @@
 
 #include <gmock/gmock.h>
 
-#include <experimental/optional>
+#include <optional>
 
 using namespace testing;
 
@@ -114,8 +114,9 @@ struct PositionerParams
     auto with_anchor_rect(int x, int y, int w, int h) -> PositionerParams& { anchor_rect = {{x, y}, {w, h}}; return *this; }
     auto with_anchor(xdg_positioner_anchor value) -> PositionerParams& { anchor_stable = {value}; return *this; }
     auto with_gravity(xdg_positioner_gravity value) -> PositionerParams& { gravity_stable = {value}; return *this; }
-    auto with_constraint_adjustment(xdg_positioner_constraint_adjustment value) -> PositionerParams& { constraint_adjustment_stable = {value}; return *this; }
+    auto with_constraint_adjustment(uint32_t value) -> PositionerParams& { constraint_adjustment_stable = static_cast<xdg_positioner_constraint_adjustment>(value); return *this; }
     auto with_offset(int x, int y) -> PositionerParams& { offset = {{x, y}}; return *this; }
+    auto with_reactive(bool enable = true) -> PositionerParams& { reactive = enable; return *this; }
     auto with_grab(bool enable = true) -> PositionerParams& { grab = enable; return *this; }
 
     std::pair<int, int> popup_size; // will default to XdgPopupStableTestBase::popup_(width|height) if nullopt
@@ -124,6 +125,7 @@ struct PositionerParams
     std::optional<xdg_positioner_gravity> gravity_stable;
     std::optional<xdg_positioner_constraint_adjustment> constraint_adjustment_stable;
     std::optional<std::pair<int, int>> offset;
+    bool reactive{false};
     bool grab{false};
 };
 
@@ -132,13 +134,32 @@ struct PositionerTestParams
     PositionerTestParams(std::string name, int expected_x, int expected_y, PositionerParams const& positioner)
         : name{name},
           expected_positon{expected_x, expected_y},
-          positioner{positioner}
+          expected_size{popup_width, popup_height},
+          positioner{positioner},
+          parent_position_func{std::nullopt}
+    {
+    }
+
+    PositionerTestParams(
+        std::string name,
+        int expected_x, int expected_y,
+        int expected_width, int expected_height,
+        PositionerParams const& positioner,
+        std::function<std::pair<int, int>(int, int)> parent_position_func)
+        : name{name},
+          expected_positon{expected_x, expected_y},
+          expected_size{expected_width, expected_height},
+          positioner{positioner},
+          parent_position_func{std::move(parent_position_func)}
     {
     }
 
     std::string name;
     std::pair<int, int> expected_positon;
+    std::pair<int, int> expected_size;
     PositionerParams positioner;
+    /// parent_position_func is called with the size of the output
+    std::optional<std::function<std::pair<int, int>(int output_width, int output_height)>> parent_position_func;
 };
 
 std::ostream& operator<<(std::ostream& out, PositionerTestParams const& param)
@@ -157,12 +178,13 @@ public:
         int height;
     };
 
-    static int const window_x = 500, window_y = 500;
+    static int const window_x, window_y;
 
     XdgPopupManagerBase(wlcs::Server& server, std::shared_ptr<wlcs::Client> client)
         : the_server{server},
           client{client},
-          surface{*client}
+          surface{*client},
+          parent_position_{window_x, window_y}
     {
         surface.add_frame_callback([this](auto) { surface_rendered = true; });
     }
@@ -175,7 +197,7 @@ public:
         surface_rendered = false;
         wl_surface_commit(surface);
         client->dispatch_until([this]() { return surface_rendered; });
-        the_server.move_surface_to(surface, window_x, window_y);
+        the_server.move_surface_to(surface, parent_position_.first, parent_position_.second);
     }
 
     void map_popup(PositionerParams const& params)
@@ -191,13 +213,26 @@ public:
         client->dispatch_until([&surface_rendered]() { return surface_rendered; });
     }
 
+    void set_parent_position(
+        std::function<std::pair<int, int>(int output_width, int output_height)> const& parent_position_func)
+    {
+        auto const output_size = client->output_state(0).mode_size.value();
+        parent_position_ = parent_position_func(output_size.first, output_size.second);
+        the_server.move_surface_to(surface, parent_position_.first, parent_position_.second);
+        client->roundtrip();
+    }
+
+    auto parent_position() -> std::pair<int, int>
+    {
+        return parent_position_;
+    }
+
     void unmap_popup()
     {
         clear_popup();
         popup_surface = std::nullopt;
     }
 
-    virtual auto popup_position() const -> std::optional<std::pair<int, int>> = 0;
     virtual auto create_child_popup() -> std::unique_ptr<XdgPopupManagerBase> = 0;
     virtual void dispatch_until_popup_configure() = 0;
 
@@ -209,6 +244,7 @@ public:
     wlcs::Surface surface;
     std::optional<wlcs::Surface> popup_surface;
 
+    std::pair<int, int> parent_position_;
     std::optional<State> state;
 
 protected:
@@ -217,6 +253,9 @@ protected:
 
     bool surface_rendered{true};
 };
+
+int const XdgPopupManagerBase::window_x = 500;
+int const XdgPopupManagerBase::window_y = 500;
 
 class XdgPopupStableManager : public XdgPopupManagerBase
 {
@@ -245,10 +284,8 @@ public:
             });
     }
 
-    void setup_popup(PositionerParams const& param) override
+    static void setup_positioner(wlcs::XdgPositionerStable& positioner, PositionerParams const& param)
     {
-        wlcs::XdgPositionerStable positioner{*client};
-
         // size must always be set
         xdg_positioner_set_size(positioner, param.popup_size.first, param.popup_size.second);
 
@@ -272,6 +309,21 @@ public:
         if (param.offset)
             xdg_positioner_set_offset(positioner, param.offset.value().first, param.offset.value().second);
 
+        if (param.reactive)
+        {
+            if (xdg_positioner_get_version(positioner) < XDG_POSITIONER_SET_REACTIVE_SINCE_VERSION)
+            {
+                BOOST_THROW_EXCEPTION(std::logic_error("XDG shell version does not support reactive popups"));
+            }
+            xdg_positioner_set_reactive(positioner);
+        }
+    }
+
+    void setup_popup(PositionerParams const& param) override
+    {
+        wlcs::XdgPositionerStable positioner{*client};
+        setup_positioner(positioner, param);
+
         popup_xdg_surface.emplace(*client, popup_surface.value());
 
         popup.emplace(popup_xdg_surface.value(), parent, positioner);
@@ -284,28 +336,40 @@ public:
             xdg_popup_grab(popup.value().popup, client->seat(), client->latest_serial().value());
         }
 
-        popup.value().add_close_notification([this](){ popup_done(); });
-        popup_xdg_surface.value().add_configure_notification([&](uint32_t serial)
+        ON_CALL(popup_xdg_surface.value(), configure).WillByDefault([&](auto serial)
             {
                 xdg_surface_ack_configure(popup_xdg_surface.value(), serial);
                 popup_surface_configure_count++;
             });
-
-        popup.value().add_configure_notification([this](int32_t x, int32_t y, int32_t width, int32_t height)
+        ON_CALL(popup.value(), configure).WillByDefault([&](auto... args)
             {
-                state = State{x, y, width, height};
+                state = State{args...};
             });
+        ON_CALL(popup.value(), done()).WillByDefault([this](){ popup_done(); });
+    }
+
+    void move_parent_using_pointer(std::pair<int, int> to)
+    {
+        auto pointer = the_server.create_pointer();
+        pointer.move_to(parent_position_.first + 1, parent_position_.second + 1);
+        pointer.left_button_down();
+        client->roundtrip();
+        if (client->window_under_cursor() != surface)
+        {
+            BOOST_THROW_EXCEPTION(std::runtime_error("surface not detected at expected position"));
+        }
+        xdg_toplevel_move(toplevel.value(), client->seat(), client->latest_serial().value());
+        client->roundtrip();
+        pointer.move_to(to.first + 1, to.second + 1);
+        parent_position_ = to;
+        pointer.left_button_up();
+        client->roundtrip();
     }
 
     void clear_popup() override
     {
         popup = std::nullopt;
         popup_xdg_surface = std::nullopt;
-    }
-
-    auto popup_position() const -> std::optional<std::pair<int, int>> override
-    {
-        return std::make_pair(state.value().x, state.value().y);
     }
 
     auto create_child_popup() -> std::unique_ptr<XdgPopupManagerBase> override
@@ -400,16 +464,15 @@ public:
             zxdg_popup_v6_grab(popup.value().popup, client->seat(), client->latest_serial().value());
         }
 
-        popup.value().add_close_notification([this](){ popup_done(); });
-        popup_xdg_surface.value().add_configure_notification([&](uint32_t serial)
+        ON_CALL(popup.value(), done).WillByDefault([this](){ popup_done(); });
+        ON_CALL(popup_xdg_surface.value(), configure).WillByDefault([&](auto serial)
             {
                 zxdg_surface_v6_ack_configure(popup_xdg_surface.value(), serial);
                 popup_surface_configure_count++;
             });
-
-        popup.value().add_configure_notification([this](int32_t x, int32_t y, int32_t width, int32_t height)
+        ON_CALL(popup.value(), configure).WillByDefault([this](auto... args)
             {
-                state = State{x, y, width, height};
+                state = State{args...};
             });
     }
 
@@ -417,11 +480,6 @@ public:
     {
         popup = std::nullopt;
         popup_xdg_surface = std::nullopt;
-    }
-
-    auto popup_position() const -> std::optional<std::pair<int, int>> override
-    {
-        return std::make_pair(state.value().x, state.value().y);
     }
 
     auto create_child_popup() -> std::unique_ptr<XdgPopupManagerBase> override
@@ -495,7 +553,6 @@ public:
         if (param.offset)
             xdg_positioner_set_offset(positioner, param.offset.value().first, param.offset.value().second);
 
-
         popup_xdg_surface.emplace(*client, popup_surface.value());
         popup.emplace(popup_xdg_surface.value(), std::nullopt, positioner);
         zwlr_layer_surface_v1_get_popup(layer_surface, popup.value());
@@ -508,28 +565,22 @@ public:
             xdg_popup_grab(popup.value().popup, client->seat(), client->latest_serial().value());
         }
 
-        popup_xdg_surface.value().add_configure_notification([&](uint32_t serial)
+        ON_CALL(popup_xdg_surface.value(), configure).WillByDefault([&](uint32_t serial)
             {
                 xdg_surface_ack_configure(popup_xdg_surface.value(), serial);
                 popup_surface_configure_count++;
             });
-
-        popup.value().add_close_notification([this](){ popup_done(); });
-        popup.value().add_configure_notification([this](int32_t x, int32_t y, int32_t width, int32_t height)
+        ON_CALL(popup.value(), configure).WillByDefault([this](auto... args)
             {
-                state = State{x, y, width, height};
+                state = State{args...};
             });
+        ON_CALL(popup.value(), done()).WillByDefault([this](){ popup_done(); });
     }
 
     void clear_popup() override
     {
         popup = std::nullopt;
         popup_xdg_surface = std::nullopt;
-    }
-
-    auto popup_position() const -> std::optional<std::pair<int, int>> override
-    {
-        return std::make_pair(state.value().x, state.value().y);
     }
 
     auto create_child_popup() -> std::unique_ptr<XdgPopupManagerBase> override
@@ -545,6 +596,29 @@ public:
     int popup_surface_configure_count{0};
 };
 
+auto surface_actually_at_location(
+    wlcs::Server& server,
+    wlcs::Client& client,
+    wl_surface* surface,
+    std::pair<int, int> location) -> bool
+{
+    auto pointer = server.create_pointer();
+    int offset_x = 1, offset_y = 1;
+    if (location.first < 0)
+    {
+        offset_x -= location.first;
+    }
+    if (location.second < 0)
+    {
+        offset_y -= location.second;
+    }
+    pointer.move_to(location.first + offset_x, location.second + offset_y);
+    client.roundtrip();
+    return (
+        client.window_under_cursor() == surface &&
+        client.pointer_position() == std::make_pair(wl_fixed_from_int(offset_x), wl_fixed_from_int(offset_y)));
+}
+
 }
 
 class XdgPopupPositionerTest:
@@ -558,15 +632,33 @@ TEST_P(XdgPopupPositionerTest, xdg_shell_stable_popup_placed_correctly)
     auto manager = std::make_unique<XdgPopupStableManager>(the_server());
     auto const& param = GetParam();
 
+    if (param.parent_position_func)
+    {
+        manager->set_parent_position(param.parent_position_func.value());
+    }
     manager->map_popup(param.positioner);
 
     ASSERT_THAT(
-        manager->popup_position(),
+        manager->state,
         Ne(std::nullopt)) << "popup configure event not sent";
 
-    ASSERT_THAT(
-        manager->popup_position(),
-        Eq(std::make_optional(param.expected_positon))) << "popup placed in incorrect position";
+    EXPECT_THAT(
+        std::make_pair(manager->state.value().x, manager->state.value().y),
+        Eq(param.expected_positon)) << "popup placed in incorrect position";
+
+    EXPECT_THAT(
+        std::make_pair(manager->state.value().width, manager->state.value().height),
+        Eq(param.expected_size)) << "popup has incorrect size";
+
+    EXPECT_THAT(
+        surface_actually_at_location(
+            the_server(),
+            *manager->client,
+            manager->popup_surface.value(),
+            std::make_pair(
+                manager->parent_position().first + param.expected_positon.first,
+                manager->parent_position().second + param.expected_positon.second)),
+        IsTrue());
 }
 
 TEST_P(XdgPopupPositionerTest, xdg_shell_unstable_v6_popup_placed_correctly)
@@ -574,15 +666,33 @@ TEST_P(XdgPopupPositionerTest, xdg_shell_unstable_v6_popup_placed_correctly)
     auto manager = std::make_unique<XdgPopupV6Manager>(the_server());
     auto const& param = GetParam();
 
+    if (param.parent_position_func)
+    {
+        manager->set_parent_position(param.parent_position_func.value());
+    }
     manager->map_popup(param.positioner);
 
     ASSERT_THAT(
-        manager->popup_position(),
+        manager->state,
         Ne(std::nullopt)) << "popup configure event not sent";
 
-    ASSERT_THAT(
-        manager->popup_position(),
-        Eq(std::make_optional(param.expected_positon))) << "popup placed in incorrect position";
+    EXPECT_THAT(
+        std::make_pair(manager->state.value().x, manager->state.value().y),
+        Eq(param.expected_positon)) << "popup placed in incorrect position";
+
+    EXPECT_THAT(
+        std::make_pair(manager->state.value().width, manager->state.value().height),
+        Eq(param.expected_size)) << "popup has incorrect size";
+
+    EXPECT_THAT(
+        surface_actually_at_location(
+            the_server(),
+            *manager->client,
+            manager->popup_surface.value(),
+            std::make_pair(
+                manager->parent_position().first + param.expected_positon.first,
+                manager->parent_position().second + param.expected_positon.second)),
+        IsTrue());
 }
 
 TEST_P(XdgPopupPositionerTest, layer_shell_popup_placed_correctly)
@@ -590,15 +700,34 @@ TEST_P(XdgPopupPositionerTest, layer_shell_popup_placed_correctly)
     auto manager = std::make_unique<LayerV1PopupManager>(the_server());
     auto const& param = GetParam();
 
+    if (param.parent_position_func)
+    {
+        manager->set_parent_position(param.parent_position_func.value());
+    }
     manager->map_popup(param.positioner);
 
     ASSERT_THAT(
-        manager->popup_position(),
+        manager->state,
         Ne(std::nullopt)) << "popup configure event not sent";
 
-    ASSERT_THAT(
-        manager->popup_position(),
-        Eq(std::make_optional(param.expected_positon))) << "popup placed in incorrect position";
+
+    EXPECT_THAT(
+        std::make_pair(manager->state.value().x, manager->state.value().y),
+        Eq(param.expected_positon)) << "popup placed in incorrect position";
+
+    EXPECT_THAT(
+        std::make_pair(manager->state.value().width, manager->state.value().height),
+        Eq(param.expected_size)) << "popup has incorrect size";
+
+    EXPECT_THAT(
+        surface_actually_at_location(
+            the_server(),
+            *manager->client,
+            manager->popup_surface.value(),
+            std::make_pair(
+                manager->parent_position().first + param.expected_positon.first,
+                manager->parent_position().second + param.expected_positon.second)),
+        IsTrue());
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -690,6 +819,205 @@ INSTANTIATE_TEST_SUITE_P(
 
         PositionerTestParams{"offset anchor rect", (window_width - 40 - popup_width) / 2, (window_height - 80 - popup_height) / 2,
             PositionerParams().with_anchor_rect(20, 20, window_width - 80, window_height - 120)}
+    ));
+
+INSTANTIATE_TEST_SUITE_P(
+    ConstraintAdjustmentNone,
+    XdgPopupPositionerTest,
+    testing::Values(
+        PositionerTestParams{"middle of screen",
+            -popup_width, -popup_height,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_TOP_LEFT)
+                .with_constraint_adjustment(XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_NONE),
+            [](int width, int height){ return std::make_pair((width - window_width) / 2, (height - window_height) / 2); }},
+        PositionerTestParams{"off top left edge",
+            -popup_width, -popup_height,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_TOP_LEFT)
+                .with_constraint_adjustment(XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_NONE),
+            [](int /*width*/, int /*height*/){ return std::make_pair(5, 5); }},
+        PositionerTestParams{"off top right edge",
+            window_width, -popup_height,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_TOP_RIGHT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_TOP_RIGHT)
+                .with_constraint_adjustment(XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_NONE),
+            [](int width, int /*height*/){ return std::make_pair(width - window_width - 5, 5); }},
+        PositionerTestParams{"off bottom left edge",
+            -popup_width, window_height,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM_LEFT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_LEFT)
+                .with_constraint_adjustment(XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_NONE),
+            [](int /*width*/, int height){ return std::make_pair(5, height - window_height - 5); }},
+        PositionerTestParams{"off bottom right edge",
+            window_width, window_height,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM_RIGHT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT)
+                .with_constraint_adjustment(XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_NONE),
+            [](int width, int height){ return std::make_pair(width - window_width - 5, height - window_height - 5); }}
+    ));
+
+INSTANTIATE_TEST_SUITE_P(
+    ConstraintAdjustmentSlide,
+    XdgPopupPositionerTest,
+    testing::Values(
+        PositionerTestParams{"middle of screen",
+            -popup_width, -popup_height,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_TOP_LEFT)
+                .with_constraint_adjustment(
+                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_Y),
+            [](int width, int height){ return std::make_pair((width - window_width) / 2, (height - window_height) / 2); }},
+        PositionerTestParams{"off top left edge",
+            -5, -5,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_TOP_LEFT)
+                .with_constraint_adjustment(
+                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_Y),
+            [](int /*width*/, int /*height*/){ return std::make_pair(5, 5); }},
+        PositionerTestParams{"off top right edge",
+            window_width - popup_width + 5, -5,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_TOP_RIGHT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_TOP_RIGHT)
+                .with_constraint_adjustment(
+                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_Y),
+            [](int width, int /*height*/){ return std::make_pair(width - window_width - 5, 5); }},
+        PositionerTestParams{"off bottom left edge", -5,
+            window_height - popup_height + 5,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM_LEFT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_LEFT)
+                .with_constraint_adjustment(
+                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_Y),
+            [](int /*width*/, int height){ return std::make_pair(5, height - window_height - 5); }},
+        PositionerTestParams{"off bottom right edge",
+            window_width - popup_width + 5, window_height - popup_height + 5,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM_RIGHT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT)
+                .with_constraint_adjustment(
+                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_Y),
+            [](int width, int height){ return std::make_pair(width - window_width - 5, height - window_height - 5); }}
+    ));
+
+INSTANTIATE_TEST_SUITE_P(
+    ConstraintAdjustmentFlip,
+    XdgPopupPositionerTest,
+    testing::Values(
+        PositionerTestParams{"middle of screen",
+            -popup_width, -popup_height,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_TOP_LEFT)
+                .with_constraint_adjustment(
+                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_Y),
+            [](int width, int height){ return std::make_pair((width - window_width) / 2, (height - window_height) / 2); }},
+        PositionerTestParams{"off top left edge",
+            window_width, window_height,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_TOP_LEFT)
+                .with_constraint_adjustment(
+                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_Y),
+            [](int /*width*/, int /*height*/){ return std::make_pair(5, 5); }},
+        PositionerTestParams{"off top right edge",
+            -popup_width, window_height,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_TOP_RIGHT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_TOP_RIGHT)
+                .with_constraint_adjustment(
+                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_Y),
+            [](int width, int /*height*/){ return std::make_pair(width - window_width - 5, 5); }},
+        PositionerTestParams{"off bottom left edge",
+            window_width, -popup_height,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM_LEFT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_LEFT)
+                .with_constraint_adjustment(
+                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_Y),
+            [](int /*width*/, int height){ return std::make_pair(5, height - window_height - 5); }},
+        PositionerTestParams{"off bottom right edge",
+            -popup_width, -popup_height,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM_RIGHT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT)
+                .with_constraint_adjustment(
+                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_Y),
+            [](int width, int height){ return std::make_pair(width - window_width - 5, height - window_height - 5); }}
+    ));
+
+INSTANTIATE_TEST_SUITE_P(
+    ConstraintAdjustmentResize,
+    XdgPopupPositionerTest,
+    testing::Values(
+        PositionerTestParams{"middle of screen",
+            -popup_width, -popup_height,
+            popup_width, popup_height,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_TOP_LEFT)
+                .with_constraint_adjustment(
+                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_RESIZE_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_RESIZE_Y),
+            [](int width, int height){ return std::make_pair((width - window_width) / 2, (height - window_height) / 2); }},
+        PositionerTestParams{"off top left edge",
+            -5, -5,
+            5, 5,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_TOP_LEFT)
+                .with_constraint_adjustment(
+                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_RESIZE_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_RESIZE_Y),
+            [](int /*width*/, int /*height*/){ return std::make_pair(5, 5); }},
+        PositionerTestParams{"off top right edge",
+            window_width, -5,
+            5, 5,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_TOP_RIGHT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_TOP_RIGHT)
+                .with_constraint_adjustment(
+                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_RESIZE_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_RESIZE_Y),
+            [](int width, int /*height*/){ return std::make_pair(width - window_width - 5, 5); }},
+        PositionerTestParams{"off bottom left edge",
+            -5, window_height,
+            5, 5,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM_LEFT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_LEFT)
+                .with_constraint_adjustment(
+                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_RESIZE_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_RESIZE_Y),
+            [](int /*width*/, int height){ return std::make_pair(5, height - window_height - 5); }},
+        PositionerTestParams{"off bottom right edge",
+            window_width, window_height,
+            5, 5,
+            PositionerParams()
+                .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM_RIGHT)
+                .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT)
+                .with_constraint_adjustment(
+                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_RESIZE_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_RESIZE_Y),
+            [](int width, int height){ return std::make_pair(width - window_width - 5, height - window_height - 5); }}
     ));
 
 struct XdgPopupTestParam
@@ -904,11 +1232,10 @@ TEST_F(XdgPopupTest, zero_size_anchor_rect_stable)
     manager->client->roundtrip();
 
     ASSERT_THAT(
-        manager->popup_position(),
-        Eq(std::make_optional(
-            std::make_pair(
-                (window_width - popup_width) / 2,
-                (window_height - popup_height) / 2)))) << "popup placed in incorrect position";
+        std::make_pair(manager->state.value().x, manager->state.value().y),
+        Eq(std::make_pair(
+            (window_width - popup_width) / 2,
+            (window_height - popup_height) / 2))) << "popup placed in incorrect position";
 }
 
 // regression test for https://github.com/MirServer/mir/issues/836
@@ -927,6 +1254,133 @@ TEST_P(XdgPopupTest, popup_configure_is_valid)
     ASSERT_THAT(manager->state, Ne(std::nullopt));
     EXPECT_THAT(manager->state.value().width, Gt(0));
     EXPECT_THAT(manager->state.value().height, Gt(0));
+}
+
+TEST_F(XdgPopupTest, when_parent_surface_is_moved_a_reactive_popup_is_moved)
+{
+    XdgPopupStableManager manager{this->the_server()};
+
+    manager.client->bind_if_supported<xdg_wm_base>(wlcs::AtLeastVersion{XDG_POSITIONER_SET_REACTIVE_SINCE_VERSION});
+
+    auto positioner = PositionerParams{}
+        .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
+        .with_gravity(XDG_POSITIONER_GRAVITY_TOP_LEFT)
+        .with_constraint_adjustment(
+            XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_Y)
+        .with_reactive();
+
+    manager.map_popup(positioner);
+    // repositioned should not be called unless reposition is called
+    EXPECT_CALL(manager.popup.value(), repositioned).Times(0);
+    manager.client->roundtrip();
+
+    ASSERT_THAT(
+        manager.state,
+        Ne(std::nullopt)) << "popup configure event not sent";
+
+    ASSERT_THAT(
+        std::make_pair(manager.state.value().x, manager.state.value().y),
+        Eq(std::make_pair(-popup_width, -popup_height))) << "popup initially placed in incorrect position";
+
+    manager.move_parent_using_pointer({5, 5});
+
+    ASSERT_THAT(
+        std::make_pair(manager.state.value().x, manager.state.value().y),
+        Ne(std::make_pair(-popup_width, -popup_height))) << "reactive popup was not moved";
+
+    EXPECT_THAT(
+        std::make_pair(manager.state.value().x, manager.state.value().y),
+        Eq(std::make_pair(-5, -5))) << "reactive popup placed in incorrect position";
+
+    EXPECT_THAT(
+        surface_actually_at_location(
+            the_server(),
+            *manager.client,
+            manager.popup_surface.value(),
+            std::make_pair(0, 0)),
+        IsTrue());
+}
+
+TEST_F(XdgPopupTest, when_parent_surface_is_moved_a_nonreactive_popup_is_not_moved)
+{
+    XdgPopupStableManager manager{this->the_server()};
+
+    manager.client->bind_if_supported<xdg_wm_base>(wlcs::AtLeastVersion{XDG_POSITIONER_SET_REACTIVE_SINCE_VERSION});
+
+    auto positioner = PositionerParams{}
+        .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
+        .with_gravity(XDG_POSITIONER_GRAVITY_TOP_LEFT)
+        .with_constraint_adjustment(
+            XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_Y);
+
+    manager.map_popup(positioner);
+    // repositioned should not be called unless reposition is called
+    EXPECT_CALL(manager.popup.value(), repositioned).Times(0);
+    manager.client->roundtrip();
+
+    ASSERT_THAT(
+        manager.state,
+        Ne(std::nullopt)) << "popup configure event not sent";
+
+    ASSERT_THAT(
+        std::make_pair(manager.state.value().x, manager.state.value().y),
+        Eq(std::make_pair(-popup_width, -popup_height))) << "popup initially placed in incorrect position";
+
+    manager.move_parent_using_pointer({5, 5});
+
+    EXPECT_THAT(
+        std::make_pair(manager.state.value().x, manager.state.value().y),
+        Eq(std::make_pair(-popup_width, -popup_height))) << "nonreactive popup was moved";
+
+    EXPECT_THAT(
+        surface_actually_at_location(
+            the_server(),
+            *manager.client,
+            manager.popup_surface.value(),
+            std::make_pair(5 - popup_width, 5 - popup_height)),
+        IsTrue());
+}
+
+TEST_F(XdgPopupTest, popup_can_be_repositioned)
+{
+    XdgPopupStableManager manager{this->the_server()};
+
+    manager.client->bind_if_supported<xdg_wm_base>(wlcs::AtLeastVersion{XDG_POPUP_REPOSITION_SINCE_VERSION});
+
+    auto positioner_a = PositionerParams{}
+        .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
+        .with_gravity(XDG_POSITIONER_GRAVITY_TOP_LEFT);
+
+    manager.map_popup(positioner_a);
+    EXPECT_CALL(manager.popup.value(), repositioned).Times(0);
+    manager.client->roundtrip();
+
+    auto positioner_b = PositionerParams{}
+        .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM_RIGHT)
+        .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
+    wlcs::XdgPositionerStable xdg_positioner{*manager.client};
+    XdgPopupStableManager::setup_positioner(xdg_positioner, positioner_b);
+    xdg_popup_reposition(manager.popup.value(), xdg_positioner, 1);
+    EXPECT_CALL(manager.popup.value(), repositioned(1));
+    manager.client->roundtrip();
+
+    ASSERT_THAT(
+        manager.state,
+        Ne(std::nullopt)) << "popup configure event not sent";
+
+    EXPECT_THAT(
+        std::make_pair(manager.state.value().x, manager.state.value().y),
+        Eq(std::make_pair(window_width, window_height)));
+
+    EXPECT_THAT(
+        surface_actually_at_location(
+            the_server(),
+            *manager.client,
+            manager.popup_surface.value(),
+            std::make_pair(
+                manager.parent_position().first + window_width,
+                manager.parent_position().second + window_height)),
+        IsTrue());
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -961,6 +1415,5 @@ INSTANTIATE_TEST_SUITE_P(
 // TODO: test that error is raised when incomplete positioner is used (positioner without size and anchor rect set)
 // TODO: test set_size
 // TODO: test that set_window_geometry affects anchor rect
-// TODO: test set_constraint_adjustment
 // TODO: test set_offset
 // TODO: test that a zero size anchor rect fails on v6

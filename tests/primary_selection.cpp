@@ -34,8 +34,7 @@ char const any_mime_data[] = "AnyMimeData";
 
 struct SourceApp : Client
 {
-    // Can't use "using Client::Client;" because Xenial
-    explicit SourceApp(Server& server) : Client{server} {}
+    using Client::Client;
 
     WlHandle<zwp_primary_selection_device_manager_v1> const manager{
         this->bind_if_supported<zwp_primary_selection_device_manager_v1>(AnyVersion)};
@@ -68,6 +67,7 @@ struct PrimarySelection : StartedInProcessServer
 {
     SourceApp   source_app{the_server()};
     SinkApp     sink_app{the_server()};
+    Surface     surface{sink_app.create_visible_surface(10, 10)};
 
     void TearDown() override
     {

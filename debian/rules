@@ -10,16 +10,28 @@ COMMON_CONFIGURE_OPTIONS =\
   -DWLCS_BUILD_UBSAN=ON \
   -DWLCS_BUILD_TSAN=ON
 
-ifeq ($(filter i386 armhf, $(DEB_HOST_ARCH)),)
-  ifeq ($(DEB_DISTRIBUTION),xenial)
-    ifneq ($(filter arm64 ppc64el, $(DEB_HOST_ARCH)),)
-      # arm64 on 16.04 does not have tsan
-      COMMON_CONFIGURE_OPTIONS += -DWLCS_BUILD_TSAN=OFF
-    endif
-  endif
-else
+ifneq ($(filter i386 armhf, $(DEB_HOST_ARCH)),)
   # i386 and armhf do not have tsan
   COMMON_CONFIGURE_OPTIONS += -DWLCS_BUILD_TSAN=OFF
+endif
+
+ifeq ($(DEB_HOST_ARCH), riscv64)
+  # riscv64 does not have sanitizers
+  ifeq ($(DEB_DISTRIBUTION), focal)
+    COMMON_CONFIGURE_OPTIONS += -DWLCS_BUILD_ASAN=OFF
+  endif
+  COMMON_CONFIGURE_OPTIONS += -DWLCS_BUILD_UBSAN=OFF
+  COMMON_CONFIGURE_OPTIONS += -DWLCS_BUILD_TSAN=OFF
+endif
+
+# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=105329
+ifeq ($(DEB_HOST_ARCH), ppc64el)
+  ifneq ($(shell gcc --version | grep '12.[[:digit:]]\+.[[:digit:]]\+$$'),)
+    export DEB_CFLAGS_MAINT_APPEND = -O2
+    export DEB_CXXFLAGS_MAINT_APPEND = -O2
+    export DEB_FCFLAGS_MAINT_APPEND = -O2
+    export DEB_FFLAGS_MAINT_APPEND = -O2
+  endif
 endif
 
 override_dh_auto_configure:

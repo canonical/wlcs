@@ -31,7 +31,7 @@
 
 #include <gmock/gmock.h>
 
-#include <experimental/optional>
+#include <optional>
 
 using namespace testing;
 
@@ -48,15 +48,15 @@ public:
           xdg_surface{client, surface},
           toplevel{xdg_surface}
     {
-        xdg_surface.add_configure_notification([&](uint32_t serial)
+        ON_CALL(xdg_surface, configure).WillByDefault([&](auto serial)
             {
                 zxdg_surface_v6_ack_configure(xdg_surface, serial);
                 surface_configure_count++;
             });
 
-        toplevel.add_configure_notification([this](int32_t width, int32_t height, struct wl_array *states)
+        ON_CALL(toplevel, configure).WillByDefault([this](auto... args)
             {
-                state = wlcs::XdgToplevelV6::State{width, height, states};
+                state = wlcs::XdgToplevelV6::State{args...};
             });
 
         wl_surface_commit(surface);

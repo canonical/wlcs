@@ -162,7 +162,8 @@ public:
 
     Surface(Surface&& other);
 
-    operator wl_surface*() const;
+    operator ::wl_surface*() const;
+    auto wl_surface() const -> ::wl_surface* { return *this; };
 
     void attach_buffer(int width, int height);
     void add_frame_callback(std::function<void(int)> const& on_frame);
@@ -299,35 +300,12 @@ private:
 class ProtocolError : public std::system_error
 {
 public:
-    ProtocolError(wl_interface const* interface, uint32_t code)
-        : std::system_error(EPROTO, std::system_category(), "Wayland protocol error"),
-        interface_{interface},
-        code_{code},
-        message{
-            std::string{"Wayland protocol error: "} +
-            std::to_string(code) +
-            " on interface " +
-            interface_->name +
-            " v" +
-            std::to_string(interface->version)}
-    {
-    }
+    ProtocolError(wl_interface const* interface, uint32_t code);
 
-    char const* what() const noexcept override
-    {
-        return message.c_str();
-    }
+    char const* what() const noexcept override;
 
-    uint32_t error_code() const
-    {
-        return code_;
-    }
-
-    wl_interface const* interface() const
-    {
-        return interface_;
-    }
-
+    uint32_t error_code() const;
+    wl_interface const* interface() const;
 private:
     wl_interface const* const interface_;
     uint32_t const code_;

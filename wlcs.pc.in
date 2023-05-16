@@ -1,7 +1,7 @@
 prefix=@CMAKE_INSTALL_PREFIX@
-exec_prefix=${prefix}/@CMAKE_INSTALL_BINDIR@
-libexecdir=${prefix}/@CMAKE_INSTALL_LIBEXECDIR@
-includedir=${prefix}/include
+exec_prefix=@PKGCONFIG_BINDIR@
+libexecdir=@PKGCONFIG_LIBEXECDIR@
+includedir=@PKGCONFIG_INCLUDEDIR@
 
 test_runner=${libexecdir}/wlcs/wlcs
 

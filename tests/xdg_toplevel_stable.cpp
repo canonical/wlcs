@@ -27,11 +27,12 @@
 
 #include "helpers.h"
 #include "in_process_server.h"
+#include "version_specifier.h"
 #include "xdg_shell_stable.h"
 
 #include <gmock/gmock.h>
 
-#include <experimental/optional>
+#include <optional>
 
 using namespace testing;
 
@@ -48,15 +49,15 @@ public:
           xdg_shell_surface{client, surface},
           toplevel{xdg_shell_surface}
     {
-        xdg_shell_surface.add_configure_notification([&](uint32_t serial)
+        ON_CALL(xdg_shell_surface, configure).WillByDefault([&](auto serial)
             {
                 xdg_surface_ack_configure(xdg_shell_surface, serial);
                 surface_configure_count++;
             });
 
-        toplevel.add_configure_notification([this](int32_t width, int32_t height, struct wl_array *states)
+        ON_CALL(toplevel, configure).WillByDefault([&](auto... args)
             {
-                state = wlcs::XdgToplevelStable::State{width, height, states};
+                state = wlcs::XdgToplevelStable::State{args...};
             });
 
         wl_surface_commit(surface);
@@ -64,11 +65,6 @@ public:
         surface.attach_buffer(window_width, window_height);
         wl_surface_commit(surface);
         dispatch_until_configure();
-    }
-
-    ~ConfigurationWindow()
-    {
-        client.roundtrip();
     }
 
     void dispatch_until_configure()
@@ -97,6 +93,17 @@ public:
 }
 
 using XdgToplevelStableTest = wlcs::InProcessServer;
+
+TEST_F(XdgToplevelStableTest, wm_capabilities_are_sent)
+{
+    wlcs::Client client{the_server()};
+    client.bind_if_supported<xdg_wm_base>(wlcs::AtLeastVersion{XDG_TOPLEVEL_WM_CAPABILITIES_SINCE_VERSION});
+    wlcs::Surface surface{client};
+    wlcs::XdgSurfaceStable xdg_shell_surface{client, surface};
+    wlcs::XdgToplevelStable toplevel{xdg_shell_surface};
+    EXPECT_CALL(toplevel, wm_capabilities).Times(1);
+    client.roundtrip();
+}
 
 // there *could* be a bug in these tests, but also the window manager may not be behaving properly
 // lets take another look when we've updated the window manager
@@ -429,6 +436,51 @@ TEST_F(XdgToplevelStableTest, null_parent_can_be_set)
     xdg_toplevel_set_parent(window, nullptr);
     wl_surface_commit(window.surface);
     client.roundtrip();
+}
+
+TEST_F(XdgToplevelStableTest, when_parent_is_set_to_self_error_is_raised)
+{
+    wlcs::Client client{the_server()};
+    ConfigurationWindow window{client};
+    xdg_toplevel_set_parent(window, window);
+    wl_surface_commit(window);
+    try
+    {
+        client.roundtrip();
+    }
+    catch (wlcs::ProtocolError const& err)
+    {
+        return;
+    }
+    FAIL() << "Protocol error not raised";
+}
+
+TEST_F(XdgToplevelStableTest, when_parent_is_set_to_child_descendant_error_is_raised)
+{
+    wlcs::Client client{the_server()};
+    ConfigurationWindow parent{client};
+    ConfigurationWindow child{client};
+    xdg_toplevel_set_parent(child, parent);
+    wl_surface_commit(child);
+    client.roundtrip();
+
+    ConfigurationWindow grandchild{client};
+    xdg_toplevel_set_parent(grandchild, child);
+    wl_surface_commit(grandchild);
+    client.roundtrip();
+
+    xdg_toplevel_set_parent(parent, grandchild);
+    wl_surface_commit(parent);
+
+    try
+    {
+        client.roundtrip();
+    }
+    catch (wlcs::ProtocolError const& err)
+    {
+        return;
+    }
+    FAIL() << "Protocol error not raised";
 }
 
 using XdgToplevelStableConfigurationTest = wlcs::InProcessServer;

@@ -22,6 +22,8 @@
 #include "in_process_server.h"
 #include "generated/xdg-shell-unstable-v6-client.h"
 
+#include <gmock/gmock.h>
+
 namespace wlcs
 {
 
@@ -33,24 +35,11 @@ public:
     XdgSurfaceV6& operator=(XdgSurfaceV6 const&) = delete;
     ~XdgSurfaceV6();
 
-    void add_configure_notification(std::function<void(uint32_t)> notification)
-    {
-        configure_notifiers.push_back(notification);
-    }
+    MOCK_METHOD(void, configure, (uint32_t serial));
 
     operator zxdg_surface_v6*() const {return shell_surface;}
 
-    std::vector<std::function<void(uint32_t)>> configure_notifiers;
-
 private:
-    static void configure_thunk(void *data, struct zxdg_surface_v6 *, uint32_t serial)
-    {
-        for (auto& notifier : static_cast<XdgSurfaceV6*>(data)->configure_notifiers)
-        {
-            notifier(serial);
-        }
-    }
-
     zxdg_surface_v6* shell_surface;
 };
 
@@ -75,41 +64,13 @@ public:
     XdgToplevelV6& operator=(XdgToplevelV6 const&) = delete;
     ~XdgToplevelV6();
 
-    void add_configure_notification(std::function<void(int32_t, int32_t, struct wl_array *)> notification)
-    {
-        configure_notifiers.push_back(notification);
-    }
-
-    void add_close_notification(std::function<void()> notification)
-    {
-        close_notifiers.push_back(notification);
-    }
+    MOCK_METHOD(void, configure, (int32_t width, int32_t height, wl_array* states));
+    MOCK_METHOD(void, close, ());
 
     operator zxdg_toplevel_v6*() const {return toplevel;}
 
     XdgSurfaceV6* const shell_surface;
     zxdg_toplevel_v6* toplevel;
-
-    std::vector<std::function<void(int32_t, int32_t, struct wl_array *)>> configure_notifiers;
-    std::vector<std::function<void()>> close_notifiers;
-
-private:
-    static void configure_thunk(void *data, struct zxdg_toplevel_v6 *, int32_t width, int32_t height,
-                                struct wl_array *states)
-    {
-        for (auto& notifier : static_cast<XdgToplevelV6*>(data)->configure_notifiers)
-        {
-            notifier(width, height, states);
-        }
-    }
-
-    static void close_thunk(void *data, struct zxdg_toplevel_v6 *)
-    {
-        for (auto& notifier : static_cast<XdgToplevelV6*>(data)->close_notifiers)
-        {
-            notifier();
-        }
-    }
 };
 
 class XdgPositionerV6
@@ -131,41 +92,13 @@ public:
     XdgPopupV6& operator=(XdgPopupV6 const&) = delete;
     ~XdgPopupV6();
 
-    void add_configure_notification(std::function<void(int32_t, int32_t, int32_t, int32_t)> notification)
-    {
-        configure_notifiers.push_back(notification);
-    }
-
-    void add_close_notification(std::function<void()> notification)
-    {
-        popup_done_notifiers.push_back(notification);
-    }
+    MOCK_METHOD(void, configure, (int32_t x, int32_t y, int32_t width, int32_t height));
+    MOCK_METHOD(void, done, ());
 
     operator zxdg_popup_v6*() const {return popup;}
 
     XdgSurfaceV6* const shell_surface;
     zxdg_popup_v6* const popup;
-
-    std::vector<std::function<void(int32_t, int32_t, int32_t, int32_t)>> configure_notifiers;
-    std::vector<std::function<void()>> popup_done_notifiers;
-
-private:
-    static void configure_thunk(void *data, struct zxdg_popup_v6 *, int32_t x, int32_t y,
-                                int32_t width, int32_t height)
-    {
-        for (auto& notifier : static_cast<XdgPopupV6*>(data)->configure_notifiers)
-        {
-            notifier(x, y, width, height);
-        }
-    }
-
-    static void popup_done_thunk(void *data, struct zxdg_popup_v6 *)
-    {
-        for (auto& notifier : static_cast<XdgPopupV6*>(data)->popup_done_notifiers)
-        {
-            notifier();
-        }
-    }
 };
 
 }

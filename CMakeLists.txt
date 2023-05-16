@@ -21,7 +21,7 @@ cmake_minimum_required(VERSION 3.5)
 cmake_policy(SET CMP0015 NEW)
 cmake_policy(SET CMP0022 NEW)
 
-project(wlcs VERSION 1.3.0)
+project(wlcs VERSION 1.5.0)
 
 add_definitions(-D_GNU_SOURCE)
 add_definitions(-D_FILE_OFFSET_BITS=64)
@@ -31,7 +31,7 @@ include(GNUInstallDirs)
 find_package(PkgConfig)
 #include (Doxygen.cmake)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -131,10 +131,37 @@ GENERATE_PROTOCOL(pointer-constraints-unstable-v1)
 GENERATE_PROTOCOL(relative-pointer-unstable-v1)
 GENERATE_PROTOCOL(text-input-unstable-v3)
 GENERATE_PROTOCOL(input-method-unstable-v2)
+GENERATE_PROTOCOL(wlr-virtual-pointer-unstable-v1)
 
 option(WLCS_BUILD_ASAN "Build a test runner with AddressSanitizer annotations" ON)
 option(WLCS_BUILD_TSAN "Build a test runner with ThreadSanitizer annotations" ON)
 option(WLCS_BUILD_UBSAN "Build a test runner with UndefinedBehaviourSanitizer annotations" ON)
+
+set(WLCS_TESTS
+  tests/test_bad_buffer.cpp
+  tests/pointer_constraints.cpp
+  tests/copy_cut_paste.cpp
+  tests/gtk_primary_selection.cpp
+  tests/test_surface_events.cpp
+  tests/touches.cpp
+  tests/wl_output.cpp
+  tests/surface_input_regions.cpp
+  tests/frame_submission.cpp
+  tests/primary_selection.cpp
+  tests/relative_pointer.cpp
+  tests/subsurfaces.cpp
+  tests/xdg_surface_v6.cpp
+  tests/xdg_toplevel_v6.cpp
+  tests/xdg_surface_stable.cpp
+  tests/xdg_toplevel_stable.cpp
+  tests/xdg_popup.cpp
+  tests/wlr_layer_shell_v1.cpp
+  tests/xdg_output_v1.cpp
+  tests/wlr_foreign_toplevel_management_v1.cpp
+  tests/self_test.cpp
+  tests/text_input_v3_with_input_method_v2.cpp
+  tests/wlr_virtual_pointer_v1.cpp
+)
 
 set(
   WLCS_SOURCES
@@ -179,30 +206,15 @@ set(
   src/input_method.cpp
 
   ${PROTOCOL_SOURCES}
-
-  tests/test_bad_buffer.cpp
-  tests/pointer_constraints.cpp
-  tests/copy_cut_paste.cpp
-  tests/gtk_primary_selection.cpp
-  tests/test_surface_events.cpp
-  tests/touches.cpp
-  tests/wl_output.cpp
-  tests/surface_input_regions.cpp
-  tests/frame_submission.cpp
-  tests/primary_selection.cpp
-  tests/relative_pointer.cpp
-  tests/subsurfaces.cpp
-  tests/xdg_surface_v6.cpp
-  tests/xdg_toplevel_v6.cpp
-  tests/xdg_surface_stable.cpp
-  tests/xdg_toplevel_stable.cpp
-  tests/xdg_popup.cpp
-  tests/wlr_layer_shell_v1.cpp
-  tests/xdg_output_v1.cpp
-  tests/wlr_foreign_toplevel_management_v1.cpp
-  tests/self_test.cpp
-  tests/text_input_v3_with_input_method_v2.cpp
+  ${WLCS_TESTS}
 )
+
+# g++ 9.4 (on 20.04) hates the MOCK_METHOD macro
+if (CMAKE_COMPILER_IS_GNUCXX AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 10)
+  # Neither gnu-zero-variadic-macro-arguments nor variadic-macro help,
+  # we just have to drop pedantic...
+  set_property(SOURCE ${WLCS_TESTS} PROPERTY COMPILE_OPTIONS -Wno-pedantic)
+endif()
 
 add_library(test_c_compile OBJECT src/test_c_compile.c)
 
@@ -266,9 +278,13 @@ install(
 
 install(
   DIRECTORY include/wlcs
-  DESTINATION ${CMAKE_INSTALL_PREFIX}/include/
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
+include(JoinPaths)
+join_paths(PKGCONFIG_BINDIR "\${prefix}" "${CMAKE_INSTALL_BINDIR}")
+join_paths(PKGCONFIG_LIBEXECDIR "\${prefix}" "${CMAKE_INSTALL_LIBEXECDIR}")
+join_paths(PKGCONFIG_INCLUDEDIR "\${prefix}" "${CMAKE_INSTALL_INCLUDEDIR}")
 configure_file(
   wlcs.pc.in
   ${CMAKE_CURRENT_BINARY_DIR}/wlcs.pc

@@ -2,6 +2,12 @@
 
 set -e
 
+LP_CREDS="$1"
+if [ -z "${LP_CREDS}" ]; then
+  echo "ERROR: pass the Launchpad credentials file as argument" >&2
+  exit 2
+fi
+
 if [ -z "${RELEASE}" ]; then
   echo "ERROR: RELEASE environment variable needs to be set to the" >&2
   echo "  target Ubuntu version." >&2
@@ -10,8 +16,8 @@ fi
 
 GIT_BRANCH=${GITHUB_REF-$( git rev-parse --abbrev-ref HEAD )}
 # determine the patch release
-if ! [[ "${GIT_BRANCH}" =~ ^(refs/(heads|tags)/)?(master|(release/|v)([0-9\.]+))$ ]]; then
-  echo "ERROR: This script should only run on master or release tags" >&2
+if ! [[ "${GIT_BRANCH}" =~ ^(refs/(heads|tags)/)?(main|(release/|v)([0-9\.]+))$ ]]; then
+  echo "ERROR: This script should only run on main or release tags" >&2
   echo "  or branches." >&2
   exit 3
 fi
@@ -41,7 +47,7 @@ GIT_REVISION=$( git rev-parse --short HEAD )
 
 if [[ "${GIT_BRANCH}" =~ ^(refs/(heads|tags)/)?(release/|v)([0-9\.]+)$ ]]; then
   # we're on a release branch
-  TARGET_PPA=ppa:mir-team/wlcs-rc
+  TARGET_PPA=ppa:mir-team/rc
   WLCS_SERIES=${BASH_REMATCH[4]}
   if [[ "$( git describe --tags --exact-match )" =~ ^v([0-9\.]+)$ ]]; then
     # this is a final release, use the tag version
@@ -58,8 +64,8 @@ if [[ "${GIT_BRANCH}" =~ ^(refs/(heads|tags)/)?(release/|v)([0-9\.]+)$ ]]; then
       WLCS_VERSION=$( echo ${PATCH_VERSION} | perl -pe 's/^((\d+\.)*)(\d+)$/$1.($3+1)/e' )
     fi
 
-    # use the number of commits since master
-    GIT_COMMITS=$( git rev-list --count origin/master..HEAD )
+    # use the number of commits since main
+    GIT_COMMITS=$( git rev-list --count origin/main..HEAD )
     WLCS_VERSION=${WLCS_VERSION}~rc${GIT_COMMITS}.git${GIT_REVISION}
   fi
 else
@@ -67,9 +73,9 @@ else
   PARENT=2
   while git rev-parse HEAD^${PARENT} >/dev/null 2>&1; do
     if [[ "$( git describe --exact-match HEAD^${PARENT} )" =~ ^v([0-9\.]+)$ ]]; then
-      # copy packages from ppa:mir-team/wlcs-rc to ppa:mir-team/wlcs
+      # copy packages from ppa:mir-team/rc to ppa:mir-team/release
       RELEASE_VERSION=${BASH_REMATCH[1]}-0ubuntu${UBUNTU_VERSION}
-      echo "Copying wlcs_${RELEASE_VERSION} from ppa:mir-team/wlcs-rc to ppa:mir-team/wlcs…"
+      echo "Copying wlcs_${RELEASE_VERSION} from ppa:mir-team/rc to ppa:mir-team/release…"
       python - ${RELEASE_VERSION} <<EOF
 import os
 import sys
@@ -86,7 +92,7 @@ try:
     authorization_engine=RequestTokenAuthorizationEngine("production",
                                                          "mir-ci"),
     credential_store=UnencryptedFileCredentialStore(
-      os.path.expanduser("~/.launchpadlib/credentials")
+      os.path.expanduser("${LP_CREDS}")
     )
   )
 except NotImplementedError:
@@ -96,8 +102,8 @@ ubuntu = lp.distributions["ubuntu"]
 series = ubuntu.getSeries(name_or_version=os.environ['RELEASE'])
 
 mir_team = lp.people["mir-team"]
-rc_ppa = mir_team.getPPAByName(name="wlcs-rc")
-release_ppa = mir_team.getPPAByName(name="wlcs")
+rc_ppa = mir_team.getPPAByName(name="rc")
+release_ppa = mir_team.getPPAByName(name="release")
 
 release_ppa.copyPackage(source_name="wlcs",
                         version=sys.argv[1],
@@ -115,7 +121,7 @@ EOF
   done
 
   # upload to dev PPA
-  TARGET_PPA=ppa:mir-team/wlcs-dev
+  TARGET_PPA=ppa:mir-team/dev
   GIT_VERSION=$( git describe | sed 's/^v//' )
   WLCS_VERSION=${GIT_VERSION/-/+dev}
 fi

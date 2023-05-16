@@ -35,7 +35,7 @@
 #include <memory>
 #include <vector>
 #include <algorithm>
-#include <experimental/optional>
+#include <optional>
 #include <map>
 #include <unordered_map>
 #include <chrono>
@@ -55,6 +55,44 @@ public:
     {
     }
 };
+
+namespace
+{
+auto interface_description_if_valid(wl_interface const* interface) -> std::string
+{
+    if (interface)
+    {
+        using namespace std::literals::string_literals;
+        return interface->name + " v"s + std::to_string(interface->version);
+    }
+    return "<UNKNOWN INTERFACE>";
+}
+}
+wlcs::ProtocolError::ProtocolError(wl_interface const* interface, uint32_t code)
+    : std::system_error(EPROTO, std::system_category(), "Wayland protocol error"),
+      interface_{interface},
+      code_{code},
+      message{
+          std::string{"Wayland protocol error: "} +
+          std::to_string(code) +
+          " on interface " + interface_description_if_valid(interface)}
+    {
+    }
+
+char const* wlcs::ProtocolError::what() const noexcept
+{
+    return message.c_str();
+}
+
+uint32_t wlcs::ProtocolError::error_code() const
+{
+    return code_;
+}
+
+wl_interface const* wlcs::ProtocolError::interface() const
+{
+    return interface_;
+}
 
 wlcs::ExtensionExpectedlyNotSupported::ExtensionExpectedlyNotSupported(char const* extension, VersionSpecifier const& version)
     : std::runtime_error{
@@ -737,8 +775,8 @@ public:
 
         surface.run_on_destruction([xdg_surface, xdg_toplevel]() mutable
             {
-                xdg_surface.reset();
                 xdg_toplevel.reset();
+                xdg_surface.reset();
             });
 
         wl_surface_commit(surface);
@@ -757,8 +795,8 @@ public:
 
         surface.run_on_destruction([xdg_surface, xdg_toplevel]() mutable
             {
-                xdg_surface.reset();
                 xdg_toplevel.reset();
+                xdg_surface.reset();
             });
 
         wl_surface_commit(surface);
@@ -809,7 +847,21 @@ public:
 
     zxdg_shell_v6* the_xdg_shell_v6() const
     {
-        return xdg_shell_v6;
+        if (xdg_shell_v6)
+        {
+            return xdg_shell_v6;
+        }
+        else
+        {
+            if (!supported_extensions || !supported_extensions->count("zxdg_shell_v6"))
+            {
+                BOOST_THROW_EXCEPTION((ExtensionExpectedlyNotSupported{"zxdg_shell_v6", AnyVersion}));
+            }
+            else
+            {
+                throw std::runtime_error("Failed to bind to zxdg_shell_v6");
+            }
+        }
     }
 
     xdg_wm_base* the_xdg_shell_stable() const
@@ -909,7 +961,7 @@ public:
         {
             expected_to_be_supported =
                 supported_extensions->count(to_bind.name) &&
-                version.select_version(supported_extensions->at(to_bind.name));
+                version.select_version(supported_extensions->at(to_bind.name), to_bind.version);
         }
 
         /* TODO: Mark tests using globals which exist, but are listed as unsupported as
@@ -920,7 +972,7 @@ public:
         auto const global = globals.find(to_bind.name);
         if (global != globals.end())
         {
-            auto const version_to_bind = version.select_version(global->second.version);
+            auto const version_to_bind = version.select_version(global->second.version, to_bind.version);
             if (version_to_bind)
             {
                 auto global_proxy = wl_registry_bind(registry, global->second.id, &to_bind, version_to_bind.value());
@@ -1344,11 +1396,11 @@ private:
         &Impl::pointer_leave,
         &Impl::pointer_motion,
         &Impl::pointer_button,
-        nullptr,    // axis
+        [](auto...){},  // axis
         &Impl::pointer_frame,    // frame
-        nullptr,    // axis_source
-        nullptr,    // axis_stop
-        nullptr     // axis_discrete
+        [](auto...){},  // axis_source
+        [](auto...){},  // axis_stop
+        [](auto...){},  // axis_discrete
     };
 
     static void touch_down(
@@ -1486,34 +1538,37 @@ private:
     {
         using namespace std::literals::string_literals;
 
+        static auto const safe_bind = []
+            (wl_registry* registry, uint32_t name, const wl_interface* iface, uint32_t version)
+        {
+            return wl_registry_bind(registry, name, iface, std::min(version, static_cast<uint32_t>(iface->version)));
+        };
+
         auto me = static_cast<Impl*>(ctx);
         me->global_type_names[id] = interface;
         me->globals[interface] = Global{id, version};
 
         if ("wl_shm"s == interface)
         {
-            me->shm = static_cast<struct wl_shm*>(
-                wl_registry_bind(registry, id, &wl_shm_interface, version));
+            me->shm = static_cast<struct wl_shm*>(safe_bind(registry, id, &wl_shm_interface, version));
         }
         else if ("wl_compositor"s == interface)
         {
             me->compositor = static_cast<struct wl_compositor*>(
-                wl_registry_bind(registry, id, &wl_compositor_interface, version));
+                safe_bind(registry, id, &wl_compositor_interface, version));
         }
         else if ("wl_subcompositor"s == interface)
         {
             me->subcompositor = static_cast<struct wl_subcompositor*>(
-                wl_registry_bind(registry, id, &wl_subcompositor_interface, version));
+                safe_bind(registry, id, &wl_subcompositor_interface, version));
         }
         else if ("wl_shell"s == interface)
         {
-            me->shell = static_cast<struct wl_shell*>(
-                wl_registry_bind(registry, id, &wl_shell_interface, version));
+            me->shell = static_cast<wl_shell*>(safe_bind(registry, id, &wl_shell_interface, version));
         }
         else if ("wl_seat"s == interface)
         {
-            me->seat = static_cast<struct wl_seat*>(
-                wl_registry_bind(registry, id, &wl_seat_interface, version));
+            me->seat = static_cast<struct wl_seat*>(safe_bind(registry, id, &wl_seat_interface, version));
 
             wl_seat_add_listener(me->seat, &seat_listener, me);
             // Ensure we receive the initial seat events.
@@ -1521,24 +1576,21 @@ private:
         }
         else if ("wl_output"s == interface)
         {
-            auto wl_output = static_cast<struct wl_output*>(
-                wl_registry_bind(registry, id, &wl_output_interface, version));
+            auto wl_output = static_cast<struct wl_output*>(safe_bind(registry, id, &wl_output_interface, version));
             auto output = std::make_unique<Output>(wl_output);
             wl_output_add_listener(wl_output, &Output::listener, output.get());
-            me->outputs.push_back(move(output));
+            me->outputs.push_back(std::move(output));
 
             // Ensure we receive the initial output events.
             me->server_roundtrip();
         }
         else if ("zxdg_shell_v6"s == interface)
         {
-            me->xdg_shell_v6 = static_cast<struct zxdg_shell_v6*>(
-                wl_registry_bind(registry, id, &zxdg_shell_v6_interface, version));
+            me->xdg_shell_v6 = static_cast<zxdg_shell_v6*>(safe_bind(registry, id, &zxdg_shell_v6_interface, version));
         }
         else if ("xdg_wm_base"s == interface)
         {
-            me->xdg_shell_stable = static_cast<struct xdg_wm_base*>(
-                wl_registry_bind(registry, id, &xdg_wm_base_interface, version));
+            me->xdg_shell_stable = static_cast<xdg_wm_base*>(safe_bind(registry, id, &xdg_wm_base_interface, version));
         }
     }
 
@@ -1813,7 +1865,7 @@ public:
         wl_surface_destroy(surface_);
     }
 
-    wl_surface* surface() const
+    ::wl_surface* surface() const
     {
         return surface_;
     }
@@ -1888,7 +1940,7 @@ private:
         &frame_callback
     };
 
-    static void on_enter(void* data, wl_surface* /*wl_surface*/, wl_output* output)
+    static void on_enter(void* data, ::wl_surface* /*wl_surface*/, wl_output* output)
     {
         auto const self = static_cast<Impl*>(data);
 
@@ -1903,7 +1955,7 @@ private:
         }
     }
 
-    static void on_leave(void* data, wl_surface* /*wl_surface*/, wl_output* output)
+    static void on_leave(void* data, ::wl_surface* /*wl_surface*/, wl_output* output)
     {
         auto const self = static_cast<Impl*>(data);
 
@@ -1942,7 +1994,7 @@ wlcs::Surface::~Surface() = default;
 
 wlcs::Surface::Surface(Surface&&) = default;
 
-wlcs::Surface::operator wl_surface*() const
+wlcs::Surface::operator ::wl_surface*() const
 {
     return impl->surface();
 }

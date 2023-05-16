@@ -18,14 +18,18 @@
 
 #include "xdg_shell_v6.h"
 
+using namespace testing;
+
 // XdgSurfaceV6
 
 wlcs::XdgSurfaceV6::XdgSurfaceV6(wlcs::Client& client, wlcs::Surface& surface)
 {
+    EXPECT_CALL(*this, configure).Times(AnyNumber());
     if (!client.xdg_shell_v6())
         throw std::runtime_error("XDG shell unstable V6 not supported by compositor");
     shell_surface = zxdg_shell_v6_get_xdg_surface(client.xdg_shell_v6(), surface);
-    static struct zxdg_surface_v6_listener const listener = {configure_thunk};
+    static struct zxdg_surface_v6_listener const listener = {
+        [](void* data, auto, auto... args) { static_cast<XdgSurfaceV6*>(data)->configure(args...); }};
     zxdg_surface_v6_add_listener(shell_surface, &listener, this);
 }
 
@@ -72,8 +76,12 @@ wlcs::XdgToplevelV6::State::State(int32_t width, int32_t height, struct wl_array
 wlcs::XdgToplevelV6::XdgToplevelV6(XdgSurfaceV6& shell_surface_)
     : shell_surface{&shell_surface_}
 {
+    EXPECT_CALL(*this, configure).Times(AnyNumber());
+    EXPECT_CALL(*this, close).Times(AnyNumber());
     toplevel = zxdg_surface_v6_get_toplevel(*shell_surface);
-    static struct zxdg_toplevel_v6_listener const listener = {configure_thunk, close_thunk};
+    static struct zxdg_toplevel_v6_listener const listener = {
+        [](void* data, auto, auto... args) { static_cast<XdgToplevelV6*>(data)->configure(args...); },
+        [](void* data, auto, auto... args) { static_cast<XdgToplevelV6*>(data)->close(args...); }};
     zxdg_toplevel_v6_add_listener(toplevel, &listener, this);
 }
 
@@ -96,7 +104,11 @@ wlcs::XdgPopupV6::XdgPopupV6(XdgSurfaceV6& shell_surface_, XdgSurfaceV6& parent,
     : shell_surface{&shell_surface_},
       popup{zxdg_surface_v6_get_popup(*shell_surface, parent, positioner)}
 {
-    static struct zxdg_popup_v6_listener const listener = {configure_thunk, popup_done_thunk};
+    EXPECT_CALL(*this, configure).Times(AnyNumber());
+    EXPECT_CALL(*this, done).Times(AnyNumber());
+    static struct zxdg_popup_v6_listener const listener = {
+        [](void* data, auto, auto... args) { static_cast<XdgPopupV6*>(data)->configure(args...); },
+        [](void* data, auto, auto... args) { static_cast<XdgPopupV6*>(data)->done(args...); }};
     zxdg_popup_v6_add_listener(popup, &listener, this);
 }
 

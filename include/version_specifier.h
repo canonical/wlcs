@@ -20,7 +20,8 @@
 #define WLCS_VERSION_SPECIFIER_H_
 
 #include <cstdint>
-#include <experimental/optional>
+#include <optional>
+#include <string>
 
 namespace wlcs
 {
@@ -30,7 +31,9 @@ public:
     VersionSpecifier() = default;
     virtual ~VersionSpecifier() = default;
 
-    virtual auto select_version(uint32_t max_version) const -> std::experimental::optional<uint32_t> = 0;
+    virtual auto select_version(
+        uint32_t max_available_version,
+        uint32_t max_supported_version) const -> std::optional<uint32_t> = 0;
     virtual auto describe() const -> std::string = 0;
 };
 
@@ -39,7 +42,9 @@ class ExactlyVersion : public VersionSpecifier
 public:
     explicit ExactlyVersion(uint32_t version) noexcept;
 
-    auto select_version(uint32_t max_version) const -> std::experimental::optional<uint32_t> override;
+    auto select_version(
+        uint32_t max_available_version,
+        uint32_t max_supported_version) const -> std::optional<uint32_t> override;
     auto describe() const -> std::string override;
 private:
     uint32_t const version;
@@ -50,7 +55,9 @@ class AtLeastVersion : public VersionSpecifier
 public:
     explicit AtLeastVersion(uint32_t version) noexcept;
 
-    auto select_version(uint32_t max_version) const -> std::experimental::optional<uint32_t> override;
+    auto select_version(
+        uint32_t max_available_version,
+        uint32_t max_supported_version) const -> std::optional<uint32_t> override;
     auto describe() const -> std::string override;
 private:
     uint32_t const version;

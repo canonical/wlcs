@@ -18,14 +18,18 @@
 
 #include "xdg_shell_stable.h"
 
+using namespace testing;
+
 // XdgSurfaceStable
 
 wlcs::XdgSurfaceStable::XdgSurfaceStable(wlcs::Client& client, wlcs::Surface& surface)
 {
+    EXPECT_CALL(*this, configure).Times(AnyNumber());
     if (!client.xdg_shell_stable())
         throw std::runtime_error("XDG shell stable not supported by compositor");
     shell_surface = xdg_wm_base_get_xdg_surface(client.xdg_shell_stable(), surface);
-    static struct xdg_surface_listener const listener = {configure_thunk};
+    static struct xdg_surface_listener const listener = {
+        [](void* data, auto, auto... args) { static_cast<XdgSurfaceStable*>(data)->configure(args...); }};
     xdg_surface_add_listener(shell_surface, &listener, this);
 }
 
@@ -64,6 +68,10 @@ wlcs::XdgToplevelStable::State::State(int32_t width, int32_t height, struct wl_a
                 break;
             case XDG_TOPLEVEL_STATE_ACTIVATED:
                 activated = true;
+            case XDG_TOPLEVEL_STATE_TILED_LEFT:
+            case XDG_TOPLEVEL_STATE_TILED_RIGHT:
+            case XDG_TOPLEVEL_STATE_TILED_BOTTOM:
+            case XDG_TOPLEVEL_STATE_TILED_TOP:
                 break;
         }
     }
@@ -72,8 +80,16 @@ wlcs::XdgToplevelStable::State::State(int32_t width, int32_t height, struct wl_a
 wlcs::XdgToplevelStable::XdgToplevelStable(XdgSurfaceStable& shell_surface_)
     : shell_surface{&shell_surface_}
 {
+    EXPECT_CALL(*this, configure).Times(AnyNumber());
+    EXPECT_CALL(*this, close).Times(AnyNumber());
+    EXPECT_CALL(*this, configure_bounds).Times(AnyNumber());
+    EXPECT_CALL(*this, wm_capabilities).Times(AnyNumber());
     toplevel = xdg_surface_get_toplevel(*shell_surface);
-    static struct xdg_toplevel_listener const listener = {configure_thunk, close_thunk};
+    static struct xdg_toplevel_listener const listener = {
+        [](void* data, auto, auto... args) { static_cast<XdgToplevelStable*>(data)->configure(args...); },
+        [](void* data, auto, auto... args) { static_cast<XdgToplevelStable*>(data)->close(args...); },
+        [](void* data, auto, auto... args) { static_cast<XdgToplevelStable*>(data)->configure_bounds(args...); },
+        [](void* data, auto, auto... args) { static_cast<XdgToplevelStable*>(data)->wm_capabilities(args...); }};
     xdg_toplevel_add_listener(toplevel, &listener, this);
 }
 
@@ -92,6 +108,15 @@ wlcs::XdgPositionerStable::~XdgPositionerStable()
     xdg_positioner_destroy(positioner);
 }
 
+auto wlcs::XdgPositionerStable::setup_default(std::pair<int, int> size) -> XdgPositionerStable&
+{
+    xdg_positioner_set_size(positioner, size.first, size.second);
+    xdg_positioner_set_anchor_rect(positioner, 0, 0, 1, 1);
+    xdg_positioner_set_anchor(positioner, XDG_POSITIONER_ANCHOR_TOP_LEFT);
+    xdg_positioner_set_gravity(positioner, XDG_POSITIONER_ANCHOR_BOTTOM_RIGHT);
+    return *this;
+}
+
 wlcs::XdgPopupStable::XdgPopupStable(
     XdgSurfaceStable& shell_surface_,
     std::optional<XdgSurfaceStable*> parent,
@@ -102,7 +127,13 @@ wlcs::XdgPopupStable::XdgPopupStable(
           parent ? *parent.value() : (xdg_surface*)nullptr,
           positioner)}
 {
-    static struct xdg_popup_listener const listener = {configure_thunk, popup_done_thunk};
+    EXPECT_CALL(*this, configure).Times(AnyNumber());
+    EXPECT_CALL(*this, done).Times(AnyNumber());
+    EXPECT_CALL(*this, repositioned).Times(AnyNumber());
+    static struct xdg_popup_listener const listener = {
+        [](void* data, auto, auto... args) { static_cast<XdgPopupStable*>(data)->configure(args...); },
+        [](void* data, auto, auto... args) { static_cast<XdgPopupStable*>(data)->done(args...); },
+        [](void* data, auto, auto... args) { static_cast<XdgPopupStable*>(data)->repositioned(args...); }};
     xdg_popup_add_listener(popup, &listener, this);
 }
 

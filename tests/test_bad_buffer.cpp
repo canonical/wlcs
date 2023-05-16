@@ -107,8 +107,6 @@ TEST_F(BadBufferTest, client_lies_about_buffer_size)
 
     wlcs::Client client{the_server()};
 
-    bool buffer_consumed{false};
-
     auto surface = client.create_visible_surface(200, 200);
 
     auto const width = 200, height = 200;
@@ -125,25 +123,18 @@ TEST_F(BadBufferTest, client_lies_about_buffer_size)
         incorrect_stride, // Stride is in bytes, not pixels, so this is ¼ the correct value.
         WL_SHM_FORMAT_ARGB8888);
 
-    wl_shm_pool_destroy(shm_pool);
-    close(fd);
-
-    wl_surface_attach(surface, bad_buffer, 0, 0);
-    wl_surface_damage(surface, 0, 0, 200, 200);
-
-    surface.add_frame_callback([&buffer_consumed](int) { buffer_consumed = true; });
-
-    wl_surface_commit(surface);
-
     try
     {
-        client.dispatch_until([&buffer_consumed]() { return buffer_consumed; });
+        /* Buffer creation should fail, so all we need is for the create_buffer
+         * call to be processed
+         */
+        client.roundtrip();
     }
     catch (wlcs::ProtocolError const& err)
     {
         wl_buffer_destroy(bad_buffer);
         EXPECT_THAT(err.error_code(), Eq(WL_SHM_ERROR_INVALID_STRIDE));
-        EXPECT_THAT(err.interface(), Eq(&wl_buffer_interface));
+        EXPECT_THAT(err.interface(), Eq(&wl_shm_pool_interface));
         return;
     }
 

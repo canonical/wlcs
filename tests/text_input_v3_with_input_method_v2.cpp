@@ -27,6 +27,7 @@
 #include "mock_text_input_v3.h"
 #include "mock_input_method_v2.h"
 #include "version_specifier.h"
+#include "xdg_shell_stable.h"
 
 #include <gmock/gmock.h>
 #include <optional>
@@ -72,7 +73,7 @@ TEST_F(TextInputV3WithInputMethodV2Test, text_input_enters_surface_on_focus)
     EXPECT_CALL(text_input, enter(_))
         .WillOnce(SaveArg<0>(&entered));
     create_focussed_surface();
-    EXPECT_THAT(entered, Eq(app_surface.value().operator wl_surface*()));
+    EXPECT_THAT(entered, Eq(app_surface.value().wl_surface()));
 }
 
 TEST_F(TextInputV3WithInputMethodV2Test, text_input_leaves_surface_on_unfocus)
@@ -80,7 +81,7 @@ TEST_F(TextInputV3WithInputMethodV2Test, text_input_leaves_surface_on_unfocus)
     create_focussed_surface();
     // Text input will not .enter() other surface because it belongs to a different client
     EXPECT_CALL(text_input, enter(_)).Times(0);
-    EXPECT_CALL(text_input, leave(app_surface.value().operator wl_surface*()));
+    EXPECT_CALL(text_input, leave(app_surface.value().wl_surface()));
 
     // Create a 2nd client with a focused surface
     wlcs::Client other_client{the_server()};
@@ -94,10 +95,49 @@ TEST_F(TextInputV3WithInputMethodV2Test, text_input_leaves_surface_on_unfocus)
 TEST_F(TextInputV3WithInputMethodV2Test, input_method_can_be_enabled)
 {
     create_focussed_surface();
-    Expectation a = EXPECT_CALL(input_method, activate());
-    EXPECT_CALL(input_method, done()).After(a);
+    InSequence seq;
+    EXPECT_CALL(input_method, activate());
+    EXPECT_CALL(input_method, done());
     zwp_text_input_v3_enable(text_input);
     zwp_text_input_v3_commit(text_input);
+    app_client.roundtrip();
+    input_client.roundtrip();
+}
+
+TEST_F(TextInputV3WithInputMethodV2Test, input_method_can_be_disabled)
+{
+    create_focussed_surface();
+    InSequence seq;
+    EXPECT_CALL(input_method, activate());
+    EXPECT_CALL(input_method, done());
+    zwp_text_input_v3_enable(text_input);
+    zwp_text_input_v3_commit(text_input);
+    app_client.roundtrip();
+    input_client.roundtrip();
+    EXPECT_CALL(input_method, deactivate());
+    EXPECT_CALL(input_method, done());
+    zwp_text_input_v3_disable(text_input);
+    zwp_text_input_v3_commit(text_input);
+    app_client.roundtrip();
+    input_client.roundtrip();
+}
+
+TEST_F(TextInputV3WithInputMethodV2Test, input_method_disabled_when_text_input_destroyed)
+{
+    create_focussed_surface();
+    {
+        NiceMock<wlcs::MockTextInputV3> text_input{
+            zwp_text_input_manager_v3_get_text_input(text_input_manager, app_client.seat())};
+        InSequence seq;
+        EXPECT_CALL(input_method, activate());
+        EXPECT_CALL(input_method, done());
+        zwp_text_input_v3_enable(text_input);
+        zwp_text_input_v3_commit(text_input);
+        app_client.roundtrip();
+        input_client.roundtrip();
+        EXPECT_CALL(input_method, deactivate());
+        EXPECT_CALL(input_method, done());
+    }
     app_client.roundtrip();
     input_client.roundtrip();
 }
@@ -165,11 +205,94 @@ TEST_F(TextInputV3WithInputMethodV2Test, input_method_can_send_preedit)
     app_client.roundtrip();
     input_client.roundtrip();
 
-    Expectation const a = EXPECT_CALL(text_input, preedit_string(text, cursor_begin, cursor_end));
+    InSequence seq;
+    EXPECT_CALL(text_input, preedit_string(text, cursor_begin, cursor_end));
     // Expected serial is 1 because we've sent exactly 1 commit
-    EXPECT_CALL(text_input, done(1)).After(a);
+    EXPECT_CALL(text_input, done(1));
     zwp_input_method_v2_set_preedit_string(input_method, text, cursor_begin, cursor_end);
     zwp_input_method_v2_commit(input_method, input_method.done_count());
     input_client.roundtrip();
+    app_client.roundtrip();
+}
+
+TEST_F(TextInputV3WithInputMethodV2Test, text_input_does_not_enter_non_grabbing_popup)
+{
+    auto parent_surface = std::make_unique<wlcs::Surface>(app_client);
+    EXPECT_CALL(text_input, enter(parent_surface->wl_surface()));
+    auto parent_xdg_surface = std::make_shared<wlcs::XdgSurfaceStable>(app_client, *parent_surface);
+    auto parent_xdg_toplevel = std::make_shared<wlcs::XdgToplevelStable>(*parent_xdg_surface);
+    parent_surface->attach_visible_buffer(20, 20);
+    app_client.roundtrip();
+    Mock::VerifyAndClearExpectations(&text_input);
+    auto child_surface = std::make_unique<wlcs::Surface>(app_client);
+    EXPECT_CALL(text_input, leave(_)).Times(0);
+    EXPECT_CALL(text_input, enter(_)).Times(0);
+    auto child_xdg_surface = std::make_shared<wlcs::XdgSurfaceStable>(app_client, *child_surface);
+    auto child_xdg_popup = std::make_shared<wlcs::XdgPopupStable>(
+        *child_xdg_surface,
+        parent_xdg_surface.get(),
+        wlcs::XdgPositionerStable{app_client}.setup_default({20, 20}));
+    child_surface->attach_visible_buffer(20, 20);
+    app_client.roundtrip();
+}
+
+TEST_F(TextInputV3WithInputMethodV2Test, text_input_enters_grabbing_popup)
+{
+    InSequence seq;
+    auto parent_surface = std::make_unique<wlcs::Surface>(app_client);
+    EXPECT_CALL(text_input, enter(parent_surface->wl_surface()));
+    auto parent_xdg_surface = std::make_shared<wlcs::XdgSurfaceStable>(app_client, *parent_surface);
+    auto parent_xdg_toplevel = std::make_shared<wlcs::XdgToplevelStable>(*parent_xdg_surface);
+    parent_surface->attach_visible_buffer(20, 20);
+    the_server().move_surface_to(*parent_surface, 0, 0);
+    app_client.roundtrip();
+    Mock::VerifyAndClearExpectations(&text_input);
+
+    // This is needed to get a serial, which will be used later on
+    auto pointer = the_server().create_pointer();
+    pointer.move_to(2, 2);
+    pointer.left_click();
+    app_client.roundtrip();
+
+    auto child_surface = std::make_unique<wlcs::Surface>(app_client);
+    EXPECT_CALL(text_input, leave(parent_surface->wl_surface()));
+    EXPECT_CALL(text_input, enter(child_surface->wl_surface()));
+    auto child_xdg_surface = std::make_shared<wlcs::XdgSurfaceStable>(app_client, *child_surface);
+    auto child_xdg_popup = std::make_shared<wlcs::XdgPopupStable>(
+        *child_xdg_surface,
+        parent_xdg_surface.get(),
+        wlcs::XdgPositionerStable{app_client}.setup_default({20, 20}));
+    xdg_popup_grab(*child_xdg_popup, app_client.seat(), app_client.latest_serial().value());
+    child_surface->attach_visible_buffer(20, 20);
+    app_client.roundtrip();
+}
+
+/// Regression test for https://github.com/MirServer/mir/issues/2189
+TEST_F(TextInputV3WithInputMethodV2Test, text_input_enters_parent_surface_after_child_destroyed)
+{
+    InSequence seq;
+    auto parent_surface = std::make_unique<wlcs::Surface>(app_client);
+    EXPECT_CALL(text_input, enter(parent_surface->wl_surface()));
+    auto parent_xdg_surface = std::make_shared<wlcs::XdgSurfaceStable>(app_client, *parent_surface);
+    auto parent_xdg_toplevel = std::make_shared<wlcs::XdgToplevelStable>(*parent_xdg_surface);
+    parent_surface->attach_visible_buffer(20, 20);
+    app_client.roundtrip();
+    Mock::VerifyAndClearExpectations(&text_input);
+
+    {
+        auto child_surface = std::make_unique<wlcs::Surface>(app_client);
+        EXPECT_CALL(text_input, leave(parent_surface->wl_surface()));
+        EXPECT_CALL(text_input, enter(child_surface->wl_surface()));
+        auto child_xdg_surface = std::make_shared<wlcs::XdgSurfaceStable>(app_client, *child_surface);
+        auto child_xdg_toplevel = std::make_shared<wlcs::XdgToplevelStable>(*child_xdg_surface);
+        xdg_toplevel_set_parent(*child_xdg_toplevel, *parent_xdg_toplevel);
+        child_surface->attach_visible_buffer(20, 20);
+        app_client.roundtrip();
+        Mock::VerifyAndClearExpectations(&text_input);
+
+        EXPECT_CALL(text_input, leave(nullptr)); // Child surface will be destroyed by the time the message comes in
+        EXPECT_CALL(text_input, enter(parent_surface->wl_surface()));
+    }
+
     app_client.roundtrip();
 }
