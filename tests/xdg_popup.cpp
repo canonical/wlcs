@@ -1141,7 +1141,7 @@ TEST_P(XdgPopupTest, grabbed_popups_get_done_events_in_correct_order)
     EXPECT_CALL(*sub_popup_manager, popup_done());
     EXPECT_CALL(*top_popup_manager, popup_done());
 
-    // Click outside the popups to dismiss
+    // Click on background surface so it is focused and grabbed popups are dismissed
     pointer.move_to(top_popup_manager->window_x - 2, top_popup_manager->window_y - 2);
     pointer.left_click();
     top_popup_manager->client->roundtrip();
