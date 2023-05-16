@@ -1258,7 +1258,7 @@ TEST_P(XdgPopupTest, popup_configure_is_valid)
 
 TEST_F(XdgPopupTest, when_parent_surface_is_moved_a_reactive_popup_is_moved)
 {
-    XdgPopupStableManager manager{this->the_server()};
+    XdgPopupStableManager manager{the_server()};
 
     manager.client->bind_if_supported<xdg_wm_base>(wlcs::AtLeastVersion{XDG_POSITIONER_SET_REACTIVE_SINCE_VERSION});
 
@@ -1303,7 +1303,7 @@ TEST_F(XdgPopupTest, when_parent_surface_is_moved_a_reactive_popup_is_moved)
 
 TEST_F(XdgPopupTest, when_parent_surface_is_moved_a_nonreactive_popup_is_not_moved)
 {
-    XdgPopupStableManager manager{this->the_server()};
+    XdgPopupStableManager manager{the_server()};
 
     manager.client->bind_if_supported<xdg_wm_base>(wlcs::AtLeastVersion{XDG_POSITIONER_SET_REACTIVE_SINCE_VERSION});
 
@@ -1343,7 +1343,7 @@ TEST_F(XdgPopupTest, when_parent_surface_is_moved_a_nonreactive_popup_is_not_mov
 
 TEST_F(XdgPopupTest, popup_can_be_repositioned)
 {
-    XdgPopupStableManager manager{this->the_server()};
+    XdgPopupStableManager manager{the_server()};
 
     manager.client->bind_if_supported<xdg_wm_base>(wlcs::AtLeastVersion{XDG_POPUP_REPOSITION_SINCE_VERSION});
 
