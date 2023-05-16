@@ -1109,6 +1109,14 @@ TEST_P(XdgPopupTest, grabbed_popup_gets_done_event_when_new_toplevel_created)
 TEST_P(XdgPopupTest, grabbed_popups_get_done_events_in_correct_order)
 {
     auto const& param = GetParam();
+
+    wlcs::Client background_client{the_server()};
+    wlcs::Surface background_surface{background_client.create_visible_surface(10, 10)};
+    the_server().move_surface_to(
+        background_surface,
+        XdgPopupManagerBase::window_x - 5,
+        XdgPopupManagerBase::window_y - 5);
+
     auto top_popup_manager = param.build(this);
     auto pointer = the_server().create_pointer();
 
@@ -1134,6 +1142,7 @@ TEST_P(XdgPopupTest, grabbed_popups_get_done_events_in_correct_order)
     EXPECT_CALL(*top_popup_manager, popup_done());
 
     // Click outside the popups to dismiss
+    pointer.move_to(top_popup_manager->window_x - 2, top_popup_manager->window_y - 2);
     pointer.left_click();
     top_popup_manager->client->roundtrip();
 }
