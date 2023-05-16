@@ -21,6 +21,7 @@
 
 #include "in_process_server.h"
 #include "wl_handle.h"
+#include "geometry/size.h"
 
 // Because _someone_ *cough*ddevault*cough* thought it would be a great idea to name an argument "namespace"
 #ifdef __clang__
@@ -78,15 +79,13 @@ public:
     operator zwlr_layer_shell_v1*() const { return layer_shell; }
 
     void dispatch_until_configure();
-    auto last_width() const -> int { return last_width_; }
-    auto last_height() const -> int { return last_height_; }
+    auto last_size() const -> wlcs::Size { return last_size_; }
 
 private:
     wlcs::Client& client;
     WlHandle<zwlr_layer_shell_v1> layer_shell;
     WlHandle<zwlr_layer_surface_v1> layer_surface;
-    int last_width_ = -1;
-    int last_height_ = -1;
+    Size last_size_ = {-1, -1};
     int configure_count = 0;
 };
 

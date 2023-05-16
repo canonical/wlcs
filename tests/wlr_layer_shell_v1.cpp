@@ -21,13 +21,12 @@
 #include "layer_shell_v1.h"
 #include "xdg_shell_stable.h"
 #include "version_specifier.h"
+#include "geometry/rectangle.h"
 
 #include <gmock/gmock.h>
 
 using namespace testing;
-
-using Vec2 = std::pair<int, int>;
-using Rect = std::pair<Vec2, Vec2>;
+using wlcs::X, wlcs::Y, wlcs::DeltaX, wlcs::DeltaY, wlcs::Width, wlcs::Height, wlcs::Size, wlcs::Point, wlcs::Rectangle;
 
 namespace
 {
@@ -47,10 +46,10 @@ public:
         layer_surface.dispatch_until_configure();
     }
 
-    void expect_surface_is_at_position(std::pair<int, int> pos, wlcs::Surface const& expected)
+    void expect_surface_is_at_position(Point pos, wlcs::Surface const& expected)
     {
         auto pointer = the_server().create_pointer();
-        pointer.move_to(pos.first + 10, pos.second + 10);
+        pointer.move_to(pos.x.as_int() + 10, pos.y.as_int() + 10);
         client.roundtrip();
 
         EXPECT_THAT(client.window_under_cursor(), Eq((wl_surface*)expected));
@@ -61,12 +60,12 @@ public:
         }
     }
 
-    void expect_surface_is_at_position(std::pair<int, int> pos)
+    void expect_surface_is_at_position(Point pos)
     {
         expect_surface_is_at_position(pos, surface);
     }
 
-    auto output_rect() const -> Rect
+    auto output_rect() const -> Rectangle
     {
         EXPECT_THAT(client.output_count(), Ge(1u)) << "There are no outputs to get a size from";
         EXPECT_THAT(client.output_count(), Eq(1u)) << "Unclear which output the layer shell surface will be placed on";
@@ -79,28 +78,29 @@ public:
             size.first /= output_state.scale.value();
             size.second /= output_state.scale.value();
         }
-        return std::make_pair(output_state.geometry_position.value(), size);
-    }
-
-    auto configured_size() const -> Vec2
-    {
-        return std::make_pair(layer_surface.last_width(), layer_surface.last_height());
+        auto pos = output_state.geometry_position.value();
+        return {{pos.first, pos.second}, {size.first, size.second}};
     }
 
     wlcs::Client client;
     wlcs::Surface surface;
     wlcs::LayerSurfaceV1 layer_surface;
 
-    int static const default_width = 200;
-    int static const default_height = 300;
+    Size static constexpr default_size{200, 300};
+    int static const default_width = default_size.width.as_int();
+    int static const default_height = default_size.height.as_int();
 };
 
 struct LayerSurfaceLayout
 {
-    template<typename T>
-    struct Sides
+    struct Anchor
     {
-        T left, right, top, bottom;
+        bool left, right, top, bottom;
+    };
+    struct Margin
+    {
+        DeltaX left, right;
+        DeltaY top, bottom;
     };
 
     static auto get_all() -> std::vector<LayerSurfaceLayout>
@@ -115,8 +115,10 @@ struct LayerSurfaceLayout
                 {
                     for (auto bottom: range)
                     {
-                        result.emplace_back(Sides<bool>{left, right, top, bottom});
-                        result.emplace_back(Sides<bool>{left, right, top, bottom}, Sides<int>{6, 9, 12, 15});
+                        result.emplace_back(Anchor{left, right, top, bottom});
+                        result.emplace_back(
+                            Anchor{left, right, top, bottom},
+                            Margin{DeltaX{6}, DeltaX{9}, DeltaY{12}, DeltaY{15}});
                     }
                 }
             }
@@ -124,13 +126,13 @@ struct LayerSurfaceLayout
         return result;
     }
 
-    LayerSurfaceLayout(Sides<bool> anchor)
+    LayerSurfaceLayout(Anchor anchor)
         : anchor{anchor},
-          margin{0, 0, 0, 0}
+          margin{{}, {}, {}, {}}
     {
     }
 
-    LayerSurfaceLayout(Sides<bool> anchor, Sides<int> margin)
+    LayerSurfaceLayout(Anchor anchor, Margin margin)
         : anchor{anchor},
           margin{margin}
     {
@@ -148,46 +150,42 @@ struct LayerSurfaceLayout
     auto h_expand() const -> bool { return anchor.left && anchor.right; }
     auto v_expand() const -> bool { return anchor.top && anchor.bottom; }
 
-    auto placement_rect(Rect const& output) const -> Rect
+    auto placement_rect(Rectangle const& output) const -> Rectangle
     {
-        int const output_width = output.second.first;
-        int const output_height = output.second.second;
-        int const output_x = output.first.first;
-        int const output_y = output.first.second;
         auto const config_size = configure_size(output);
-        int const width = config_size.first ? config_size.first : LayerSurfaceTest::default_width;
-        int const height = config_size.second ? config_size.second : LayerSurfaceTest::default_height;
-        int const x =
+        auto const width = config_size.width.as_int() ? config_size.width : LayerSurfaceTest::default_size.width;
+        auto const height = config_size.height.as_int() ? config_size.height : LayerSurfaceTest::default_size.height;
+        X const x =
             (anchor.left ?
-                output_x + margin.left :
+                output.top_left.x + margin.left :
                 (anchor.right ?
-                    (output_x + output_width - width - margin.right) :
-                    (output_x + (output_width - width) / 2)
+                    (output.top_left.x + as_delta(output.size.width) - as_delta(width) - margin.right) :
+                    (output.top_left.x + (output.size.width - width) / 2)
                 )
             );
-        int const y =
+        Y const y =
             (anchor.top ?
-                output_y + margin.top :
+                output.top_left.y + margin.top :
                 (anchor.bottom ?
-                    (output_y + output_height - height - margin.bottom) :
-                    (output_y + (output_height - height) / 2)
+                    (output.top_left.y + as_delta(output.size.height) - as_delta(height) - margin.bottom) :
+                    (output.top_left.y + (output.size.height - height) / 2)
                 )
             );
-        return std::make_pair(std::make_pair(x, y), std::make_pair(width, height));;
+        return {{x, y}, {width, height}};
     }
 
-    auto request_size() const -> Vec2
+    auto request_size() const -> Size
     {
-        return std::make_pair(
-            h_expand() ? 0 : LayerSurfaceTest::default_width,
-            v_expand() ? 0 : LayerSurfaceTest::default_height);
+        return {
+            h_expand() ? Width{} : LayerSurfaceTest::default_size.width,
+            v_expand() ? Height{} : LayerSurfaceTest::default_size.height};
     }
 
-    auto configure_size(Rect const& output) const -> Vec2
+    auto configure_size(Rectangle const& output) const -> Size
     {
-        int const configure_width = h_expand() ? output.second.first - margin.left - margin.right : 0;
-        int const configure_height = v_expand() ? output.second.second - margin.top - margin.bottom : 0;
-        return std::make_pair(configure_width, configure_height);
+        auto const configure_width = h_expand() ? output.size.width - margin.left - margin.right : Width{};
+        auto const configure_height = v_expand() ? output.size.height - margin.top - margin.bottom : Height{};
+        return {configure_width, configure_height};
     }
 
     // Will always either return 0, or a single enum value
@@ -210,15 +208,20 @@ struct LayerSurfaceLayout
         return (zwlr_layer_surface_v1_anchor)0;
     }
 
-    Sides<bool> const anchor;
-    Sides<int> const margin;
+    Anchor const anchor;
+    Margin const margin;
 };
 
 static void invoke_zwlr_layer_surface_v1_set_margin(
     zwlr_layer_surface_v1* layer_surface,
-    LayerSurfaceLayout::Sides<int> const& margin)
+    LayerSurfaceLayout::Margin const& margin)
 {
-    zwlr_layer_surface_v1_set_margin(layer_surface, margin.top, margin.right, margin.bottom, margin.left);
+    zwlr_layer_surface_v1_set_margin(
+        layer_surface,
+        margin.top.as_int(),
+        margin.right.as_int(),
+        margin.bottom.as_int(),
+        margin.left.as_int());
 }
 
 std::ostream& operator<<(std::ostream& os, const LayerSurfaceLayout& layout)
@@ -242,7 +245,10 @@ std::ostream& operator<<(std::ostream& os, const LayerSurfaceLayout& layout)
         os << strs[i];
     }
     os << "}, Margin{";
-    if (layout.margin.left || layout.margin.right || layout.margin.top || layout.margin.bottom)
+    if (layout.margin.left.as_int() ||
+        layout.margin.right.as_int() ||
+        layout.margin.top.as_int() ||
+        layout.margin.bottom.as_int())
     {
         os << "l: " << layout.margin.left << ", ";
         os << "r: " << layout.margin.right << ", ";
@@ -434,7 +440,7 @@ TEST_F(LayerSurfaceTest, gets_configured_with_supplied_size_when_set)
     int width = 123, height = 546;
     zwlr_layer_surface_v1_set_size(layer_surface, width, height);
     commit_and_wait_for_configure();
-    EXPECT_THAT(configured_size(), Eq(std::make_pair(width, height)));
+    EXPECT_THAT(layer_surface.last_size(), Eq(Size{width, height}));
 }
 
 TEST_F(LayerSurfaceTest, gets_configured_with_supplied_size_even_when_anchored_to_edges)
@@ -443,15 +449,14 @@ TEST_F(LayerSurfaceTest, gets_configured_with_supplied_size_even_when_anchored_t
     zwlr_layer_surface_v1_set_anchor(layer_surface, LayerSurfaceLayout({true, true, true, true}));
     zwlr_layer_surface_v1_set_size(layer_surface, width, height);
     commit_and_wait_for_configure();
-    EXPECT_THAT(configured_size(), Eq(std::make_pair(width, height)));
+    EXPECT_THAT(layer_surface.last_size(), Eq(Size{width, height}));
 }
 
 TEST_F(LayerSurfaceTest, when_anchored_to_all_edges_gets_configured_with_output_size)
 {
     zwlr_layer_surface_v1_set_anchor(layer_surface, LayerSurfaceLayout({true, true, true, true}));
     commit_and_wait_for_configure();
-    auto const size = output_rect().second;
-    ASSERT_THAT(configured_size(), Eq(size));
+    ASSERT_THAT(layer_surface.last_size(), Eq(output_rect().size));
 }
 
 TEST_F(LayerSurfaceTest, gets_configured_after_anchor_change)
@@ -461,8 +466,8 @@ TEST_F(LayerSurfaceTest, gets_configured_after_anchor_change)
     zwlr_layer_surface_v1_set_size(layer_surface, 0, 0);
     zwlr_layer_surface_v1_set_anchor(layer_surface, LayerSurfaceLayout({true, true, true, true}));
     commit_and_wait_for_configure();
-    EXPECT_THAT(configured_size().first, Gt(0));
-    EXPECT_THAT(configured_size().second, Gt(0));
+    EXPECT_THAT(layer_surface.last_size().width, Gt(Width{}));
+    EXPECT_THAT(layer_surface.last_size().height, Gt(Height{}));
 }
 
 TEST_F(LayerSurfaceTest, destroy_request_supported)
@@ -710,21 +715,21 @@ TEST_P(LayerSurfaceLayoutTest, is_initially_positioned_correctly_for_anchor)
 
     zwlr_layer_surface_v1_set_anchor(layer_surface, layout);
     invoke_zwlr_layer_surface_v1_set_margin(layer_surface, layout.margin);
-    zwlr_layer_surface_v1_set_size(layer_surface, request_size.first, request_size.second);
+    zwlr_layer_surface_v1_set_size(layer_surface, request_size.width.as_int(), request_size.height.as_int());
     commit_and_wait_for_configure();
 
     auto configure_size = layout.configure_size(output);
-    if (configure_size.first)
+    if (configure_size.width.as_int())
     {
-        EXPECT_THAT(configured_size().first, Eq(configure_size.first));
+        EXPECT_THAT(layer_surface.last_size().width, Eq(configure_size.width));
     }
-    if (configure_size.second)
+    if (configure_size.height.as_int())
     {
-        EXPECT_THAT(configured_size().second, Eq(configure_size.second));
+        EXPECT_THAT(layer_surface.last_size().height, Eq(configure_size.height));
     }
 
-    surface.attach_visible_buffer(rect.second.first, rect.second.second);
-    expect_surface_is_at_position(rect.first);
+    surface.attach_visible_buffer(rect.size.width.as_int(), rect.size.height.as_int());
+    expect_surface_is_at_position(rect.top_left);
 }
 
 TEST_P(LayerSurfaceLayoutTest, is_positioned_correctly_when_explicit_size_does_not_match_buffer_size)
@@ -736,12 +741,12 @@ TEST_P(LayerSurfaceLayoutTest, is_positioned_correctly_when_explicit_size_does_n
 
     zwlr_layer_surface_v1_set_anchor(layer_surface, layout);
     invoke_zwlr_layer_surface_v1_set_margin(layer_surface, layout.margin);
-    zwlr_layer_surface_v1_set_size(layer_surface, request_size.first, request_size.second);
+    zwlr_layer_surface_v1_set_size(layer_surface, request_size.width.as_int(), request_size.height.as_int());
     commit_and_wait_for_configure();
 
     surface.attach_visible_buffer(initial_width, initial_height);
 
-    expect_surface_is_at_position(rect.first);
+    expect_surface_is_at_position(rect.top_left);
 }
 
 TEST_P(LayerSurfaceLayoutTest, is_positioned_correctly_when_layout_changed)
@@ -756,21 +761,21 @@ TEST_P(LayerSurfaceLayoutTest, is_positioned_correctly_when_layout_changed)
 
     zwlr_layer_surface_v1_set_anchor(layer_surface, layout);
     invoke_zwlr_layer_surface_v1_set_margin(layer_surface, layout.margin);
-    zwlr_layer_surface_v1_set_size(layer_surface, request_size.first, request_size.second);
-    surface.attach_visible_buffer(result_rect.second.first, result_rect.second.second);
+    zwlr_layer_surface_v1_set_size(layer_surface, request_size.width.as_int(), request_size.height.as_int());
+    surface.attach_visible_buffer(result_rect.size.width.as_int(), result_rect.size.height.as_int());
     wl_surface_commit(surface);
     client.roundtrip(); // Sometimes we get a configure, sometimes we don't
 
     auto configure_size = layout.configure_size(output);
-    if (configure_size.first)
+    if (configure_size.width.as_int())
     {
-        EXPECT_THAT(configured_size().first, Eq(configure_size.first));
+        EXPECT_THAT(layer_surface.last_size().width, Eq(configure_size.width));
     }
-    if (configure_size.second)
+    if (configure_size.height.as_int())
     {
-        EXPECT_THAT(configured_size().second, Eq(configure_size.second));
+        EXPECT_THAT(layer_surface.last_size().height, Eq(configure_size.height));
     }
-    expect_surface_is_at_position(result_rect.first);
+    expect_surface_is_at_position(result_rect.top_left);
 }
 
 TEST_P(LayerSurfaceLayoutTest, is_positioned_correctly_after_multiple_changes)
@@ -785,8 +790,8 @@ TEST_P(LayerSurfaceLayoutTest, is_positioned_correctly_after_multiple_changes)
 
     zwlr_layer_surface_v1_set_anchor(layer_surface, layout);
     invoke_zwlr_layer_surface_v1_set_margin(layer_surface, layout.margin);
-    zwlr_layer_surface_v1_set_size(layer_surface, request_size.first, request_size.second);
-    surface.attach_visible_buffer(result_rect.second.first, result_rect.second.second);
+    zwlr_layer_surface_v1_set_size(layer_surface, request_size.width.as_int(), request_size.height.as_int());
+    surface.attach_visible_buffer(result_rect.size.width.as_int(), result_rect.size.height.as_int());
     wl_surface_commit(surface);
     client.roundtrip(); // Sometimes we get a configure, sometimes we don't
 
@@ -797,11 +802,10 @@ TEST_P(LayerSurfaceLayoutTest, is_positioned_correctly_after_multiple_changes)
     wl_surface_commit(surface);
     client.roundtrip(); // Sometimes we get a configure, sometimes we don't
 
-    EXPECT_THAT(configured_size().first, Eq(default_width));
-    EXPECT_THAT(configured_size().second, Eq(default_height));
-    auto expected_top_left = output.first;
-    expected_top_left.first += (output.second.first - default_width) / 2;
-    expected_top_left.second += (output.second.second - default_height) / 2;
+    EXPECT_THAT(layer_surface.last_size().width, Eq(default_size.width));
+    EXPECT_THAT(layer_surface.last_size().height, Eq(default_size.height));
+    auto const expected_top_left = output.top_left + as_displacement(
+        as_size(as_displacement(output.size) - as_displacement(default_size)) / 2);
     expect_surface_is_at_position(expected_top_left);
 }
 
@@ -814,9 +818,9 @@ TEST_P(LayerSurfaceLayoutTest, is_positioned_to_accommodate_other_surfaces_exclu
 
     zwlr_layer_surface_v1_set_anchor(layer_surface, layout);
     invoke_zwlr_layer_surface_v1_set_margin(layer_surface, layout.margin);
-    zwlr_layer_surface_v1_set_size(layer_surface, request_size.first, request_size.second);
+    zwlr_layer_surface_v1_set_size(layer_surface, request_size.width.as_int(), request_size.height.as_int());
     commit_and_wait_for_configure();
-    surface.attach_visible_buffer(initial_rect.second.first, initial_rect.second.second);
+    surface.attach_visible_buffer(initial_rect.size.width.as_int(), initial_rect.size.height.as_int());
 
     // Create layer surfaces with exclusive zones on the top and left of the output to push our surface out of the way
 
@@ -842,25 +846,25 @@ TEST_P(LayerSurfaceLayoutTest, is_positioned_to_accommodate_other_surfaces_exclu
 
     client.roundtrip();
 
-    Rect non_exlusive_zone = output_rect();
-    non_exlusive_zone.first.first += exclusive; // left
-    non_exlusive_zone.first.second += exclusive; // top
-    non_exlusive_zone.second.first -= exclusive; // width
-    non_exlusive_zone.second.second -= exclusive; // height
+    auto non_exlusive_zone = output_rect();
+    non_exlusive_zone.top_left.x += DeltaX{exclusive};
+    non_exlusive_zone.top_left.y += DeltaY{exclusive};
+    non_exlusive_zone.size.width -= DeltaX{exclusive};
+    non_exlusive_zone.size.height -= DeltaY{exclusive};
 
     auto expected_config_size = layout.configure_size(non_exlusive_zone);
-    if (expected_config_size.first)
+    if (expected_config_size.width.as_int())
     {
-        EXPECT_THAT(configured_size().first, Eq(expected_config_size.first));
+        EXPECT_THAT(layer_surface.last_size().width, Eq(expected_config_size.width));
     }
-    if (expected_config_size.second)
+    if (expected_config_size.height.as_int())
     {
-        EXPECT_THAT(configured_size().second, Eq(expected_config_size.second));
+        EXPECT_THAT(layer_surface.last_size().height, Eq(expected_config_size.height));
     }
 
     auto const expected_placement = layout.placement_rect(non_exlusive_zone);
-    surface.attach_visible_buffer(expected_placement.second.first, expected_placement.second.second);
-    expect_surface_is_at_position(expected_placement.first);
+    surface.attach_visible_buffer(expected_placement.size.width.as_int(), expected_placement.size.height.as_int());
+    expect_surface_is_at_position(expected_placement.top_left);
 }
 
 TEST_P(LayerSurfaceLayoutTest, maximized_xdg_toplevel_is_shrunk_for_exclusive_zone)
@@ -905,9 +909,9 @@ TEST_P(LayerSurfaceLayoutTest, maximized_xdg_toplevel_is_shrunk_for_exclusive_zo
     zwlr_layer_surface_v1_set_anchor(layer_surface, layout);
     invoke_zwlr_layer_surface_v1_set_margin(layer_surface, layout.margin);
     zwlr_layer_surface_v1_set_exclusive_zone(layer_surface, exclusive_zone);
-    zwlr_layer_surface_v1_set_size(layer_surface, request_size.first, request_size.second);
+    zwlr_layer_surface_v1_set_size(layer_surface, request_size.width.as_int(), request_size.height.as_int());
     commit_and_wait_for_configure();
-    surface.attach_visible_buffer(rect.second.first, rect.second.second);
+    surface.attach_visible_buffer(rect.size.width.as_int(), rect.size.height.as_int());
 
     int const new_width = width;
     int const new_height = height;
@@ -918,19 +922,19 @@ TEST_P(LayerSurfaceLayoutTest, maximized_xdg_toplevel_is_shrunk_for_exclusive_zo
     switch (layout.attached_edge())
     {
     case ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT:
-        expected_width -= exclusive_zone + layout.margin.left;
+        expected_width -= exclusive_zone + layout.margin.left.as_int();
         break;
 
     case ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT:
-        expected_width -= exclusive_zone + layout.margin.right;
+        expected_width -= exclusive_zone + layout.margin.right.as_int();
         break;
 
     case ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP:
-        expected_height -= exclusive_zone + layout.margin.top;
+        expected_height -= exclusive_zone + layout.margin.top.as_int();
         break;
 
     case ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM:
-        expected_height -= exclusive_zone + layout.margin.bottom;
+        expected_height -= exclusive_zone + layout.margin.bottom.as_int();
         break;
 
     default: ;
@@ -949,9 +953,9 @@ TEST_P(LayerSurfaceLayoutTest, simple_popup_positioned_correctly)
 
     zwlr_layer_surface_v1_set_anchor(layer_surface, layout);
     invoke_zwlr_layer_surface_v1_set_margin(layer_surface, layout.margin);
-    zwlr_layer_surface_v1_set_size(layer_surface, layer_surface_request_size.first, layer_surface_request_size.second);
+    zwlr_layer_surface_v1_set_size(layer_surface, layer_surface_request_size.width.as_int(), layer_surface_request_size.height.as_int());
     commit_and_wait_for_configure();
-    surface.attach_visible_buffer(layer_surface_rect.second.first, layer_surface_rect.second.second);
+    surface.attach_visible_buffer(layer_surface_rect.size.width.as_int(), layer_surface_rect.size.height.as_int());
 
     auto const popup_size = std::make_pair(30, 30);
     wlcs::XdgPositionerStable positioner{client};
@@ -959,7 +963,7 @@ TEST_P(LayerSurfaceLayoutTest, simple_popup_positioned_correctly)
     xdg_positioner_set_anchor_rect(
         positioner,
         5, 5,
-        layer_surface_rect.second.first - 10, layer_surface_rect.second.second - 10);
+        layer_surface_rect.size.width.as_int() - 10, layer_surface_rect.size.height.as_int() - 10);
     xdg_positioner_set_anchor(positioner,  0);
     xdg_positioner_set_gravity(positioner, XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
 
@@ -969,7 +973,7 @@ TEST_P(LayerSurfaceLayoutTest, simple_popup_positioned_correctly)
     zwlr_layer_surface_v1_get_popup(layer_surface, popup_xdg_popup);
 
     int popup_surface_configure_count = 0;
-    Vec2 popup_configured_position;
+    Point popup_configured_position;
     ON_CALL(popup_xdg_surface, configure).WillByDefault([&](uint32_t serial)
         {
             xdg_surface_ack_configure(popup_xdg_surface, serial);
@@ -977,8 +981,8 @@ TEST_P(LayerSurfaceLayoutTest, simple_popup_positioned_correctly)
         });
     ON_CALL(popup_xdg_popup, configure).WillByDefault([&](int32_t x, int32_t y, int32_t, int32_t)
         {
-            popup_configured_position.first = x;
-            popup_configured_position.second = y;
+            popup_configured_position.x = X{x};
+            popup_configured_position.y = Y{y};
         });
 
     popup_wl_surface.attach_visible_buffer(popup_size.first, popup_size.second);
@@ -986,12 +990,10 @@ TEST_P(LayerSurfaceLayoutTest, simple_popup_positioned_correctly)
 
     EXPECT_THAT(
         popup_configured_position,
-        Eq(Vec2{layer_surface_rect.second.first / 2, layer_surface_rect.second.second / 2}));
+        Eq(as_point(layer_surface_rect.size / 2)));
 
     expect_surface_is_at_position(
-        Vec2{
-            layer_surface_rect.first.first + layer_surface_rect.second.first / 2,
-            layer_surface_rect.first.second + layer_surface_rect.second.second / 2},
+        layer_surface_rect.top_left + as_displacement(layer_surface_rect.size / 2),
         popup_wl_surface);
 }
 
