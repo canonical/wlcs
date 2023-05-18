@@ -19,8 +19,6 @@
 #ifndef XDG_OUTPUT_V1_H
 #define XDG_OUTPUT_V1_H
 
-#include <experimental/optional>
-
 #include "generated/wayland-client.h"
 #include "generated/xdg-output-unstable-v1-client.h"
 
@@ -29,6 +27,7 @@
 #include "wl_handle.h"
 
 #include <memory>
+#include <optional>
 
 namespace wlcs
 {
