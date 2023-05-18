@@ -180,10 +180,10 @@ public:
 
     static int const window_x, window_y;
 
-    XdgPopupManagerBase(wlcs::InProcessServer* const in_process_server)
-        : the_server{in_process_server->the_server()},
-          client{the_server},
-          surface{client},
+    XdgPopupManagerBase(wlcs::Server& server, std::shared_ptr<wlcs::Client> client)
+        : the_server{server},
+          client{client},
+          surface{*client},
           parent_position_{window_x, window_y}
     {
         surface.add_frame_callback([this](auto) { surface_rendered = true; });
@@ -196,13 +196,13 @@ public:
         surface.attach_buffer(window_width, window_height);
         surface_rendered = false;
         wl_surface_commit(surface);
-        client.dispatch_until([this]() { return surface_rendered; });
+        client->dispatch_until([this]() { return surface_rendered; });
         the_server.move_surface_to(surface, parent_position_.first, parent_position_.second);
     }
 
     void map_popup(PositionerParams const& params)
     {
-        popup_surface.emplace(client);
+        popup_surface.emplace(*client);
         setup_popup(params);
         wl_surface_commit(popup_surface.value());
         dispatch_until_popup_configure();
@@ -210,16 +210,16 @@ public:
         bool surface_rendered{false};
         popup_surface.value().add_frame_callback([&surface_rendered](auto) { surface_rendered = true; });
         wl_surface_commit(popup_surface.value());
-        client.dispatch_until([&surface_rendered]() { return surface_rendered; });
+        client->dispatch_until([&surface_rendered]() { return surface_rendered; });
     }
 
     void set_parent_position(
         std::function<std::pair<int, int>(int output_width, int output_height)> const& parent_position_func)
     {
-        auto const output_size = client.output_state(0).mode_size.value();
+        auto const output_size = client->output_state(0).mode_size.value();
         parent_position_ = parent_position_func(output_size.first, output_size.second);
         the_server.move_surface_to(surface, parent_position_.first, parent_position_.second);
-        client.roundtrip();
+        client->roundtrip();
     }
 
     auto parent_position() -> std::pair<int, int>
@@ -233,13 +233,14 @@ public:
         popup_surface = std::nullopt;
     }
 
+    virtual auto create_child_popup() -> std::unique_ptr<XdgPopupManagerBase> = 0;
     virtual void dispatch_until_popup_configure() = 0;
 
     MOCK_METHOD0(popup_done, void());
 
     wlcs::Server& the_server;
 
-    wlcs::Client client;
+    std::shared_ptr<wlcs::Client> const client;
     wlcs::Surface surface;
     std::optional<wlcs::Surface> popup_surface;
 
@@ -259,17 +260,24 @@ int const XdgPopupManagerBase::window_y = 500;
 class XdgPopupStableManager : public XdgPopupManagerBase
 {
 public:
-    XdgPopupStableManager(wlcs::InProcessServer* const in_process_server)
-        : XdgPopupManagerBase{in_process_server},
-          xdg_shell_surface{client, surface},
-          toplevel{xdg_shell_surface}
+    XdgPopupStableManager(wlcs::Server& server)
+        : XdgPopupManagerBase{server, std::make_shared<wlcs::Client>(server)},
+          xdg_shell_surface{std::in_place, *client, surface},
+          toplevel{std::in_place, xdg_shell_surface.value()},
+          parent{&*xdg_shell_surface}
     {
         wait_for_frame_to_render();
     }
 
+    XdgPopupStableManager(wlcs::Server& server, std::shared_ptr<wlcs::Client> client, wlcs::XdgSurfaceStable* parent)
+        : XdgPopupManagerBase{server, client},
+          parent{parent}
+    {
+    }
+
     void dispatch_until_popup_configure() override
     {
-        client.dispatch_until(
+        client->dispatch_until(
             [prev_count = popup_surface_configure_count, &current_count = popup_surface_configure_count]()
             {
                 return current_count > prev_count;
@@ -313,19 +321,19 @@ public:
 
     void setup_popup(PositionerParams const& param) override
     {
-        wlcs::XdgPositionerStable positioner{client};
+        wlcs::XdgPositionerStable positioner{*client};
         setup_positioner(positioner, param);
 
-        popup_xdg_surface.emplace(client, popup_surface.value());
+        popup_xdg_surface.emplace(*client, popup_surface.value());
 
-        popup.emplace(popup_xdg_surface.value(), &xdg_shell_surface, positioner);
+        popup.emplace(popup_xdg_surface.value(), parent, positioner);
         if (param.grab)
         {
-            if (!client.latest_serial())
+            if (!client->latest_serial())
             {
                 BOOST_THROW_EXCEPTION(std::runtime_error("client does not have a serial"));
             }
-            xdg_popup_grab(popup.value().popup, client.seat(), client.latest_serial().value());
+            xdg_popup_grab(popup.value().popup, client->seat(), client->latest_serial().value());
         }
 
         ON_CALL(popup_xdg_surface.value(), configure).WillByDefault([&](auto serial)
@@ -345,17 +353,17 @@ public:
         auto pointer = the_server.create_pointer();
         pointer.move_to(parent_position_.first + 1, parent_position_.second + 1);
         pointer.left_button_down();
-        client.roundtrip();
-        if (client.window_under_cursor() != surface)
+        client->roundtrip();
+        if (client->window_under_cursor() != surface)
         {
             BOOST_THROW_EXCEPTION(std::runtime_error("surface not detected at expected position"));
         }
-        xdg_toplevel_move(toplevel, client.seat(), client.latest_serial().value());
-        client.roundtrip();
+        xdg_toplevel_move(toplevel.value(), client->seat(), client->latest_serial().value());
+        client->roundtrip();
         pointer.move_to(to.first + 1, to.second + 1);
         parent_position_ = to;
         pointer.left_button_up();
-        client.roundtrip();
+        client->roundtrip();
     }
 
     void clear_popup() override
@@ -364,8 +372,14 @@ public:
         popup_xdg_surface = std::nullopt;
     }
 
-    wlcs::XdgSurfaceStable xdg_shell_surface;
-    wlcs::XdgToplevelStable toplevel;
+    auto create_child_popup() -> std::unique_ptr<XdgPopupManagerBase> override
+    {
+        return std::make_unique<XdgPopupStableManager>(the_server, client, &popup_xdg_surface.value());
+    }
+
+    std::optional<wlcs::XdgSurfaceStable> xdg_shell_surface;
+    std::optional<wlcs::XdgToplevelStable> toplevel;
+    wlcs::XdgSurfaceStable* const parent;
 
     std::optional<wlcs::XdgSurfaceStable> popup_xdg_surface;
     std::optional<wlcs::XdgPopupStable> popup;
@@ -376,17 +390,24 @@ public:
 class XdgPopupV6Manager : public XdgPopupManagerBase
 {
 public:
-    XdgPopupV6Manager(wlcs::InProcessServer* const in_process_server)
-        : XdgPopupManagerBase{in_process_server},
-          xdg_shell_surface{client, surface},
-          toplevel{xdg_shell_surface}
+    XdgPopupV6Manager(wlcs::Server& server)
+        : XdgPopupManagerBase{server, std::make_shared<wlcs::Client>(server)},
+          xdg_shell_surface{std::in_place, *client, surface},
+          toplevel{std::in_place, xdg_shell_surface.value()},
+          parent{&*xdg_shell_surface}
     {
         wait_for_frame_to_render();
     }
 
+    XdgPopupV6Manager(wlcs::Server& server, std::shared_ptr<wlcs::Client> client, wlcs::XdgSurfaceV6* parent)
+        : XdgPopupManagerBase{server, client},
+          parent{parent}
+    {
+    }
+
     void dispatch_until_popup_configure() override
     {
-        client.dispatch_until(
+        client->dispatch_until(
             [prev_count = popup_surface_configure_count, &current_count = popup_surface_configure_count]()
             {
                 return current_count > prev_count;
@@ -395,7 +416,7 @@ public:
 
     void setup_popup(PositionerParams const& param) override
     {
-        wlcs::XdgPositionerV6 positioner{client};
+        wlcs::XdgPositionerV6 positioner{*client};
 
         // size must always be set
         zxdg_positioner_v6_set_size(positioner, param.popup_size.first, param.popup_size.second);
@@ -432,16 +453,15 @@ public:
             zxdg_positioner_v6_set_offset(positioner, param.offset.value().first, param.offset.value().second);
         }
 
-
-        popup_xdg_surface.emplace(client, popup_surface.value());
-        popup.emplace(popup_xdg_surface.value(), xdg_shell_surface, positioner);
+        popup_xdg_surface.emplace(*client, popup_surface.value());
+        popup.emplace(popup_xdg_surface.value(), *parent, positioner);
         if (param.grab)
         {
-            if (!client.latest_serial())
+            if (!client->latest_serial())
             {
                 BOOST_THROW_EXCEPTION(std::runtime_error("client does not have a serial"));
             }
-            zxdg_popup_v6_grab(popup.value().popup, client.seat(), client.latest_serial().value());
+            zxdg_popup_v6_grab(popup.value().popup, client->seat(), client->latest_serial().value());
         }
 
         ON_CALL(popup.value(), done).WillByDefault([this](){ popup_done(); });
@@ -462,8 +482,14 @@ public:
         popup_xdg_surface = std::nullopt;
     }
 
-    wlcs::XdgSurfaceV6 xdg_shell_surface;
-    wlcs::XdgToplevelV6 toplevel;
+    auto create_child_popup() -> std::unique_ptr<XdgPopupManagerBase> override
+    {
+        return std::make_unique<XdgPopupV6Manager>(the_server, client, &popup_xdg_surface.value());
+    }
+
+    std::optional<wlcs::XdgSurfaceV6> xdg_shell_surface;
+    std::optional<wlcs::XdgToplevelV6> toplevel;
+    wlcs::XdgSurfaceV6* const parent;
 
     std::optional<wlcs::XdgSurfaceV6> popup_xdg_surface;
     std::optional<wlcs::XdgPopupV6> popup;
@@ -474,12 +500,12 @@ public:
 class LayerV1PopupManager : public XdgPopupManagerBase
 {
 public:
-    LayerV1PopupManager(wlcs::InProcessServer* const in_process_server)
-        : XdgPopupManagerBase{in_process_server},
-          layer_surface{client, surface}
+    LayerV1PopupManager(wlcs::Server& server)
+        : XdgPopupManagerBase{server, std::make_shared<wlcs::Client>(server)},
+          layer_surface{*client, surface}
     {
         {
-            wlcs::Client client{in_process_server->the_server()};
+            wlcs::Client client{server};
             auto const layer_shell = client.bind_if_supported<zwlr_layer_shell_v1>(
                 wlcs::AtLeastVersion{ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND_SINCE_VERSION});
             client.roundtrip();
@@ -493,7 +519,7 @@ public:
 
     void dispatch_until_popup_configure() override
     {
-        client.dispatch_until(
+        client->dispatch_until(
             [prev_count = popup_surface_configure_count, &current_count = popup_surface_configure_count]()
             {
                 return current_count > prev_count;
@@ -502,7 +528,7 @@ public:
 
     void setup_popup(PositionerParams const& param) override
     {
-        wlcs::XdgPositionerStable positioner{client};
+        wlcs::XdgPositionerStable positioner{*client};
 
         // size must always be set
         xdg_positioner_set_size(positioner, param.popup_size.first, param.popup_size.second);
@@ -527,17 +553,16 @@ public:
         if (param.offset)
             xdg_positioner_set_offset(positioner, param.offset.value().first, param.offset.value().second);
 
-
-        popup_xdg_surface.emplace(client, popup_surface.value());
+        popup_xdg_surface.emplace(*client, popup_surface.value());
         popup.emplace(popup_xdg_surface.value(), std::nullopt, positioner);
         zwlr_layer_surface_v1_get_popup(layer_surface, popup.value());
         if (param.grab)
         {
-            if (!client.latest_serial())
+            if (!client->latest_serial())
             {
                 BOOST_THROW_EXCEPTION(std::runtime_error("client does not have a serial"));
             }
-            xdg_popup_grab(popup.value().popup, client.seat(), client.latest_serial().value());
+            xdg_popup_grab(popup.value().popup, client->seat(), client->latest_serial().value());
         }
 
         ON_CALL(popup_xdg_surface.value(), configure).WillByDefault([&](uint32_t serial)
@@ -556,6 +581,11 @@ public:
     {
         popup = std::nullopt;
         popup_xdg_surface = std::nullopt;
+    }
+
+    auto create_child_popup() -> std::unique_ptr<XdgPopupManagerBase> override
+    {
+        return std::make_unique<XdgPopupStableManager>(the_server, client, &popup_xdg_surface.value());
     }
 
     wlcs::LayerSurfaceV1 layer_surface;
@@ -599,7 +629,7 @@ class XdgPopupPositionerTest:
 
 TEST_P(XdgPopupPositionerTest, xdg_shell_stable_popup_placed_correctly)
 {
-    auto manager = std::make_unique<XdgPopupStableManager>(this);
+    auto manager = std::make_unique<XdgPopupStableManager>(the_server());
     auto const& param = GetParam();
 
     if (param.parent_position_func)
@@ -623,7 +653,7 @@ TEST_P(XdgPopupPositionerTest, xdg_shell_stable_popup_placed_correctly)
     EXPECT_THAT(
         surface_actually_at_location(
             the_server(),
-            manager->client,
+            *manager->client,
             manager->popup_surface.value(),
             std::make_pair(
                 manager->parent_position().first + param.expected_positon.first,
@@ -633,7 +663,7 @@ TEST_P(XdgPopupPositionerTest, xdg_shell_stable_popup_placed_correctly)
 
 TEST_P(XdgPopupPositionerTest, xdg_shell_unstable_v6_popup_placed_correctly)
 {
-    auto manager = std::make_unique<XdgPopupV6Manager>(this);
+    auto manager = std::make_unique<XdgPopupV6Manager>(the_server());
     auto const& param = GetParam();
 
     if (param.parent_position_func)
@@ -657,7 +687,7 @@ TEST_P(XdgPopupPositionerTest, xdg_shell_unstable_v6_popup_placed_correctly)
     EXPECT_THAT(
         surface_actually_at_location(
             the_server(),
-            manager->client,
+            *manager->client,
             manager->popup_surface.value(),
             std::make_pair(
                 manager->parent_position().first + param.expected_positon.first,
@@ -667,7 +697,7 @@ TEST_P(XdgPopupPositionerTest, xdg_shell_unstable_v6_popup_placed_correctly)
 
 TEST_P(XdgPopupPositionerTest, layer_shell_popup_placed_correctly)
 {
-    auto manager = std::make_unique<LayerV1PopupManager>(this);
+    auto manager = std::make_unique<LayerV1PopupManager>(the_server());
     auto const& param = GetParam();
 
     if (param.parent_position_func)
@@ -680,6 +710,7 @@ TEST_P(XdgPopupPositionerTest, layer_shell_popup_placed_correctly)
         manager->state,
         Ne(std::nullopt)) << "popup configure event not sent";
 
+
     EXPECT_THAT(
         std::make_pair(manager->state.value().x, manager->state.value().y),
         Eq(param.expected_positon)) << "popup placed in incorrect position";
@@ -691,7 +722,7 @@ TEST_P(XdgPopupPositionerTest, layer_shell_popup_placed_correctly)
     EXPECT_THAT(
         surface_actually_at_location(
             the_server(),
-            manager->client,
+            *manager->client,
             manager->popup_surface.value(),
             std::make_pair(
                 manager->parent_position().first + param.expected_positon.first,
@@ -1008,21 +1039,21 @@ TEST_P(XdgPopupTest, pointer_focus_goes_to_popup)
     auto manager = param.build(this);
     auto pointer = the_server().create_pointer();
     pointer.move_to(manager->window_x + 1, manager->window_y + 1);
-    manager->client.roundtrip();
+    manager->client->roundtrip();
 
-    EXPECT_THAT(manager->client.window_under_cursor(), Eq((wl_surface*)manager->surface));
+    EXPECT_THAT(manager->client->window_under_cursor(), Eq((wl_surface*)manager->surface));
 
     auto positioner = PositionerParams{}
         .with_size(30, 30)
         .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
         .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
     manager->map_popup(positioner);
-    manager->client.roundtrip();
+    manager->client->roundtrip();
 
     pointer.move_to(manager->window_x + 2, manager->window_y + 1);
-    manager->client.roundtrip();
+    manager->client->roundtrip();
 
-    EXPECT_THAT(manager->client.window_under_cursor(), Eq((wl_surface*)manager->popup_surface.value()));
+    EXPECT_THAT(manager->client->window_under_cursor(), Eq((wl_surface*)manager->popup_surface.value()));
 }
 
 TEST_P(XdgPopupTest, popup_gives_up_pointer_focus_when_gone)
@@ -1036,19 +1067,19 @@ TEST_P(XdgPopupTest, popup_gives_up_pointer_focus_when_gone)
         .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
         .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
     manager->map_popup(positioner);
-    manager->client.roundtrip();
+    manager->client->roundtrip();
 
     pointer.move_to(manager->window_x + 2, manager->window_y + 1);
-    manager->client.roundtrip();
+    manager->client->roundtrip();
 
-    EXPECT_THAT(manager->client.window_under_cursor(), Eq((wl_surface*)manager->popup_surface.value()));
+    EXPECT_THAT(manager->client->window_under_cursor(), Eq((wl_surface*)manager->popup_surface.value()));
 
     manager->unmap_popup();
-    manager->client.roundtrip();
+    manager->client->roundtrip();
     pointer.move_to(manager->window_x + 3, manager->window_y + 1);
-    manager->client.roundtrip();
+    manager->client->roundtrip();
 
-    EXPECT_THAT(manager->client.window_under_cursor(), Eq((wl_surface*)manager->surface));
+    EXPECT_THAT(manager->client->window_under_cursor(), Eq((wl_surface*)manager->surface));
 }
 
 TEST_P(XdgPopupTest, grabbed_popup_gets_done_event_when_new_toplevel_created)
@@ -1060,7 +1091,7 @@ TEST_P(XdgPopupTest, grabbed_popup_gets_done_event_when_new_toplevel_created)
     // This is needed to get a serial, which will be used later on
     pointer.move_to(manager->window_x + 2, manager->window_y + 2);
     pointer.left_click();
-    manager->client.roundtrip();
+    manager->client->roundtrip();
 
     auto positioner = PositionerParams{}
         .with_size(30, 30)
@@ -1068,11 +1099,52 @@ TEST_P(XdgPopupTest, grabbed_popup_gets_done_event_when_new_toplevel_created)
         .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT)
         .with_grab();
     manager->map_popup(positioner);
-    manager->client.roundtrip();
+    manager->client->roundtrip();
 
     EXPECT_CALL(*manager, popup_done());
 
-    manager->client.create_visible_surface(window_width, window_height);
+    manager->client->create_visible_surface(window_width, window_height);
+}
+
+TEST_P(XdgPopupTest, grabbed_popups_get_done_events_in_correct_order)
+{
+    auto const& param = GetParam();
+
+    wlcs::Client background_client{the_server()};
+    wlcs::Surface background_surface{background_client.create_visible_surface(10, 10)};
+    the_server().move_surface_to(
+        background_surface,
+        XdgPopupManagerBase::window_x - 5,
+        XdgPopupManagerBase::window_y - 5);
+
+    auto top_popup_manager = param.build(this);
+    auto pointer = the_server().create_pointer();
+
+    // This is needed to get a serial, which will be used later on
+    pointer.move_to(top_popup_manager->window_x + 2, top_popup_manager->window_y + 2);
+    pointer.left_click();
+    top_popup_manager->client->roundtrip();
+
+    auto positioner = PositionerParams{}
+        .with_anchor_rect(20, 20, 1, 1)
+        .with_size(30, 30)
+        .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
+        .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT)
+        .with_grab();
+    top_popup_manager->map_popup(positioner);
+    top_popup_manager->client->roundtrip();
+    auto sub_popup_manager = top_popup_manager->create_child_popup();
+    sub_popup_manager->map_popup(positioner);
+    top_popup_manager->client->roundtrip();
+
+    InSequence seq;
+    EXPECT_CALL(*sub_popup_manager, popup_done());
+    EXPECT_CALL(*top_popup_manager, popup_done());
+
+    // Click on background surface so it is focused and grabbed popups are dismissed
+    pointer.move_to(top_popup_manager->window_x - 2, top_popup_manager->window_y - 2);
+    pointer.left_click();
+    top_popup_manager->client->roundtrip();
 }
 
 TEST_P(XdgPopupTest, grabbed_popup_gets_keyboard_focus)
@@ -1084,7 +1156,7 @@ TEST_P(XdgPopupTest, grabbed_popup_gets_keyboard_focus)
     // This is needed to get a serial, which will be used later on
     pointer.move_to(manager->window_x + 2, manager->window_y + 2);
     pointer.left_click();
-    manager->client.roundtrip();
+    manager->client->roundtrip();
 
     auto positioner = PositionerParams{}
         .with_size(30, 30)
@@ -1092,10 +1164,10 @@ TEST_P(XdgPopupTest, grabbed_popup_gets_keyboard_focus)
         .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT)
         .with_grab();
     manager->map_popup(positioner);
-    manager->client.roundtrip();
+    manager->client->roundtrip();
 
     EXPECT_THAT(
-        manager->client.keyboard_focused_window(),
+        manager->client->keyboard_focused_window(),
         Eq(static_cast<wl_surface*>(manager->popup_surface.value())))
         << "grabbed popup not given keyboard focus";
 }
@@ -1110,14 +1182,14 @@ TEST_P(XdgPopupTest, non_grabbed_popup_does_not_get_keyboard_focus)
         .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
         .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
     manager->map_popup(positioner);
-    manager->client.roundtrip();
+    manager->client->roundtrip();
 
     EXPECT_THAT(
-        manager->client.keyboard_focused_window(),
+        manager->client->keyboard_focused_window(),
         Ne(static_cast<wl_surface*>(manager->popup_surface.value())))
         << "popup given keyboard focus";
     EXPECT_THAT(
-        manager->client.keyboard_focused_window(),
+        manager->client->keyboard_focused_window(),
         Eq(static_cast<wl_surface*>(manager->surface)));
 }
 
@@ -1130,7 +1202,7 @@ TEST_P(XdgPopupTest, does_not_get_popup_done_event_before_button_press)
     // This is needed to get a serial, which will be used later on
     pointer.move_to(manager->window_x + 2, manager->window_y + 2);
     pointer.left_click();
-    manager->client.roundtrip();
+    manager->client->roundtrip();
 
     auto positioner = PositionerParams{}
         .with_size(30, 30)
@@ -1138,7 +1210,7 @@ TEST_P(XdgPopupTest, does_not_get_popup_done_event_before_button_press)
         .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT)
         .with_grab();
     manager->map_popup(positioner);
-    manager->client.roundtrip();
+    manager->client->roundtrip();
 
     // This may or may not be sent, but a button press should not come in after it if it is sent
     bool got_popup_done = false;
@@ -1147,7 +1219,7 @@ TEST_P(XdgPopupTest, does_not_get_popup_done_event_before_button_press)
             got_popup_done = true;
         });
 
-    manager->client.add_pointer_button_notification([&](auto, auto, auto)
+    manager->client->add_pointer_button_notification([&](auto, auto, auto)
         {
             EXPECT_THAT(got_popup_done, IsFalse()) << "pointer button sent after popup done";
             return true;
@@ -1155,18 +1227,18 @@ TEST_P(XdgPopupTest, does_not_get_popup_done_event_before_button_press)
 
     pointer.move_to(manager->window_x + 32, manager->window_y + 32);
     pointer.left_click();
-    manager->client.roundtrip();
+    manager->client->roundtrip();
 }
 
 TEST_F(XdgPopupTest, zero_size_anchor_rect_stable)
 {
-    auto manager = std::make_unique<XdgPopupStableManager>(this);
+    auto manager = std::make_unique<XdgPopupStableManager>(the_server());
 
     auto positioner = PositionerParams{}
         .with_anchor_rect(window_width / 2, window_height / 2, 0, 0);
 
     manager->map_popup(positioner);
-    manager->client.roundtrip();
+    manager->client->roundtrip();
 
     ASSERT_THAT(
         std::make_pair(manager->state.value().x, manager->state.value().y),
@@ -1186,7 +1258,7 @@ TEST_P(XdgPopupTest, popup_configure_is_valid)
         .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
         .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
     manager->map_popup(positioner);
-    manager->client.roundtrip();
+    manager->client->roundtrip();
 
     ASSERT_THAT(manager->state, Ne(std::nullopt));
     EXPECT_THAT(manager->state.value().width, Gt(0));
@@ -1195,9 +1267,9 @@ TEST_P(XdgPopupTest, popup_configure_is_valid)
 
 TEST_F(XdgPopupTest, when_parent_surface_is_moved_a_reactive_popup_is_moved)
 {
-    XdgPopupStableManager manager{this};
+    XdgPopupStableManager manager{the_server()};
 
-    manager.client.bind_if_supported<xdg_wm_base>(wlcs::AtLeastVersion{XDG_POSITIONER_SET_REACTIVE_SINCE_VERSION});
+    manager.client->bind_if_supported<xdg_wm_base>(wlcs::AtLeastVersion{XDG_POSITIONER_SET_REACTIVE_SINCE_VERSION});
 
     auto positioner = PositionerParams{}
         .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
@@ -1209,7 +1281,7 @@ TEST_F(XdgPopupTest, when_parent_surface_is_moved_a_reactive_popup_is_moved)
     manager.map_popup(positioner);
     // repositioned should not be called unless reposition is called
     EXPECT_CALL(manager.popup.value(), repositioned).Times(0);
-    manager.client.roundtrip();
+    manager.client->roundtrip();
 
     ASSERT_THAT(
         manager.state,
@@ -1232,7 +1304,7 @@ TEST_F(XdgPopupTest, when_parent_surface_is_moved_a_reactive_popup_is_moved)
     EXPECT_THAT(
         surface_actually_at_location(
             the_server(),
-            manager.client,
+            *manager.client,
             manager.popup_surface.value(),
             std::make_pair(0, 0)),
         IsTrue());
@@ -1240,9 +1312,9 @@ TEST_F(XdgPopupTest, when_parent_surface_is_moved_a_reactive_popup_is_moved)
 
 TEST_F(XdgPopupTest, when_parent_surface_is_moved_a_nonreactive_popup_is_not_moved)
 {
-    XdgPopupStableManager manager{this};
+    XdgPopupStableManager manager{the_server()};
 
-    manager.client.bind_if_supported<xdg_wm_base>(wlcs::AtLeastVersion{XDG_POSITIONER_SET_REACTIVE_SINCE_VERSION});
+    manager.client->bind_if_supported<xdg_wm_base>(wlcs::AtLeastVersion{XDG_POSITIONER_SET_REACTIVE_SINCE_VERSION});
 
     auto positioner = PositionerParams{}
         .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
@@ -1253,7 +1325,7 @@ TEST_F(XdgPopupTest, when_parent_surface_is_moved_a_nonreactive_popup_is_not_mov
     manager.map_popup(positioner);
     // repositioned should not be called unless reposition is called
     EXPECT_CALL(manager.popup.value(), repositioned).Times(0);
-    manager.client.roundtrip();
+    manager.client->roundtrip();
 
     ASSERT_THAT(
         manager.state,
@@ -1272,7 +1344,7 @@ TEST_F(XdgPopupTest, when_parent_surface_is_moved_a_nonreactive_popup_is_not_mov
     EXPECT_THAT(
         surface_actually_at_location(
             the_server(),
-            manager.client,
+            *manager.client,
             manager.popup_surface.value(),
             std::make_pair(5 - popup_width, 5 - popup_height)),
         IsTrue());
@@ -1280,9 +1352,9 @@ TEST_F(XdgPopupTest, when_parent_surface_is_moved_a_nonreactive_popup_is_not_mov
 
 TEST_F(XdgPopupTest, popup_can_be_repositioned)
 {
-    XdgPopupStableManager manager{this};
+    XdgPopupStableManager manager{the_server()};
 
-    manager.client.bind_if_supported<xdg_wm_base>(wlcs::AtLeastVersion{XDG_POPUP_REPOSITION_SINCE_VERSION});
+    manager.client->bind_if_supported<xdg_wm_base>(wlcs::AtLeastVersion{XDG_POPUP_REPOSITION_SINCE_VERSION});
 
     auto positioner_a = PositionerParams{}
         .with_anchor(XDG_POSITIONER_ANCHOR_TOP_LEFT)
@@ -1290,16 +1362,16 @@ TEST_F(XdgPopupTest, popup_can_be_repositioned)
 
     manager.map_popup(positioner_a);
     EXPECT_CALL(manager.popup.value(), repositioned).Times(0);
-    manager.client.roundtrip();
+    manager.client->roundtrip();
 
     auto positioner_b = PositionerParams{}
         .with_anchor(XDG_POSITIONER_ANCHOR_BOTTOM_RIGHT)
         .with_gravity(XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
-    wlcs::XdgPositionerStable xdg_positioner{manager.client};
+    wlcs::XdgPositionerStable xdg_positioner{*manager.client};
     XdgPopupStableManager::setup_positioner(xdg_positioner, positioner_b);
     xdg_popup_reposition(manager.popup.value(), xdg_positioner, 1);
     EXPECT_CALL(manager.popup.value(), repositioned(1));
-    manager.client.roundtrip();
+    manager.client->roundtrip();
 
     ASSERT_THAT(
         manager.state,
@@ -1312,7 +1384,7 @@ TEST_F(XdgPopupTest, popup_can_be_repositioned)
     EXPECT_THAT(
         surface_actually_at_location(
             the_server(),
-            manager.client,
+            *manager.client,
             manager.popup_surface.value(),
             std::make_pair(
                 manager.parent_position().first + window_width,
@@ -1326,7 +1398,7 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Values(XdgPopupTestParam{
         [](wlcs::InProcessServer* const server)
         {
-            return std::make_unique<XdgPopupStableManager>(server);
+            return std::make_unique<XdgPopupStableManager>(server->the_server());
         }}));
 
 INSTANTIATE_TEST_SUITE_P(
@@ -1335,7 +1407,7 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Values(XdgPopupTestParam{
         [](wlcs::InProcessServer* const server)
         {
-            return std::make_unique<XdgPopupV6Manager>(server);
+            return std::make_unique<XdgPopupV6Manager>(server->the_server());
         }}));
 
 INSTANTIATE_TEST_SUITE_P(
@@ -1344,7 +1416,7 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Values(XdgPopupTestParam{
         [](wlcs::InProcessServer* const server)
         {
-            return std::make_unique<LayerV1PopupManager>(server);
+            return std::make_unique<LayerV1PopupManager>(server->the_server());
         }}));
 
 // TODO: test that positioner is always overlapping or adjacent to parent

@@ -27,6 +27,7 @@
 #include "wl_handle.h"
 
 #include <memory>
+#include <optional>
 
 namespace wlcs
 {
