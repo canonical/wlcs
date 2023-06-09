@@ -73,3 +73,19 @@ TEST_F(FrameSubmission, post_one_frame_at_a_time)
         EXPECT_THAT(frame_consumed, Eq(true));
     }
 }
+
+// Regression test for https://github.com/MirServer/mir/issues/2960
+TEST_F(FrameSubmission, test_buffer_can_be_deleted_after_attached)
+{
+    using namespace testing;
+
+    wlcs::Client client{the_server()};
+    auto surface = client.create_visible_surface(200, 200);
+
+    auto buffer = std::make_shared<wlcs::ShmBuffer>(client, 200, 200);
+    wl_surface_attach(surface, *buffer, 0, 0);
+    buffer.reset();
+    wl_surface_commit(surface);
+
+    client.roundtrip();
+}
