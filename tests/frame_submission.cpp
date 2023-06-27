@@ -50,7 +50,8 @@ void FrameSubmission::submit_frame(bool& consumed_flag)
 
     consumed_flag = false;
     wl_callback_add_listener(wl_surface_frame(surface), &frame_listener, &consumed_flag);
-    wl_surface_damage(surface, 0, 0, 200, 200);
+    auto buffer = std::make_shared<wlcs::ShmBuffer>(client, 200, 200);
+    wl_surface_attach(surface, *buffer, 0, 0);
     wl_surface_commit(surface);
 }
 
