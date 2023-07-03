@@ -534,11 +534,18 @@ TEST_F(ClientSurfaceEventsTest, frame_timestamp_increases)
     usleep(10000);
 
     wl_surface_attach(surface, buffers[2], 0, 0);
+    surface.add_frame_callback(
+        [&](int time)
+        {
+            EXPECT_THAT(time, Gt(prev_frame_time));
+            prev_frame_time = time;
+            frame_callback_count++;
+        });
     wl_surface_commit(surface);
 
     client.dispatch_until([&frame_callback_count]()
         {
-            return frame_callback_count >= 2;
+            return frame_callback_count == 2;
         });
 }
 
