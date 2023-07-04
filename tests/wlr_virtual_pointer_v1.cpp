@@ -23,8 +23,10 @@
 
 #include "linux/input.h"
 #include <gmock/gmock.h>
+#include <thread>
 
 using namespace testing;
+using namespace std::chrono_literals;
 
 namespace wlcs
 {
@@ -122,13 +124,15 @@ TEST_F(VirtualPointerV1Test, when_virtual_pointer_is_moved_client_sees_motion)
     EXPECT_CALL(listener, motion(_,
         wl_fixed_from_int(pointer_start_x + motion_x),
         wl_fixed_from_int(pointer_start_y + motion_y)));
-    EXPECT_CALL(listener, frame()).Times(AtLeast(1));
+
+    auto recieved_frame = false;
+    EXPECT_CALL(listener, frame()).Times(AtLeast(1)).WillOnce(Invoke([&]{ recieved_frame = true; }));
 
     auto const handle = zwlr_virtual_pointer_manager_v1_create_virtual_pointer(manager, nullptr);
     zwlr_virtual_pointer_v1_motion(handle, 0, wl_fixed_from_int(motion_x), wl_fixed_from_int(motion_y));
     zwlr_virtual_pointer_v1_frame(handle);
     send_client.roundtrip();
-    receive_client.roundtrip();
+    receive_client.dispatch_until([&] { return recieved_frame; });
 }
 
 TEST_F(VirtualPointerV1Test, when_virtual_pointer_is_moved_multiple_times_client_sees_motion)
@@ -141,96 +145,106 @@ TEST_F(VirtualPointerV1Test, when_virtual_pointer_is_moved_multiple_times_client
     auto const handle = zwlr_virtual_pointer_manager_v1_create_virtual_pointer(manager, nullptr);
 
     EXPECT_CALL(listener, motion(_, _, _)).Times(AnyNumber());
-    EXPECT_CALL(listener, frame()).Times(AnyNumber());
+    auto recieved_frame = false;
+    EXPECT_CALL(listener, frame()).Times(AnyNumber()).WillOnce(Invoke([&]{ recieved_frame = true; }));
     zwlr_virtual_pointer_v1_motion(handle, 0, wl_fixed_from_int(motion1_x), wl_fixed_from_int(motion1_y));
     zwlr_virtual_pointer_v1_frame(handle);
     send_client.roundtrip();
-    receive_client.roundtrip();
+    receive_client.dispatch_until([&] { return recieved_frame; });
 
     EXPECT_CALL(listener, motion(_,
         wl_fixed_from_int(pointer_start_x + motion1_x + motion2_x),
         wl_fixed_from_int(pointer_start_y + motion1_y + motion2_y)));
-    EXPECT_CALL(listener, frame()).Times(AtLeast(1));
+    recieved_frame = false;
+    EXPECT_CALL(listener, frame()).Times(AtLeast(1)).WillOnce(Invoke([&]{ recieved_frame = true; }));
     zwlr_virtual_pointer_v1_motion(handle, 0, wl_fixed_from_int(motion2_x), wl_fixed_from_int(motion2_y));
     zwlr_virtual_pointer_v1_frame(handle);
     send_client.roundtrip();
-    receive_client.roundtrip();
+    receive_client.dispatch_until([&] { return recieved_frame; });
 }
 
 TEST_F(VirtualPointerV1Test, when_virtual_pointer_left_clicks_client_sees_button_down)
 {
     EXPECT_CALL(listener, button(_, _, BTN_LEFT, WL_POINTER_BUTTON_STATE_PRESSED));
-    EXPECT_CALL(listener, frame()).Times(AtLeast(1));
+    auto recieved_frame = false;
+    EXPECT_CALL(listener, frame()).Times(AtLeast(1)).WillOnce(Invoke([&]{ recieved_frame = true; }));
     auto const handle = zwlr_virtual_pointer_manager_v1_create_virtual_pointer(manager, nullptr);
     zwlr_virtual_pointer_v1_button(handle, 0, BTN_LEFT, WL_POINTER_BUTTON_STATE_PRESSED);
     zwlr_virtual_pointer_v1_frame(handle);
     send_client.roundtrip();
-    receive_client.roundtrip();
+    receive_client.dispatch_until([&] { return recieved_frame; });
 }
 
 TEST_F(VirtualPointerV1Test, when_virtual_pointer_left_releases_client_sees_button_up)
 {
     EXPECT_CALL(listener, button(_, _, _, _)).Times(AnyNumber());
-    EXPECT_CALL(listener, frame()).Times(AnyNumber());
+    auto recieved_frame = false;
+    EXPECT_CALL(listener, frame()).Times(AnyNumber()).WillOnce(Invoke([&]{ recieved_frame = true; }));
     auto const handle = zwlr_virtual_pointer_manager_v1_create_virtual_pointer(manager, nullptr);
     zwlr_virtual_pointer_v1_button(handle, 0, BTN_LEFT, WL_POINTER_BUTTON_STATE_PRESSED);
     zwlr_virtual_pointer_v1_frame(handle);
     send_client.roundtrip();
-    receive_client.roundtrip();
+    receive_client.dispatch_until([&] { return recieved_frame; });
     Mock::VerifyAndClearExpectations(&listener);
 
     EXPECT_CALL(listener, button(_, _, BTN_LEFT, WL_POINTER_BUTTON_STATE_RELEASED));
-    EXPECT_CALL(listener, frame()).Times(AtLeast(1));
+    recieved_frame = false;
+    EXPECT_CALL(listener, frame()).Times(AtLeast(1)).WillOnce(Invoke([&]{ recieved_frame = true; }));
     zwlr_virtual_pointer_v1_button(handle, 0, BTN_LEFT, WL_POINTER_BUTTON_STATE_RELEASED);
     zwlr_virtual_pointer_v1_frame(handle);
     send_client.roundtrip();
-    receive_client.roundtrip();
+    receive_client.dispatch_until([&] { return recieved_frame; });
 }
 
 TEST_F(VirtualPointerV1Test, when_virtual_pointer_given_multiple_button_presses_at_once_client_sees_all)
 {
     EXPECT_CALL(listener, button(_, _, BTN_LEFT, WL_POINTER_BUTTON_STATE_PRESSED));
     EXPECT_CALL(listener, button(_, _, BTN_MIDDLE, WL_POINTER_BUTTON_STATE_PRESSED));
-    EXPECT_CALL(listener, frame()).Times(AtLeast(1));
+    auto recieved_frame = false;
+    EXPECT_CALL(listener, frame()).Times(AtLeast(1)).WillOnce(Invoke([&]{ recieved_frame = true; }));
     auto const handle = zwlr_virtual_pointer_manager_v1_create_virtual_pointer(manager, nullptr);
     zwlr_virtual_pointer_v1_button(handle, 0, BTN_LEFT, WL_POINTER_BUTTON_STATE_PRESSED);
     zwlr_virtual_pointer_v1_button(handle, 0, BTN_MIDDLE, WL_POINTER_BUTTON_STATE_PRESSED);
     zwlr_virtual_pointer_v1_frame(handle);
     send_client.roundtrip();
-    receive_client.roundtrip();
+    receive_client.dispatch_until([&] { return recieved_frame; });
 }
 
 TEST_F(VirtualPointerV1Test, when_virtual_pointer_presses_and_releases_different_buttons_on_same_frame_client_sees_correct_events)
 {
     EXPECT_CALL(listener, button(_, _, _, _)).Times(AnyNumber());
-    EXPECT_CALL(listener, frame()).Times(AnyNumber());
+    auto recieved_frame = false;
+    EXPECT_CALL(listener, frame()).Times(AnyNumber()).WillRepeatedly(Invoke([&]{ recieved_frame = true; }));
     auto const handle = zwlr_virtual_pointer_manager_v1_create_virtual_pointer(manager, nullptr);
     zwlr_virtual_pointer_v1_button(handle, 0, BTN_LEFT, WL_POINTER_BUTTON_STATE_PRESSED);
     zwlr_virtual_pointer_v1_frame(handle);
     send_client.roundtrip();
-    receive_client.roundtrip();
+    receive_client.dispatch_until([&] { return recieved_frame; });
     Mock::VerifyAndClearExpectations(&listener);
 
     EXPECT_CALL(listener, button(_, _, BTN_LEFT, WL_POINTER_BUTTON_STATE_RELEASED));
     EXPECT_CALL(listener, button(_, _, BTN_RIGHT, WL_POINTER_BUTTON_STATE_PRESSED));
-    EXPECT_CALL(listener, frame()).Times(AtLeast(1));
+    recieved_frame = false;
+    EXPECT_CALL(listener, frame()).Times(AtLeast(1)).WillOnce(Invoke([&]{ recieved_frame = true; }));
     zwlr_virtual_pointer_v1_button(handle, 0, BTN_LEFT, WL_POINTER_BUTTON_STATE_RELEASED);
     zwlr_virtual_pointer_v1_button(handle, 0, BTN_RIGHT, WL_POINTER_BUTTON_STATE_PRESSED);
     zwlr_virtual_pointer_v1_frame(handle);
     send_client.roundtrip();
-    receive_client.roundtrip();
+    receive_client.dispatch_until([&] { return recieved_frame; });
+    receive_client.roundtrip(); // This is a hack around https://github.com/MirServer/mir/issues/2971
 }
 
 TEST_F(VirtualPointerV1Test, when_virtual_pointer_scrolls_client_sees_axis)
 {
     EXPECT_CALL(listener, axis(_, WL_POINTER_AXIS_VERTICAL_SCROLL, wl_fixed_from_int(5)));
     EXPECT_CALL(listener, axis_source(_)).Times(AnyNumber());
-    EXPECT_CALL(listener, frame()).Times(AtLeast(1));
+    auto recieved_frame = false;
+    EXPECT_CALL(listener, frame()).Times(AtLeast(1)).WillOnce(Invoke([&]{ recieved_frame = true; }));
     auto const handle = zwlr_virtual_pointer_manager_v1_create_virtual_pointer(manager, nullptr);
     zwlr_virtual_pointer_v1_axis(handle, 0, WL_POINTER_AXIS_VERTICAL_SCROLL, wl_fixed_from_int(5));
     zwlr_virtual_pointer_v1_frame(handle);
     send_client.roundtrip();
-    receive_client.roundtrip();
+    receive_client.dispatch_until([&] { return recieved_frame; });
 }
 
 TEST_F(VirtualPointerV1Test, when_virtual_pointer_scrolls_with_steps_client_sees_axis_descrete)
@@ -238,31 +252,34 @@ TEST_F(VirtualPointerV1Test, when_virtual_pointer_scrolls_with_steps_client_sees
     EXPECT_CALL(listener, axis(_, WL_POINTER_AXIS_HORIZONTAL_SCROLL, wl_fixed_from_int(5)));
     EXPECT_CALL(listener, axis_discrete(WL_POINTER_AXIS_HORIZONTAL_SCROLL, 4));
     EXPECT_CALL(listener, axis_source(_)).Times(AnyNumber());
-    EXPECT_CALL(listener, frame()).Times(AtLeast(1));
+    auto recieved_frame = false;
+    EXPECT_CALL(listener, frame()).Times(AtLeast(1)).WillOnce(Invoke([&]{ recieved_frame = true; }));
     auto const handle = zwlr_virtual_pointer_manager_v1_create_virtual_pointer(manager, nullptr);
     zwlr_virtual_pointer_v1_axis_discrete(handle, 0, WL_POINTER_AXIS_HORIZONTAL_SCROLL, wl_fixed_from_int(5), 4);
     zwlr_virtual_pointer_v1_frame(handle);
     send_client.roundtrip();
-    receive_client.roundtrip();
+    receive_client.dispatch_until([&] { return recieved_frame; });
 }
 
 TEST_F(VirtualPointerV1Test, when_virtual_pointer_specifies_axis_source_client_sees_axis_source)
 {
     EXPECT_CALL(listener, axis(_, _, _)).Times(AnyNumber());
     EXPECT_CALL(listener, axis_source(WL_POINTER_AXIS_SOURCE_CONTINUOUS));
-    EXPECT_CALL(listener, frame()).Times(AtLeast(1));
+    auto recieved_frame = false;
+    EXPECT_CALL(listener, frame()).Times(AtLeast(1)).WillOnce(Invoke([&]{ recieved_frame = true; }));
     auto const handle = zwlr_virtual_pointer_manager_v1_create_virtual_pointer(manager, nullptr);
     zwlr_virtual_pointer_v1_axis(handle, 0, WL_POINTER_AXIS_VERTICAL_SCROLL, wl_fixed_from_int(5));
     zwlr_virtual_pointer_v1_axis_source(handle, WL_POINTER_AXIS_SOURCE_CONTINUOUS);
     zwlr_virtual_pointer_v1_frame(handle);
     send_client.roundtrip();
-    receive_client.roundtrip();
-    EXPECT_CALL(listener, axis_source(WL_POINTER_AXIS_SOURCE_WHEEL));
+    receive_client.dispatch_until([&] { return recieved_frame; });
+    auto axis_source = false;
+    EXPECT_CALL(listener, axis_source(WL_POINTER_AXIS_SOURCE_WHEEL)).WillOnce(Invoke([&]{ axis_source = true; }));
     zwlr_virtual_pointer_v1_axis(handle, 0, WL_POINTER_AXIS_VERTICAL_SCROLL, wl_fixed_from_int(5));
     zwlr_virtual_pointer_v1_axis_source(handle, WL_POINTER_AXIS_SOURCE_WHEEL);
     zwlr_virtual_pointer_v1_frame(handle);
     send_client.roundtrip();
-    receive_client.roundtrip();
+    receive_client.dispatch_until([&] { return axis_source; });
 }
 
 TEST_F(VirtualPointerV1Test, if_frame_is_not_sent_client_sees_no_events)
@@ -275,6 +292,7 @@ TEST_F(VirtualPointerV1Test, if_frame_is_not_sent_client_sees_no_events)
     zwlr_virtual_pointer_v1_axis_source(handle, WL_POINTER_AXIS_SOURCE_WHEEL);
     // Should produce no events because there has been no frame
     send_client.roundtrip();
+    std::this_thread::sleep_for(1ms);
     receive_client.roundtrip();
 }
 
@@ -294,13 +312,14 @@ TEST_F(VirtualPointerV1Test, when_virtual_pointer_is_moved_with_absolute_coordin
     EXPECT_CALL(listener, motion(_,
         wl_fixed_from_int(move_to_x),
         wl_fixed_from_int(move_to_y)));
-    EXPECT_CALL(listener, frame()).Times(AtLeast(1));
+    auto recieved_frame = false;
+    EXPECT_CALL(listener, frame()).Times(AtLeast(1)).WillOnce(Invoke([&]{ recieved_frame = true; }));
 
     auto const handle = zwlr_virtual_pointer_manager_v1_create_virtual_pointer(manager, nullptr);
     zwlr_virtual_pointer_v1_motion_absolute(handle, 0, move_to_x, move_to_y, output_size.first, output_size.second);
     zwlr_virtual_pointer_v1_frame(handle);
     send_client.roundtrip();
-    receive_client.roundtrip();
+    receive_client.dispatch_until([&] { return recieved_frame; });
 }
 
 TEST_F(VirtualPointerV1Test, when_virtual_pointer_is_moved_with_absolute_coordinates_with_the_extent_twice_of_the_output_client_sees_motion)
@@ -319,7 +338,8 @@ TEST_F(VirtualPointerV1Test, when_virtual_pointer_is_moved_with_absolute_coordin
     EXPECT_CALL(listener, motion(_,
         wl_fixed_from_int(move_to_x),
         wl_fixed_from_int(move_to_y)));
-    EXPECT_CALL(listener, frame()).Times(AtLeast(1));
+    auto recieved_frame = false;
+    EXPECT_CALL(listener, frame()).Times(AtLeast(1)).WillOnce(Invoke([&]{ recieved_frame = true; }));
 
     auto const handle = zwlr_virtual_pointer_manager_v1_create_virtual_pointer(manager, nullptr);
     zwlr_virtual_pointer_v1_motion_absolute(
@@ -328,5 +348,5 @@ TEST_F(VirtualPointerV1Test, when_virtual_pointer_is_moved_with_absolute_coordin
         output_size.first * 2, output_size.second * 2);
     zwlr_virtual_pointer_v1_frame(handle);
     send_client.roundtrip();
-    receive_client.roundtrip();
+    receive_client.dispatch_until([&] { return recieved_frame; });
 }
