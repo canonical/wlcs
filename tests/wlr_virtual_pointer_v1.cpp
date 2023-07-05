@@ -231,7 +231,10 @@ TEST_F(VirtualPointerV1Test, when_virtual_pointer_presses_and_releases_different
     zwlr_virtual_pointer_v1_frame(handle);
     send_client.roundtrip();
     receive_client.dispatch_until([&] { return recieved_frame; });
-    receive_client.roundtrip(); // This is a hack around https://github.com/MirServer/mir/issues/2971
+
+    // This is a hack around https://github.com/MirServer/mir/issues/2971
+    std::this_thread::sleep_for(1ms);
+    receive_client.roundtrip();
 }
 
 TEST_F(VirtualPointerV1Test, when_virtual_pointer_scrolls_client_sees_axis)
