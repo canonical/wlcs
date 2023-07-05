@@ -291,6 +291,12 @@ TEST_F(VirtualPointerV1Test, if_frame_is_not_sent_client_sees_no_events)
     zwlr_virtual_pointer_v1_axis(handle, 0, WL_POINTER_AXIS_VERTICAL_SCROLL, wl_fixed_from_int(5));
     zwlr_virtual_pointer_v1_axis_source(handle, WL_POINTER_AXIS_SOURCE_WHEEL);
     // Should produce no events because there has been no frame
+    EXPECT_CALL(listener, motion(_,_,_)).Times(0);
+    EXPECT_CALL(listener, button(_,_,_,_)).Times(0);
+    EXPECT_CALL(listener, axis(_,_,_)).Times(0);
+    EXPECT_CALL(listener, axis_source(_)).Times(0);
+    EXPECT_CALL(listener, frame()).Times(0);
+
     send_client.roundtrip();
     std::this_thread::sleep_for(1ms);
     receive_client.roundtrip();
