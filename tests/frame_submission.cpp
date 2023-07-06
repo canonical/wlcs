@@ -50,7 +50,8 @@ void FrameSubmission::submit_frame(bool& consumed_flag)
 
     consumed_flag = false;
     wl_callback_add_listener(wl_surface_frame(surface), &frame_listener, &consumed_flag);
-    wl_surface_damage(surface, 0, 0, 200, 200);
+    auto buffer = std::make_shared<wlcs::ShmBuffer>(client, 200, 200);
+    wl_surface_attach(surface, *buffer, 0, 0);
     wl_surface_commit(surface);
 }
 
@@ -97,4 +98,49 @@ TEST_F(FrameSubmission, test_buffer_can_be_deleted_after_attached)
 
     // Roundtrip to ensure the server has processed our weirdness
     client.roundtrip();
+}
+
+/* Firefox has a lovely habit of sending an endless stream of
+ * wl_surface.frame() requests (maybe it's trying to estimate vsync?!)
+ *
+ * If a compositor responds immediately to the frame on commit, Firefox
+ * ends up looping endlessly. If the compositor *doesn't* respond to the frame
+ * request, Firefox decides not to draw anything. 🤷‍♀️
+ */
+TEST_F(FrameSubmission, when_client_endlessly_requests_frame_then_callbacks_are_throttled)
+{
+    using namespace testing;
+    using namespace std::chrono_literals;
+
+    wlcs::Client annoying_client{the_server()};
+    auto surface = client.create_visible_surface(200, 200);
+
+    bool frame_callback_called{false};
+
+    wl_callback_listener const listener = {
+        .done = [](void* data, struct wl_callback* callback, [[maybe_unused]]uint32_t timestamp)
+        {
+            wl_callback_destroy(callback);
+
+            auto callback_called = static_cast<bool*>(data);
+            *callback_called = true;
+        }
+    };
+
+    auto const timeout = std::chrono::steady_clock::now() + 10s;
+
+    do
+    {
+        frame_callback_called = false;
+        wl_callback_add_listener(wl_surface_frame(surface), &listener, &frame_callback_called);
+        wl_surface_commit(surface);
+        client.roundtrip();
+            /* This roundtrip ensures the server has processed everything prior.
+             * In particular, if the server sends the frame callback in response to wl_surface.commit, that frame callback
+             * will have been processed by now.
+             */
+    }
+    while (frame_callback_called && std::chrono::steady_clock::now() < timeout);
+
+    EXPECT_THAT(std::chrono::steady_clock::now(), Lt(timeout)) << "Timed out looping in frame callback storm";
 }

@@ -516,15 +516,18 @@ TEST_F(ClientSurfaceEventsTest, frame_timestamp_increases)
     wl_surface_attach(surface, buffers[0], 0, 0);
     wl_surface_attach(surface, buffers[1], 0, 0);
 
-    int prev_frame_time = 0;
+    uint32_t prev_frame_time = 0;
     int frame_callback_count = 0;
-    surface.add_frame_callback(
-        [&](int time)
+
+    auto const check_time_and_increment_count =
+        [&](uint32_t timestamp)
         {
-            EXPECT_THAT(time, Gt(prev_frame_time));
-            prev_frame_time = time;
+            EXPECT_THAT(timestamp, Gt(prev_frame_time));
+            prev_frame_time = timestamp;
             frame_callback_count++;
-        });
+        };
+
+    surface.add_frame_callback(check_time_and_increment_count);
     wl_surface_commit(surface);
 
     /**
@@ -534,11 +537,12 @@ TEST_F(ClientSurfaceEventsTest, frame_timestamp_increases)
     usleep(10000);
 
     wl_surface_attach(surface, buffers[2], 0, 0);
+    surface.add_frame_callback(check_time_and_increment_count);
     wl_surface_commit(surface);
 
     client.dispatch_until([&frame_callback_count]()
         {
-            return frame_callback_count >= 2;
+            return frame_callback_count == 2;
         });
 }
 
