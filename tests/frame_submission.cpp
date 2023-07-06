@@ -107,7 +107,7 @@ TEST_F(FrameSubmission, test_buffer_can_be_deleted_after_attached)
  * ends up looping endlessly. If the compositor *doesn't* respond to the frame
  * request, Firefox decides not to draw anything. 🤷‍♀️
  */
-TEST_F(FrameSubmission, test_frame_callback_storm)
+TEST_F(FrameSubmission, when_client_endlessly_requests_frame_then_callbacks_are_throttled)
 {
     using namespace testing;
     using namespace std::chrono_literals;
