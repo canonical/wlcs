@@ -530,6 +530,11 @@ TEST_F(ClientSurfaceEventsTest, frame_timestamp_increases)
     surface.add_frame_callback(check_time_and_increment_count);
     wl_surface_commit(surface);
 
+    /* We don't need to wait for the server, but we *do* need
+     * the server to see this commit
+     */
+    client.flush();
+
     /**
      * We need to sleep for multiple miliseconds to make sure the timestamp
      * really does go up
