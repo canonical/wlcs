@@ -30,6 +30,8 @@
 
 #include <deque>
 #include <tuple>
+#include <thread>
+#include <chrono>
 
 #include <gmock/gmock.h>
 
@@ -536,10 +538,15 @@ TEST_F(ClientSurfaceEventsTest, frame_timestamp_increases)
     client.flush();
 
     /**
-     * We need to sleep for multiple miliseconds to make sure the timestamp
-     * really does go up
+     * When run against a *real* compositor we should not need any
+     * delay here - when running on a real display, we would expect
+     * the second commit to wait for the next refresh cycle.
+     *
+     * But we're probably not running on a real display, so make
+     * things easier for the integration by waiting a simulated
+     * refresh cycle (at 60Hz) before submitting the next buffer.
      */
-    usleep(10000);
+    std::this_thread::sleep_for(std::chrono::milliseconds{17});
 
     wl_surface_attach(surface, buffers[2], 0, 0);
     surface.add_frame_callback(check_time_and_increment_count);
