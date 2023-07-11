@@ -292,6 +292,19 @@ public:
 
     void roundtrip();
 
+    /**
+     * Perform a `wl_display_flush()`
+     *
+     * This ensures all previous client requests have *actually* been
+     * sent to the server, but does not wait for any replies or process
+     * any incomming messages.
+     *
+     * \note    It is possible that the server receive buffer will be too
+     *          small to hold all the outgoing messages. This method does
+     *          not provide a way to detect this case.
+     */
+    void flush();
+
 private:
     class Impl;
     std::unique_ptr<Impl> const impl;
