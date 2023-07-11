@@ -290,6 +290,12 @@ public:
 
     auto bind_if_supported(wl_interface const& interface, VersionSpecifier const& version) const -> void*;
 
+    /**
+     * Perform a `wl_display_roundtrip()`
+     *
+     * This blocks until all previous client requests have been processed
+     * by the server, and the client has processed any server responses.
+     */
     void roundtrip();
 
     /**
