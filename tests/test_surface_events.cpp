@@ -500,6 +500,7 @@ TEST_F(ClientSurfaceEventsTest, surface_moves_while_under_pointer)
 TEST_F(ClientSurfaceEventsTest, frame_timestamp_increases)
 {
     using namespace testing;
+    using namespace std::chrono_literals;
 
     wlcs::Client client{the_server()};
 
@@ -546,7 +547,7 @@ TEST_F(ClientSurfaceEventsTest, frame_timestamp_increases)
      * things easier for the integration by waiting a simulated
      * refresh cycle (at 60Hz) before submitting the next buffer.
      */
-    std::this_thread::sleep_for(std::chrono::milliseconds{17});
+    std::this_thread::sleep_for(std::chrono::ceil<std::chrono::milliseconds>(1.0s/60));
 
     wl_surface_attach(surface, buffers[2], 0, 0);
     surface.add_frame_callback(check_time_and_increment_count);
