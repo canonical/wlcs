@@ -290,7 +290,26 @@ public:
 
     auto bind_if_supported(wl_interface const& interface, VersionSpecifier const& version) const -> void*;
 
+    /**
+     * Perform a `wl_display_roundtrip()`
+     *
+     * This blocks until all previous client requests have been processed
+     * by the server, and the client has processed any server responses.
+     */
     void roundtrip();
+
+    /**
+     * Perform a `wl_display_flush()`
+     *
+     * This ensures all previous client requests have *actually* been
+     * sent to the server, but does not wait for any replies or process
+     * any incomming messages.
+     *
+     * \note    It is possible that the server receive buffer will be too
+     *          small to hold all the outgoing messages. This method does
+     *          not provide a way to detect this case.
+     */
+    void flush();
 
 private:
     class Impl;

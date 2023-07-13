@@ -30,6 +30,8 @@
 
 #include <deque>
 #include <tuple>
+#include <thread>
+#include <chrono>
 
 #include <gmock/gmock.h>
 
@@ -498,6 +500,7 @@ TEST_F(ClientSurfaceEventsTest, surface_moves_while_under_pointer)
 TEST_F(ClientSurfaceEventsTest, frame_timestamp_increases)
 {
     using namespace testing;
+    using namespace std::chrono_literals;
 
     wlcs::Client client{the_server()};
 
@@ -530,11 +533,21 @@ TEST_F(ClientSurfaceEventsTest, frame_timestamp_increases)
     surface.add_frame_callback(check_time_and_increment_count);
     wl_surface_commit(surface);
 
-    /**
-     * We need to sleep for multiple miliseconds to make sure the timestamp
-     * really does go up
+    /* We don't need to wait for the server, but we *do* need
+     * the server to see this commit
      */
-    usleep(10000);
+    client.flush();
+
+    /**
+     * When run against a *real* compositor we should not need any
+     * delay here - when running on a real display, we would expect
+     * the second commit to wait for the next refresh cycle.
+     *
+     * But we're probably not running on a real display, so make
+     * things easier for the integration by waiting a simulated
+     * refresh cycle (at 60Hz) before submitting the next buffer.
+     */
+    std::this_thread::sleep_for(std::chrono::ceil<std::chrono::milliseconds>(1.0s/60));
 
     wl_surface_attach(surface, buffers[2], 0, 0);
     surface.add_frame_callback(check_time_and_increment_count);

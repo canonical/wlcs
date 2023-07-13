@@ -1073,6 +1073,23 @@ public:
         }
     }
 
+    void client_flush()
+    {
+        if (wl_display_flush(display) == -1)
+        {
+            /* flush will return a (non-fatal) EAGAIN if the send buffer is
+             * full.
+             *
+             * We don't particularly want to care about the EAGAIN case
+             * at the moment, so just ignore it.
+             */
+            if (errno != EAGAIN)
+            {
+                throw_wayland_error(display);
+            }
+        }
+    }
+
     struct Output
     {
         OutputState current;
@@ -1818,6 +1835,11 @@ void wlcs::Client::dispatch_until(std::function<bool()> const& predicate, std::c
 void wlcs::Client::roundtrip()
 {
     impl->server_roundtrip();
+}
+
+void wlcs::Client::flush()
+{
+    impl->client_flush();
 }
 
 void* wlcs::Client::bind_if_supported(wl_interface const& interface, VersionSpecifier const& version) const
