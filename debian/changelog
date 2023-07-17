@@ -1,3 +1,21 @@
+wlcs (1.6.0-0ubuntu0) UNRELEASED; urgency=medium
+
+  * New upstream release. Notable changes:
+    + Update wayland.xml to latest
+    + XDG stable: use mock methods instead of notification lists
+    + Test popup constraint_adjustment
+    + Tests for XDG shell (stable) version 5
+    + Test that text input is entered after child window is closed
+    + Copy geometry headers from Mir
+    + Test popups are dismissed in the correct order
+    + Test buffer can be deleted after it's attached
+    + Less flaky synchronization for VirtualPointerV1Test (#297, #294)
+    + VirtualPointerV1Test: no-events-sent test fails if events are sent (#296)
+    + Fix various frame-event misunderstandings
+    + Change remaining std::experimental::optionals to std::optional
+
+ -- Alan Griffiths <alan@octopull.co.uk>  Mon, 17 Jul 2023 13:12:00 +0100
+
 wlcs (1.5.0-0ubuntu0) UNRELEASED; urgency=medium
 
   * New upstream release. Notable changes:
