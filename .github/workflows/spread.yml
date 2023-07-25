@@ -19,7 +19,6 @@ jobs:
       matrix:
         spread-task:
         - lxd:ubuntu-22.04:...:gcc
-        - lxd:ubuntu-22.10:...:gcc
         - lxd:ubuntu-23.04:...:gcc
         - lxd:ubuntu-23.04:...:clang
         - lxd:fedora-37:...:gcc
