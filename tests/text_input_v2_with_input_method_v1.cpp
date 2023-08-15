@@ -172,3 +172,20 @@ TEST_F(TextInputV2WithInputMethodV1Test, input_method_can_send_keysym)
     input_client.roundtrip();
     app_client.roundtrip();
 }
+
+TEST_F(TextInputV2WithInputMethodV1Test, input_method_can_set_preedit_string)
+{
+    auto const preedit_text = "some text";
+    auto const preedit_commit = "some fallback text";
+
+    enable_text_input();
+
+    EXPECT_CALL(text_input, preedit_string(preedit_text, preedit_commit));
+    zwp_input_method_context_v1_preedit_string(
+        *input_method_context,
+        input_method_context->serial,
+        preedit_text,
+        preedit_commit);
+    input_client.roundtrip();
+    app_client.roundtrip();
+}
