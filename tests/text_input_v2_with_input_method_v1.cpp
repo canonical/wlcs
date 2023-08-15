@@ -15,9 +15,21 @@
  */
 
 #include "in_process_server.h"
-#include <gmock/gmock.h>
 #include "mock_text_input_v2.h"
 #include "mock_input_method_v1.h"
+#include "version_specifier.h"
+#include "xdg_shell_stable.h"
+#include "method_event_impl.h"
+
+#include <gmock/gmock.h>
+
+// NOTE: In this file, the ordering of app_client.roundtrip() and input_client.roundtrip()
+// is important. If we want the text input to respond to an event triggered by the input method,
+// we should do:
+//    input_client.roundtrip();
+//    app_client.roundtrip();
+// Inversely, we would swap the order if we want the input method to respond to an event triggered
+// by the text input.
 
 using namespace testing;
 
@@ -27,12 +39,101 @@ struct TextInputV2WithInputMethodV1Test : wlcs::StartedInProcessServer
         : StartedInProcessServer{},
           pointer{the_server().create_pointer()},
           app_client{the_server()},
-          input_client{the_server()}
+          input_client{the_server()},
+          text_input_manager{app_client.bind_if_supported<zwp_text_input_manager_v2>(wlcs::AnyVersion)},
+          text_input{zwp_text_input_manager_v2_get_text_input(text_input_manager, app_client.seat())},
+          input_method{input_client.bind_if_supported<zwp_input_method_v1>(wlcs::AnyVersion)}
     {
+        zwp_input_method_v1_add_listener(input_method, &listener, this);
+    }
+
+    void create_focused_surface()
+    {
+        app_surface.emplace(app_client.create_visible_surface(100, 100));
+        the_server().move_surface_to(app_surface.value(), 0, 0);
+        pointer.move_to(10, 10);
+        pointer.left_click();
+        app_client.roundtrip();
+    }
+
+    void activate(zwp_input_method_context_v1* context)
+    {
+        input_method_context = std::make_unique<NiceMock<wlcs::MockInputMethodContextV1>>(context);
+    }
+
+    void deactivate(zwp_input_method_context_v1*)
+    {
+        input_method_context = nullptr;
+    }
+
+    static zwp_input_method_v1_listener constexpr listener {
+        wlcs::method_event_impl<&TextInputV2WithInputMethodV1Test::activate>,
+        wlcs::method_event_impl<&TextInputV2WithInputMethodV1Test::deactivate>
+    };
+
+    void enable_text_input()
+    {
+        create_focused_surface();
+        zwp_text_input_v2_enable(text_input, app_surface->wl_surface());
+        zwp_text_input_v2_update_state(text_input, 0, 0);
+        app_client.roundtrip();
+        input_client.roundtrip();
     }
 
     wlcs::Pointer pointer;
     wlcs::Client app_client;
-    std::optional<wlcs::Surface> app_surface;
     wlcs::Client input_client;
+    wlcs::WlHandle<zwp_text_input_manager_v2> text_input_manager;
+    NiceMock<wlcs::MockTextInputV2> text_input;
+    wlcs::WlHandle<zwp_input_method_v1> input_method;
+    std::unique_ptr<NiceMock<wlcs::MockInputMethodContextV1>> input_method_context;
+    std::optional<wlcs::Surface> app_surface;
 };
+
+TEST_F(TextInputV2WithInputMethodV1Test, text_input_enters_surface_on_focus)
+{
+    wl_surface* entered{nullptr};
+    EXPECT_CALL(text_input, enter(_, _))
+        .WillOnce(SaveArg<1>(&entered));
+    create_focused_surface();
+    EXPECT_THAT(entered, Eq(app_surface.value().wl_surface()));
+}
+
+TEST_F(TextInputV2WithInputMethodV1Test, text_input_activates_context_on_enable)
+{
+    create_focused_surface();
+    zwp_text_input_v2_enable(text_input, app_surface->wl_surface());
+    zwp_text_input_v2_update_state(text_input, 0, 0);
+    app_client.roundtrip();
+    input_client.roundtrip();
+    EXPECT_TRUE(input_method_context != nullptr);
+}
+
+TEST_F(TextInputV2WithInputMethodV1Test, setting_surrounding_text_on_text_input_triggers_a_surround_text_event_on_input_method)
+{
+    auto const text = "hello";
+    auto const cursor = 2;
+    auto const anchor = 1;
+
+    enable_text_input();
+    EXPECT_CALL(*input_method_context, surrounding_text(text, cursor, anchor));
+    zwp_text_input_v2_set_surrounding_text(text_input, text, cursor, anchor);
+    zwp_text_input_v2_update_state(text_input, 1, 0);
+
+
+    app_client.roundtrip();
+    input_client.roundtrip();
+}
+
+TEST_F(TextInputV2WithInputMethodV1Test, input_method_can_change_text)
+{
+    auto const text = "hello";
+
+    enable_text_input();
+    EXPECT_CALL(text_input, commit_string(text));
+    zwp_input_method_context_v1_commit_string(
+        *input_method_context, input_method_context->serial, text);
+
+    input_client.roundtrip();
+    app_client.roundtrip();
+}

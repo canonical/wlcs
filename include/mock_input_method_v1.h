@@ -26,6 +26,7 @@
 #include "method_event_impl.h"
 
 #include <gmock/gmock.h>
+#include <memory>
 
 namespace wlcs
 {
@@ -33,24 +34,6 @@ WLCS_CREATE_INTERFACE_DESCRIPTOR(zwp_input_method_v1)
 WLCS_CREATE_INTERFACE_DESCRIPTOR(zwp_input_method_context_v1)
 WLCS_CREATE_INTERFACE_DESCRIPTOR(zwp_input_panel_v1)
 WLCS_CREATE_INTERFACE_DESCRIPTOR(zwp_input_panel_surface_v1)
-
-class MockInputMethodV1 : public WlHandle<zwp_input_method_v1>
-{
-public:
-    MockInputMethodV1(zwp_input_method_v1* proxy)
-        : WlHandle{proxy}
-    {
-        zwp_input_method_v1_add_listener(proxy, &listener, this);
-    }
-
-    MOCK_METHOD1(activate, void(zwp_input_method_context_v1*));
-    MOCK_METHOD1(deactivate, void(zwp_input_method_context_v1*));
-
-    static zwp_input_method_v1_listener constexpr listener {
-        method_event_impl<&MockInputMethodV1::activate>,
-        method_event_impl<&MockInputMethodV1::deactivate>,
-    };
-};
 
 class MockInputMethodContextV1 : public WlHandle<zwp_input_method_context_v1>
 {
@@ -65,8 +48,12 @@ public:
     MOCK_METHOD0(reset, void());
     MOCK_METHOD2(content_type, void(uint32_t, uint32_t));
     MOCK_METHOD2(invoke_action, void(uint32_t, uint32_t));
-    MOCK_METHOD1(commit_state, void(uint32_t));
     MOCK_METHOD1(preferred_language, void(std::string const&));
+
+    void commit_state(uint32_t in_serial)
+    {
+        serial = in_serial;
+    }
 
     static zwp_input_method_context_v1_listener constexpr listener {
         method_event_impl<&MockInputMethodContextV1::surrounding_text>,
@@ -76,7 +63,10 @@ public:
         method_event_impl<&MockInputMethodContextV1::commit_state>,
         method_event_impl<&MockInputMethodContextV1::preferred_language>
     };
+
+    uint32_t serial = 0;
 };
+
 }
 
 #endif
