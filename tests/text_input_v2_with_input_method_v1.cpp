@@ -148,11 +148,27 @@ TEST_F(TextInputV2WithInputMethodV1Test, input_method_can_delete_text)
     EXPECT_CALL(text_input, commit_string(text));
     EXPECT_CALL(text_input, cursor_position(index, 0));
     EXPECT_CALL(text_input, delete_surrounding_text(0, length));
-    // Expected serial is 1 because we've sent exactly 1 commit
-    //EXPECT_CALL(text_input, done(1)).After(a, b);
     input_client.roundtrip();
     zwp_input_method_context_v1_delete_surrounding_text(*input_method_context, index, length);
     zwp_input_method_context_v1_commit_string(*input_method_context, input_method_context->serial, text);
+    input_client.roundtrip();
+    app_client.roundtrip();
+}
+
+TEST_F(TextInputV2WithInputMethodV1Test, input_method_can_send_keysym)
+{
+    uint32_t time = 0;
+    uint32_t sym = 65;
+    uint32_t state = 1;
+    uint32_t modifiers = 0;
+
+    enable_text_input();
+
+    EXPECT_CALL(text_input, keysym(time, sym, state, modifiers));
+    zwp_input_method_context_v1_keysym(
+        *input_method_context,
+        input_method_context->serial,
+        time, sym, state, modifiers);
     input_client.roundtrip();
     app_client.roundtrip();
 }
