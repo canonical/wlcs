@@ -129,7 +129,9 @@ GENERATE_PROTOCOL(xdg-output-unstable-v1)
 GENERATE_PROTOCOL(wlr-foreign-toplevel-management-unstable-v1)
 GENERATE_PROTOCOL(pointer-constraints-unstable-v1)
 GENERATE_PROTOCOL(relative-pointer-unstable-v1)
+GENERATE_PROTOCOL(text-input-unstable-v2)
 GENERATE_PROTOCOL(text-input-unstable-v3)
+GENERATE_PROTOCOL(input-method-unstable-v1)
 GENERATE_PROTOCOL(input-method-unstable-v2)
 GENERATE_PROTOCOL(wlr-virtual-pointer-unstable-v1)
 
@@ -161,6 +163,7 @@ set(WLCS_TESTS
   tests/self_test.cpp
   tests/text_input_v3_with_input_method_v2.cpp
   tests/wlr_virtual_pointer_v1.cpp
+  tests/text_input_v2_with_input_method_v1.cpp
 )
 
 set(
