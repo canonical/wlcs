@@ -17,29 +17,22 @@
 #include "in_process_server.h"
 #include <gmock/gmock.h>
 #include "mock_text_input_v2.h"
+#include "mock_input_method_v1.h"
 
 using namespace testing;
-//
-//struct TextInputV2WithInputMethodV1Test : wlcs::StartedInProcessServer
-//{
-//    TextInputV2WithInputMethodV1Test()
-//        : StartedInProcessServer{},
-//          pointer{the_server().create_pointer()},
-//          app_client{the_server()},
-//          text_input_manager{app_client.bind_if_supported<zwp_text_input_manager_v3>(wlcs::AnyVersion)},
-//          text_input{zwp_text_input_manager_v3_get_text_input(text_input_manager, app_client.seat())},
-//          input_client{the_server()},
-//          input_method_manager{input_client.bind_if_supported<zwp_input_method_manager_v2>(wlcs::AnyVersion)},
-//          input_method{zwp_input_method_manager_v2_get_input_method(input_method_manager, input_client.seat())}
-//    {
-//    }
-//
-//    wlcs::Pointer pointer;
-//    wlcs::Client app_client;
-//    wlcs::WlHandle<zwp_text_input_manager_v3> text_input_manager;
-//    NiceMock<wlcs::MockTextInputV3> text_input;
-//    std::optional<wlcs::Surface> app_surface;
-//    wlcs::Client input_client;
-//    wlcs::WlHandle<zwp_input_method_manager_v2> input_method_manager;
-//    NiceMock<wlcs::MockInputMethodV2> input_method;
-//};
+
+struct TextInputV2WithInputMethodV1Test : wlcs::StartedInProcessServer
+{
+    TextInputV2WithInputMethodV1Test()
+        : StartedInProcessServer{},
+          pointer{the_server().create_pointer()},
+          app_client{the_server()},
+          input_client{the_server()}
+    {
+    }
+
+    wlcs::Pointer pointer;
+    wlcs::Client app_client;
+    std::optional<wlcs::Surface> app_surface;
+    wlcs::Client input_client;
+};
