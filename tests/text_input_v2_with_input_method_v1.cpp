@@ -214,3 +214,24 @@ TEST_F(TextInputV2WithInputMethodV1Test, input_method_can_set_preedit_style)
     input_client.roundtrip();
     app_client.roundtrip();
 }
+
+TEST_F(TextInputV2WithInputMethodV1Test, input_method_can_set_preedit_cursor)
+{
+    auto const preedit_text = "some text";
+    auto const preedit_commit = "some fallback text";
+    auto const index = 3;
+
+    enable_text_input();
+
+    EXPECT_CALL(text_input, preedit_cursor(index));
+    zwp_input_method_context_v1_preedit_cursor(
+        *input_method_context,
+        index);
+    zwp_input_method_context_v1_preedit_string(
+        *input_method_context,
+        input_method_context->serial,
+        preedit_text,
+        preedit_commit);
+    input_client.roundtrip();
+    app_client.roundtrip();
+}
