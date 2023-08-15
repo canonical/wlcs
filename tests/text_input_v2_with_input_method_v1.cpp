@@ -120,7 +120,6 @@ TEST_F(TextInputV2WithInputMethodV1Test, setting_surrounding_text_on_text_input_
     zwp_text_input_v2_set_surrounding_text(text_input, text, cursor, anchor);
     zwp_text_input_v2_update_state(text_input, 1, 0);
 
-
     app_client.roundtrip();
     input_client.roundtrip();
 }
@@ -134,6 +133,26 @@ TEST_F(TextInputV2WithInputMethodV1Test, input_method_can_change_text)
     zwp_input_method_context_v1_commit_string(
         *input_method_context, input_method_context->serial, text);
 
+    input_client.roundtrip();
+    app_client.roundtrip();
+}
+
+TEST_F(TextInputV2WithInputMethodV1Test, input_method_can_delete_text)
+{
+    auto const text = "some text";
+    int32_t const index = 1;
+    int32_t const length = 2;
+
+    enable_text_input();
+
+    EXPECT_CALL(text_input, commit_string(text));
+    EXPECT_CALL(text_input, cursor_position(index, 0));
+    EXPECT_CALL(text_input, delete_surrounding_text(0, length));
+    // Expected serial is 1 because we've sent exactly 1 commit
+    //EXPECT_CALL(text_input, done(1)).After(a, b);
+    input_client.roundtrip();
+    zwp_input_method_context_v1_delete_surrounding_text(*input_method_context, index, length);
+    zwp_input_method_context_v1_commit_string(*input_method_context, input_method_context->serial, text);
     input_client.roundtrip();
     app_client.roundtrip();
 }
