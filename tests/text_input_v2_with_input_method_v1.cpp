@@ -235,3 +235,25 @@ TEST_F(TextInputV2WithInputMethodV1Test, input_method_can_set_preedit_cursor)
     input_client.roundtrip();
     app_client.roundtrip();
 }
+
+TEST_F(TextInputV2WithInputMethodV1Test, input_method_can_set_modifiers_map)
+{
+    // Note: This example data was taken from the maliit-keyboard example
+    auto const text = "hello";
+    const size_t data_length = 33;
+    wl_array map;
+    wl_array_init(&map);
+    const char** data = static_cast<const char**>(wl_array_add(&map, sizeof(char) * data_length));
+    *data = "Shift\0Control\0Mod1\0Mod4\0Num Lock\0";
+
+    enable_text_input();
+
+    EXPECT_CALL(text_input, modifiers_map(_));
+    zwp_input_method_context_v1_modifiers_map(
+        *input_method_context,
+        &map);
+    zwp_input_method_context_v1_commit_string(*input_method_context, input_method_context->serial, text);
+    input_client.roundtrip();
+    app_client.roundtrip();
+    wl_array_release(&map);
+}
