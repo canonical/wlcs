@@ -18,7 +18,6 @@
 #include "mock_text_input_v2.h"
 #include "mock_input_method_v1.h"
 #include "version_specifier.h"
-#include "xdg_shell_stable.h"
 #include "method_event_impl.h"
 
 #include <gmock/gmock.h>
@@ -268,4 +267,19 @@ TEST_F(TextInputV2WithInputMethodV1Test, input_method_can_set_modifiers_map)
     input_client.roundtrip();
     app_client.roundtrip();
     wl_array_release(&map);
+}
+
+TEST_F(TextInputV2WithInputMethodV1Test, input_method_can_set_direction)
+{
+    uint32_t direction = 1;
+
+    enable_text_input();
+
+    EXPECT_CALL(text_input, text_direction(direction));
+    zwp_input_method_context_v1_text_direction(
+        *input_method_context,
+        input_method_context->serial,
+        direction);
+    input_client.roundtrip();
+    app_client.roundtrip();
 }
