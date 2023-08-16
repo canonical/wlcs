@@ -61,10 +61,7 @@ struct TextInputV2WithInputMethodV1Test : wlcs::StartedInProcessServer
         input_method_context = std::make_unique<NiceMock<wlcs::MockInputMethodContextV1>>(context);
     }
 
-    void deactivate(zwp_input_method_context_v1*)
-    {
-        input_method_context = nullptr;
-    }
+    MOCK_METHOD1(deactivate, void(zwp_input_method_context_v1*));
 
     static zwp_input_method_v1_listener constexpr listener {
         wlcs::method_event_impl<&TextInputV2WithInputMethodV1Test::activate>,
@@ -107,6 +104,21 @@ TEST_F(TextInputV2WithInputMethodV1Test, text_input_activates_context_on_enable)
     app_client.roundtrip();
     input_client.roundtrip();
     EXPECT_TRUE(input_method_context != nullptr);
+}
+
+TEST_F(TextInputV2WithInputMethodV1Test, text_input_deactivates_context_on_disable)
+{
+    create_focused_surface();
+
+    EXPECT_CALL(*this, deactivate(_));
+    zwp_text_input_v2_enable(text_input, app_surface->wl_surface());
+    zwp_text_input_v2_update_state(text_input, 0, 0);
+    app_client.roundtrip();
+    input_client.roundtrip();
+    zwp_text_input_v2_disable(text_input, app_surface->wl_surface());
+    zwp_text_input_v2_update_state(text_input, 1, 0);
+    app_client.roundtrip();
+    input_client.roundtrip();
 }
 
 TEST_F(TextInputV2WithInputMethodV1Test, setting_surrounding_text_on_text_input_triggers_a_surround_text_event_on_input_method)
