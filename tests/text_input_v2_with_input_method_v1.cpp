@@ -35,8 +35,7 @@ using namespace testing;
 struct TextInputV2WithInputMethodV1Test : wlcs::StartedInProcessServer
 {
     TextInputV2WithInputMethodV1Test()
-        : StartedInProcessServer{},
-          pointer{the_server().create_pointer()},
+        : pointer{the_server().create_pointer()},
           app_client{the_server()},
           input_client{the_server()},
           text_input_manager{app_client.bind_if_supported<zwp_text_input_manager_v2>(wlcs::AnyVersion)},
