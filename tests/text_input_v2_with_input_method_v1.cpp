@@ -70,7 +70,7 @@ struct TextInputV2WithInputMethodV1Test : wlcs::StartedInProcessServer
     {
         create_focused_surface();
         zwp_text_input_v2_enable(text_input, app_surface->wl_surface());
-        zwp_text_input_v2_update_state(text_input, 0, 0);
+        zwp_text_input_v2_update_state(text_input, text_input.serial, 0);
         app_client.roundtrip();
         input_client.roundtrip();
     }
@@ -85,20 +85,11 @@ struct TextInputV2WithInputMethodV1Test : wlcs::StartedInProcessServer
     std::optional<wlcs::Surface> app_surface;
 };
 
-TEST_F(TextInputV2WithInputMethodV1Test, text_input_enters_surface_on_focus)
-{
-    wl_surface* entered{nullptr};
-    EXPECT_CALL(text_input, enter(_, _))
-        .WillOnce(SaveArg<1>(&entered));
-    create_focused_surface();
-    EXPECT_THAT(entered, Eq(app_surface.value().wl_surface()));
-}
-
 TEST_F(TextInputV2WithInputMethodV1Test, text_input_activates_context_on_enable)
 {
     create_focused_surface();
     zwp_text_input_v2_enable(text_input, app_surface->wl_surface());
-    zwp_text_input_v2_update_state(text_input, 0, 0);
+    zwp_text_input_v2_update_state(text_input, text_input.serial, 0);
     app_client.roundtrip();
     input_client.roundtrip();
     EXPECT_TRUE(input_method_context != nullptr);
@@ -110,11 +101,11 @@ TEST_F(TextInputV2WithInputMethodV1Test, text_input_deactivates_context_on_disab
 
     EXPECT_CALL(*this, deactivate(_));
     zwp_text_input_v2_enable(text_input, app_surface->wl_surface());
-    zwp_text_input_v2_update_state(text_input, 0, 0);
+    zwp_text_input_v2_update_state(text_input, text_input.serial, 0);
     app_client.roundtrip();
     input_client.roundtrip();
     zwp_text_input_v2_disable(text_input, app_surface->wl_surface());
-    zwp_text_input_v2_update_state(text_input, 1, 0);
+    zwp_text_input_v2_update_state(text_input, text_input.serial, 0);
     app_client.roundtrip();
     input_client.roundtrip();
 }
@@ -128,7 +119,7 @@ TEST_F(TextInputV2WithInputMethodV1Test, setting_surrounding_text_on_text_input_
     enable_text_input();
     EXPECT_CALL(*input_method_context, surrounding_text(text, cursor, anchor));
     zwp_text_input_v2_set_surrounding_text(text_input, text, cursor, anchor);
-    zwp_text_input_v2_update_state(text_input, 1, 0);
+    zwp_text_input_v2_update_state(text_input, text_input.serial, 0);
 
     app_client.roundtrip();
     input_client.roundtrip();

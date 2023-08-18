@@ -39,8 +39,14 @@ public:
         zwp_text_input_v2_add_listener(proxy, &listener, this);
     }
 
-    MOCK_METHOD2(enter, void(uint32_t, wl_surface *));
-    MOCK_METHOD2(leave, void(uint32_t, wl_surface *));
+    void enter(uint32_t in_serial, wl_surface *)
+    {
+        serial = in_serial;
+    }
+    void leave(uint32_t in_serial, wl_surface *)
+    {
+        serial = in_serial;
+    }
     MOCK_METHOD5(input_panel_state, void(uint32_t, int32_t, int32_t, int32_t, int32_t));
     MOCK_METHOD2(preedit_string, void(std::string const&, std::string const&));
     MOCK_METHOD3(predit_styling, void(uint32_t, uint32_t, uint32_t));
@@ -53,7 +59,10 @@ public:
     MOCK_METHOD1(language, void(std::string const&));
     MOCK_METHOD1(text_direction, void(uint32_t));
     MOCK_METHOD2(configure_surrounding_text, void(int32_t, int32_t));
-    MOCK_METHOD2(input_method_changed, void(uint32_t, uint32_t));
+    void input_method_changed(uint32_t in_serial, uint32_t)
+    {
+        serial = in_serial;
+    }
 
     static zwp_text_input_v2_listener constexpr listener {
         method_event_impl<&MockTextInputV2::enter>,
@@ -72,6 +81,8 @@ public:
         method_event_impl<&MockTextInputV2::configure_surrounding_text>,
         method_event_impl<&MockTextInputV2::input_method_changed>
     };
+
+    uint32_t serial;
 };
 
 }
