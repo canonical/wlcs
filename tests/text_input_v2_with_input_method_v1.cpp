@@ -68,17 +68,18 @@ struct TextInputV2WithInputMethodV1Test : wlcs::StartedInProcessServer
         wlcs::method_event_impl<&TextInputV2WithInputMethodV1Test::deactivate>
     };
 
-    void input_client_wait_for_app_client_roundtrip(std::function<bool()> callback)
+    void input_client_wait_for_app_client_roundtrip(std::function<bool()> predicate)
     {
         app_client.roundtrip();
         input_client.roundtrip();
-        input_client.dispatch_until(callback);
+        input_client.dispatch_until(predicate);
     }
 
-    void app_client_wait_for_input_client_roundtrip()
+    void app_client_wait_for_input_client_roundtrip(std::function<bool()> predicate)
     {
         input_client.roundtrip();
         app_client.roundtrip();
+        app_client.dispatch_until(predicate);
     }
 
     void enable_text_input()
@@ -166,28 +167,35 @@ TEST_F(TextInputV2WithInputMethodV1Test, input_method_can_change_text)
     auto const text = "hello";
 
     enable_text_input();
-    EXPECT_CALL(text_input, commit_string(text));
+    bool has_been_committed = false;
+    EXPECT_CALL(text_input, commit_string(text))
+        .WillOnce(Invoke([&]{ has_been_committed = true; }));
     zwp_input_method_context_v1_commit_string(
         *input_method_context, input_method_context->serial, text);
 
-    app_client_wait_for_input_client_roundtrip();
+    app_client_wait_for_input_client_roundtrip([&]() { return has_been_committed; });
 }
 
 TEST_F(TextInputV2WithInputMethodV1Test, input_method_can_delete_text)
 {
+    const int EXPECTED_CALLBACK_COUNT = 3;
     auto const text = "some text";
     int32_t const index = 1;
     int32_t const length = 2;
 
     enable_text_input();
 
-    EXPECT_CALL(text_input, commit_string(text));
-    EXPECT_CALL(text_input, cursor_position(index, 0));
-    EXPECT_CALL(text_input, delete_surrounding_text(0, length));
+    int callback_count = 0;
+    EXPECT_CALL(text_input, commit_string(text))
+        .WillOnce(Invoke([&]{ callback_count++; }));
+    EXPECT_CALL(text_input, cursor_position(index, 0))
+        .WillOnce(Invoke([&]{ callback_count++; }));
+    EXPECT_CALL(text_input, delete_surrounding_text(0, length))
+        .WillOnce(Invoke([&]{ callback_count++; }));
     input_client.roundtrip();
     zwp_input_method_context_v1_delete_surrounding_text(*input_method_context, index, length);
     zwp_input_method_context_v1_commit_string(*input_method_context, input_method_context->serial, text);
-    app_client_wait_for_input_client_roundtrip();
+    app_client_wait_for_input_client_roundtrip([&]() { return callback_count == EXPECTED_CALLBACK_COUNT; });
 }
 
 TEST_F(TextInputV2WithInputMethodV1Test, input_method_can_send_keysym)
@@ -199,12 +207,14 @@ TEST_F(TextInputV2WithInputMethodV1Test, input_method_can_send_keysym)
 
     enable_text_input();
 
-    EXPECT_CALL(text_input, keysym(time, sym, state, modifiers));
+    bool has_received_keysym = false;
+    EXPECT_CALL(text_input, keysym(time, sym, state, modifiers))
+        .WillOnce(Invoke([&]{ has_received_keysym = true; }));
     zwp_input_method_context_v1_keysym(
         *input_method_context,
         input_method_context->serial,
         time, sym, state, modifiers);
-    app_client_wait_for_input_client_roundtrip();
+    app_client_wait_for_input_client_roundtrip([&]() { return has_received_keysym; });
 }
 
 TEST_F(TextInputV2WithInputMethodV1Test, input_method_can_set_preedit_string)
@@ -214,13 +224,15 @@ TEST_F(TextInputV2WithInputMethodV1Test, input_method_can_set_preedit_string)
 
     enable_text_input();
 
-    EXPECT_CALL(text_input, preedit_string(preedit_text, preedit_commit));
+    bool has_received_preedit_string = false;
+    EXPECT_CALL(text_input, preedit_string(preedit_text, preedit_commit))
+        .WillOnce(Invoke([&]{ has_received_preedit_string = true; }));
     zwp_input_method_context_v1_preedit_string(
         *input_method_context,
         input_method_context->serial,
         preedit_text,
         preedit_commit);
-    app_client_wait_for_input_client_roundtrip();
+    app_client_wait_for_input_client_roundtrip([&]() { return has_received_preedit_string; });
 }
 
 TEST_F(TextInputV2WithInputMethodV1Test, input_method_can_set_preedit_style)
@@ -233,7 +245,9 @@ TEST_F(TextInputV2WithInputMethodV1Test, input_method_can_set_preedit_style)
 
     enable_text_input();
 
-    EXPECT_CALL(text_input, predit_styling(index, length, style));
+    bool has_received_preedit_style = false;
+    EXPECT_CALL(text_input, predit_styling(index, length, style))
+        .WillOnce(Invoke([&]{ has_received_preedit_style = true; }));
     zwp_input_method_context_v1_preedit_styling(
         *input_method_context,
         index,
@@ -244,7 +258,7 @@ TEST_F(TextInputV2WithInputMethodV1Test, input_method_can_set_preedit_style)
         input_method_context->serial,
         preedit_text,
         preedit_commit);
-    app_client_wait_for_input_client_roundtrip();
+    app_client_wait_for_input_client_roundtrip([&]() { return has_received_preedit_style; });
 }
 
 TEST_F(TextInputV2WithInputMethodV1Test, input_method_can_set_preedit_cursor)
@@ -255,7 +269,9 @@ TEST_F(TextInputV2WithInputMethodV1Test, input_method_can_set_preedit_cursor)
 
     enable_text_input();
 
-    EXPECT_CALL(text_input, preedit_cursor(index));
+    bool has_received_preedit_cursor = false;
+    EXPECT_CALL(text_input, preedit_cursor(index))
+        .WillOnce(Invoke([&]{ has_received_preedit_cursor = true; }));
     zwp_input_method_context_v1_preedit_cursor(
         *input_method_context,
         index);
@@ -264,7 +280,7 @@ TEST_F(TextInputV2WithInputMethodV1Test, input_method_can_set_preedit_cursor)
         input_method_context->serial,
         preedit_text,
         preedit_commit);
-    app_client_wait_for_input_client_roundtrip();
+    app_client_wait_for_input_client_roundtrip([&]() { return has_received_preedit_cursor; });
 }
 
 TEST_F(TextInputV2WithInputMethodV1Test, input_method_can_set_modifiers_map)
@@ -279,12 +295,14 @@ TEST_F(TextInputV2WithInputMethodV1Test, input_method_can_set_modifiers_map)
 
     enable_text_input();
 
-    EXPECT_CALL(text_input, modifiers_map(_));
+    bool has_received_modifier_map = false;
+    EXPECT_CALL(text_input, modifiers_map(_))
+        .WillOnce(Invoke([&]{ has_received_modifier_map = true; }));
     zwp_input_method_context_v1_modifiers_map(
         *input_method_context,
         &map);
     zwp_input_method_context_v1_commit_string(*input_method_context, input_method_context->serial, text);
-    app_client_wait_for_input_client_roundtrip();
+    app_client_wait_for_input_client_roundtrip([&]() { return has_received_modifier_map; });
     wl_array_release(&map);
 }
 
@@ -294,10 +312,12 @@ TEST_F(TextInputV2WithInputMethodV1Test, input_method_can_set_direction)
 
     enable_text_input();
 
-    EXPECT_CALL(text_input, text_direction(direction));
+    bool has_received_text_direction = false;
+    EXPECT_CALL(text_input, text_direction(direction))
+        .WillOnce(Invoke([&]{ has_received_text_direction = true; }));
     zwp_input_method_context_v1_text_direction(
         *input_method_context,
         input_method_context->serial,
         direction);
-    app_client_wait_for_input_client_roundtrip();
+    app_client_wait_for_input_client_roundtrip([&]() { return has_received_text_direction; });
 }
