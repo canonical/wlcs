@@ -5,9 +5,7 @@ execute: |
     # Grab builds of Mir git master
     add-apt-repository ppa:mir-team/dev
 
-    apt-get update
-
-    apt install --yes \
+    apt-get install --yes \
         dpkg-dev \
         libwayland-dev \
         cmake \

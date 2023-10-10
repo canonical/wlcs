@@ -1,5 +1,9 @@
 name: Spread
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.number && format('pr{0}', github.event.number) || github.run_id }}
+  cancel-in-progress: true
+
 on:
   push:
     branches:
