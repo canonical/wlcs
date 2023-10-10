@@ -42,12 +42,12 @@ jobs:
     - name: Build the tarball
       run: |
         ./tools/make_release_tarball --skip-checks
-        gpg --detach-sig --sign --output mir-${{ steps.get-version.outputs.version }}.tar.xz.asc mir-${{ steps.get-version.outputs.version }}.tar.xz
+        gpg --detach-sig --sign --output wlcs-${{ steps.get-version.outputs.version }}.tar.xz.asc wlcs-${{ steps.get-version.outputs.version }}.tar.xz
 
     - name: Store the tarball and signature
       uses: actions/upload-artifact@v3
       with:
-        name: mir-${{ steps.get-version.outputs.version }}
+        name: wlcs-${{ steps.get-version.outputs.version }}
         path: |
-          mir-${{ steps.get-version.outputs.version }}.tar.xz
-          mir-${{ steps.get-version.outputs.version }}.tar.xz.asc
+          wlcs-${{ steps.get-version.outputs.version }}.tar.xz
+          wlcs-${{ steps.get-version.outputs.version }}.tar.xz.asc
