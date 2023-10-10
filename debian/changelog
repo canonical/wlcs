@@ -1,3 +1,9 @@
+wlcs (1.6.1-0ubuntu0) UNRELEASED; urgency=medium
+
+  * Bump project version in CMakeLists.txt
+
+ -- Michał Sawicz <michal.sawicz@canonical.com>  Tue, 10 Oct 2023 12:14:27 +0200
+
 wlcs (1.6.0-0ubuntu0) UNRELEASED; urgency=medium
 
   * New upstream release. Notable changes:
