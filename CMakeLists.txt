@@ -250,12 +250,7 @@ endif()
 
 if (WLCS_BUILD_UBSAN)
   add_executable(wlcs.ubsan ${WLCS_SOURCES})
-  # g++ 13 doesn't like some initialization
-  if (CMAKE_COMPILER_IS_GNUCXX AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 13)
-    target_compile_options(wlcs.ubsan PUBLIC -fsanitize=undefined)
-  else()
-    target_compile_options(wlcs.ubsan PUBLIC -fsanitize=undefined -O0)
-  endif()
+  target_compile_options(wlcs.ubsan PUBLIC -fsanitize=undefined)
   set_target_properties(
     wlcs.ubsan
     PROPERTIES
