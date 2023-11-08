@@ -215,10 +215,7 @@ private:
 
 struct OutputState
 {
-    OutputState(wl_output* output)
-        : output{output}
-    {
-    }
+    OutputState(wl_output* output);
 
     wl_output* output;
     std::optional<std::pair<int, int>> geometry_position;
