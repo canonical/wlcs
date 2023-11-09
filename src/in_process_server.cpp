@@ -2196,3 +2196,7 @@ void wlcs::ShmBuffer::add_release_listener(std::function<bool()> const &on_relea
 {
     impl->add_release_listener(on_release);
 }
+
+wlcs::OutputState::OutputState(wl_output* output) : output{output}
+{
+}
