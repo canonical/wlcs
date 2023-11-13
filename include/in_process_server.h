@@ -183,7 +183,7 @@ class Subsurface: public Surface
 public:
     static Subsurface create_visible(Surface& parent, int x, int y, int width, int height);
 
-    Subsurface(Surface& parent);
+    explicit Subsurface(Surface& parent);
     Subsurface(Subsurface &&);
     ~Subsurface();
 
@@ -215,7 +215,7 @@ private:
 
 struct OutputState
 {
-    OutputState(wl_output* output);
+    explicit OutputState(wl_output* output);
 
     wl_output* output;
     std::optional<std::pair<int, int>> geometry_position;
@@ -226,7 +226,7 @@ struct OutputState
 class Client
 {
 public:
-    Client(Server& server);
+    explicit Client(Server& server);
     ~Client();
 
     // Accessors
