@@ -26,7 +26,7 @@ endif
 
 # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=105329
 ifeq ($(DEB_HOST_ARCH), ppc64el)
-  ifneq ($(shell gcc --version | grep '12.[[:digit:]]\+.[[:digit:]]\+$$'),)
+  ifneq ($(shell gcc --version | grep '1[23].[[:digit:]]\+.[[:digit:]]\+$$'),)
     export DEB_CFLAGS_MAINT_APPEND = -O2
     export DEB_CXXFLAGS_MAINT_APPEND = -O2
     export DEB_FCFLAGS_MAINT_APPEND = -O2
