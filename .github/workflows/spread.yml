@@ -28,6 +28,7 @@ jobs:
         - lxd:ubuntu-23.10:...:clang
         - lxd:fedora-37:...:gcc
         - lxd:fedora-38:...:gcc
+        - lxd:fedora-39:...:gcc
         - lxd:alpine-3.18:...:gcc
         - lxd:ubuntu-devel:...:gcc
         - lxd:ubuntu-devel:...:clang
