@@ -12,6 +12,9 @@ backends:
                 image: ubuntu-daily:devel/amd64
             - fedora-37
             - fedora-38
+            - fedora-39
+            - fedora-rawhide:
+                image: images:fedora/39
             - alpine-3.18
             - alpine-edge
 
