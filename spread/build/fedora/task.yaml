@@ -2,6 +2,12 @@ summary: Build (on Fedora)
 systems: [fedora-*]
 
 execute: |
+    if [[ "${SPREAD_SYSTEM}" == "fedora-rawhide"  ]]; then
+        dnf --refresh --assumeyes upgrade
+        dnf --assumeyes install fedora-repos-rawhide
+        dnf --refresh --assumeyes --enablerepo=rawhide distro-sync
+    fi
+
     dnf install --assumeyes \
         wayland-devel \
         cmake \
