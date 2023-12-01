@@ -27,6 +27,18 @@
 #include <linux/memfd.h>
 #include <sys/syscall.h>
 
+/* Since kernel 6.3 it generates a warning to construct a memfd without one of
+ * MFD_EXEC (to mark the memfd as executable) or MFD_NOEXEC_SEAL (to permanently
+ * prevent the memfd from being marked as executable).
+ *
+ * Since we don't need execution from our shm buffers, we can mark them as
+ * MFD_NOEXEC_SEAL. Since this is only silencing a warning in dmesg we can safely
+ * null it out if we're building against too-old headers.
+ */
+#ifndef MFD_NOEXEC_SEAL
+#define MFD_NOEXEC_SEAL 0
+#endif
+
 namespace
 {
 
@@ -49,7 +61,12 @@ int memfd_create(char const* name, unsigned int flags)
 int wlcs::helpers::create_anonymous_file(size_t size)
 {
 
-    int fd = memfd_create("wlcs-unnamed", MFD_CLOEXEC);
+    int fd = memfd_create("wlcs-unnamed", MFD_CLOEXEC | MFD_NOEXEC_SEAL);
+    if (fd == -1 && errno == EINVAL)
+    {
+        // Maybe we're running on a kernel prior to MFD_NOEXEC_SEAL?
+        fd = memfd_create("wlcs-unnamed", MFD_CLOEXEC);
+    }
     if (fd == -1 && errno == ENOSYS)
     {
         fd = open("/dev/shm", O_TMPFILE | O_RDWR | O_EXCL | O_CLOEXEC, S_IRWXU);
