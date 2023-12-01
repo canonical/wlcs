@@ -61,9 +61,25 @@ public:
             });
 
         wl_surface_commit(surface);
-        client.roundtrip();
+        /* From the xdg_surface protocol:
+         * ...
+         * After creating a role-specific object and setting it up, the client must perform an initial commit
+         * without any buffer attached. The compositor will reply with initial wl_surface state such as
+         * wl_surface.preferred_buffer_scale followed by an xdg_surface.configure event. The client must acknowledge
+         * it and is then allowed to attach a buffer to map the surface.
+         * ...
+         * We've created the role-specific XdgToplevel above; we should now wait for
+         * a configure event, ack it, and *then* attach a buffer.
+         */
+        dispatch_until_configure();
+
         surface.attach_buffer(window_width, window_height);
         wl_surface_commit(surface);
+
+        /* Now that we've committed a buffer (and hence should be mapped) we expect
+         * to be reconfigured with new state - particularly, we expect to be
+         * in “activated” state after this.
+         */
         dispatch_until_configure();
     }
 
