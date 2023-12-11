@@ -793,6 +793,16 @@ public:
         auto xdg_surface = std::make_shared<XdgSurfaceStable>(client, surface);
         auto xdg_toplevel = std::make_shared<XdgToplevelStable>(*xdg_surface);
 
+        // Protocol *requires* us to ack the initial configure before attaching a buffer
+        bool initial_configure_received = false;
+        EXPECT_CALL(*xdg_surface, configure(testing::_))
+            .WillOnce(
+                [&initial_configure_received, xdg_surface = static_cast<struct xdg_surface*>(*xdg_surface)](uint32_t serial)
+                {
+                    xdg_surface_ack_configure(xdg_surface, serial);
+                    initial_configure_received = true;
+                });
+
         surface.run_on_destruction([xdg_surface, xdg_toplevel]() mutable
             {
                 xdg_toplevel.reset();
@@ -800,6 +810,23 @@ public:
             });
 
         wl_surface_commit(surface);
+
+        client.dispatch_until([&initial_configure_received]() { return initial_configure_received; });
+        /* Make absolutely sure the functor above, which captures a stack variable by reference
+         * is not going to be invoked outside this function
+         */
+        testing::Mock::VerifyAndClearExpectations(xdg_surface.get());
+
+        /* And we might as well ack any subsequent configures.
+         * Since we don't need to capture anything but the xdg_surface, which has to be
+         * live if we're getting a callback on it, this is safe to escape this frame
+         */
+        ON_CALL(*xdg_surface, configure(testing::_))
+            .WillByDefault(
+                [xdg_surface = static_cast<struct xdg_surface*>(*xdg_surface)](uint32_t serial)
+                {
+                    xdg_surface_ack_configure(xdg_surface, serial);
+                });
 
         surface.attach_visible_buffer(width, height);
 
