@@ -51,16 +51,19 @@ TEST_F(XdgSurfaceStableTest, gets_configure_event)
     wlcs::Surface surface{client};
     wlcs::XdgSurfaceStable xdg_surface{client, surface};
 
+    bool configure_received{false};
     EXPECT_CALL(xdg_surface, configure)
         .WillOnce([&](auto serial)
         {
             xdg_surface_ack_configure(xdg_surface, serial);
+            configure_received = true;
         });
 
     wlcs::XdgToplevelStable toplevel{xdg_surface};
-    surface.attach_buffer(600, 400);
+    // The first commit triggers an initial xdg_surface.configure event
+    wl_surface_commit(surface);
 
-    client.roundtrip();
+    client.dispatch_until([&configure_received]() { return configure_received;} );
 }
 
 TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_existing_role_is_an_error)
