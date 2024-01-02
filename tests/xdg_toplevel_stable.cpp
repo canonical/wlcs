@@ -75,12 +75,17 @@ public:
 
         surface.attach_buffer(window_width, window_height);
         wl_surface_commit(surface);
+        client.flush();
 
         /* Now that we've committed a buffer (and hence should be mapped) we expect
-         * to be reconfigured with new state - particularly, we expect to be
-         * in “activated” state after this.
+         * that our surface will be active. Mir (and GNOME) send a second configure
+         * event after the initial buffer submitted, but this isn't mandated by
+         * the protocol.
+         *
+         * Instead, wait until we're in the “activated” state, as WLCS makes the
+         * assumption that newly-mapped windows are active.
          */
-        dispatch_until_configure();
+        client.dispatch_until([this]() { return state.activated; });
     }
 
     void dispatch_until_configure()
