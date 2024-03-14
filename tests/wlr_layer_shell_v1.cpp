@@ -949,7 +949,6 @@ TEST_P(LayerSurfaceLayoutTest, surfaces_with_exclusive_zone_set_to_negative_one_
     auto const layout = GetParam();
     auto const request_size = layout.request_size();
     auto const initial_rect = layout.placement_rect(output_rect());
-    auto const exclusive = 12;
 
     zwlr_layer_surface_v1_set_anchor(layer_surface, layout);
     zwlr_layer_surface_v1_set_exclusive_zone(layer_surface, -1);
@@ -958,9 +957,17 @@ TEST_P(LayerSurfaceLayoutTest, surfaces_with_exclusive_zone_set_to_negative_one_
     commit_and_wait_for_configure();
     surface.attach_visible_buffer(initial_rect.size.width.as_int(), initial_rect.size.height.as_int());
 
-    // Create layer surfaces with exclusive zones on the top and left of the output that would
-    // theoretically push our surface out of the way if it did NOT have an exclusive zone of -1.
+    // First, let's check that the surface is in the position that we expect and
+    // that the compositor has suggested the size that we expect.
+    client.roundtrip();
 
+    EXPECT_THAT(layer_surface.last_size().width, Eq(initial_rect.size.width));
+    EXPECT_THAT(layer_surface.last_size().height, Eq(initial_rect.size.height));
+    expect_surface_is_at_position(initial_rect.top_left);
+
+    // Next, create layer surfaces with exclusive zones on the top and left of the output that would
+    // theoretically push our surface out of the way if it did NOT have an exclusive zone of -1.
+    auto const exclusive = 12;
     wlcs::Surface top_surface{client};
     wlcs::LayerSurfaceV1 top_layer_surface{client, top_surface};
     zwlr_layer_surface_v1_set_anchor(top_layer_surface, ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP);
@@ -981,22 +988,12 @@ TEST_P(LayerSurfaceLayoutTest, surfaces_with_exclusive_zone_set_to_negative_one_
     left_surface.attach_visible_buffer(exclusive, exclusive);
     wl_surface_commit(left_surface);
 
+    // Finally, let's recheck that we aren't receiving a different suggested size
+    // and that we are in the right spot.
     client.roundtrip();
-
-    auto non_exlusive_zone = output_rect();
-    auto expected_config_size = layout.configure_size(non_exlusive_zone);
-    if (expected_config_size.width.as_int())
-    {
-        EXPECT_THAT(layer_surface.last_size().width, Eq(expected_config_size.width));
-    }
-    if (expected_config_size.height.as_int())
-    {
-        EXPECT_THAT(layer_surface.last_size().height, Eq(expected_config_size.height));
-    }
-
-    auto const expected_placement = layout.placement_rect(non_exlusive_zone);
-    surface.attach_visible_buffer(expected_placement.size.width.as_int(), expected_placement.size.height.as_int());
-    expect_surface_is_at_position(expected_placement.top_left);
+    EXPECT_THAT(layer_surface.last_size().width, Eq(initial_rect.size.width));
+    EXPECT_THAT(layer_surface.last_size().height, Eq(initial_rect.size.height));
+    expect_surface_is_at_position(initial_rect.top_left);
 }
 
 TEST_P(LayerSurfaceLayoutTest, simple_popup_positioned_correctly)
