@@ -944,6 +944,58 @@ TEST_P(LayerSurfaceLayoutTest, maximized_xdg_toplevel_is_shrunk_for_exclusive_zo
     EXPECT_THAT(new_height, Eq(expected_height));
 }
 
+TEST_P(LayerSurfaceLayoutTest, surfaces_with_exclusive_zone_set_to_negative_one_do_not_respect_other_exclusive_zones)
+{
+    auto const layout = GetParam();
+    auto const request_size = layout.request_size();
+    auto const initial_rect = layout.placement_rect(output_rect());
+
+    zwlr_layer_surface_v1_set_anchor(layer_surface, layout);
+    zwlr_layer_surface_v1_set_exclusive_zone(layer_surface, -1);
+    invoke_zwlr_layer_surface_v1_set_margin(layer_surface, layout.margin);
+    zwlr_layer_surface_v1_set_size(layer_surface, request_size.width.as_int(), request_size.height.as_int());
+    commit_and_wait_for_configure();
+    surface.attach_visible_buffer(initial_rect.size.width.as_int(), initial_rect.size.height.as_int());
+
+    // First, let's check that the surface is in the position that we expect and
+    // that the compositor has suggested the size that we expect.
+    client.roundtrip();
+
+    EXPECT_THAT(layer_surface.last_size().width, Eq(initial_rect.size.width));
+    EXPECT_THAT(layer_surface.last_size().height, Eq(initial_rect.size.height));
+    expect_surface_is_at_position(initial_rect.top_left);
+
+    // Next, create layer surfaces with exclusive zones on the top and left of the output that would
+    // theoretically push our surface out of the way if it did NOT have an exclusive zone of -1.
+    auto const exclusive = 12;
+    wlcs::Surface top_surface{client};
+    wlcs::LayerSurfaceV1 top_layer_surface{client, top_surface};
+    zwlr_layer_surface_v1_set_anchor(top_layer_surface, ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP);
+    zwlr_layer_surface_v1_set_exclusive_zone(top_layer_surface, exclusive);
+    zwlr_layer_surface_v1_set_size(top_layer_surface, exclusive, exclusive);
+    wl_surface_commit(top_surface);
+    top_layer_surface.dispatch_until_configure();
+    top_surface.attach_visible_buffer(exclusive, exclusive);
+    wl_surface_commit(top_surface);
+
+    wlcs::Surface left_surface{client};
+    wlcs::LayerSurfaceV1 left_layer_surface{client, left_surface};
+    zwlr_layer_surface_v1_set_anchor(left_layer_surface, ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT);
+    zwlr_layer_surface_v1_set_exclusive_zone(left_layer_surface, exclusive);
+    zwlr_layer_surface_v1_set_size(left_layer_surface, exclusive, exclusive);
+    wl_surface_commit(left_surface);
+    left_layer_surface.dispatch_until_configure();
+    left_surface.attach_visible_buffer(exclusive, exclusive);
+    wl_surface_commit(left_surface);
+
+    // Finally, let's recheck that we aren't receiving a different suggested size
+    // and that we are in the right spot.
+    client.roundtrip();
+    EXPECT_THAT(layer_surface.last_size().width, Eq(initial_rect.size.width));
+    EXPECT_THAT(layer_surface.last_size().height, Eq(initial_rect.size.height));
+    expect_surface_is_at_position(initial_rect.top_left);
+}
+
 TEST_P(LayerSurfaceLayoutTest, simple_popup_positioned_correctly)
 {
     auto const layout = GetParam();
