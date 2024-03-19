@@ -110,10 +110,7 @@ ForeignToplevelHandle::ForeignToplevelHandle(zwlr_foreign_toplevel_handle_v1* ha
             wl_output* output)
             {
                 auto self = get_self(data);
-                std::remove(
-                    self->outputs_.begin(),
-                    self->outputs_.end(),
-                    output);
+                std::erase(self->outputs_, output);
                 self->dirty_ = true;
             },
         [] /*state */ (
