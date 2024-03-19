@@ -15,6 +15,7 @@ execute: |
     cd $(mktemp --directory)
     # Alpine doesn't build gcc's libsanitizer
     cmake $SPREAD_PATH \
+        -DWLCS_LINK_TIME_OPTIMIZATION=True \
         -DWLCS_BUILD_ASAN=False \
         -DWLCS_BUILD_TSAN=False \
         -DWLCS_BUILD_UBSAN=False

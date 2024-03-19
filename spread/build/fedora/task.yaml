@@ -24,6 +24,8 @@ execute: |
 
     cd $SPREAD_PATH
     cd $(mktemp --directory)
-    cmake $SPREAD_PATH
+    cmake \
+        -DWLCS_LINK_TIME_OPTIMIZATION=True \
+        $SPREAD_PATH
     make -j$(nproc)
 
