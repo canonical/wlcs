@@ -86,4 +86,42 @@ auto wlcs::AtLeastVersion::describe() const -> std::string
     return std::string{">= "} + std::to_string(version);
 }
 
+wlcs::LessThanVersion::LessThanVersion(uint32_t version) noexcept
+    : version{version}
+{
+}
+
+auto wlcs::LessThanVersion::select_version(
+    uint32_t max_available_version,
+    uint32_t max_supported_version) const -> std::optional<uint32_t>
+{
+    auto const max_allowed_version = version - 1;
+
+    if (max_allowed_version > max_supported_version)
+    {
+        BOOST_THROW_EXCEPTION(std::logic_error(
+            "Required version " +
+            std::to_string(max_allowed_version) +
+            " is higher than the highest version supported by WLCS (" +
+            std::to_string(max_supported_version) +
+            ")"));
+    }
+
+    if (max_available_version == 0)
+    {
+        return {};
+    }
+    else if (max_allowed_version <= max_available_version)
+    {
+        return {std::min(max_allowed_version, max_supported_version)};
+    }
+
+    return max_available_version;
+}
+
+auto wlcs::LessThanVersion::describe() const -> std::string
+{
+    return std::string{"< "} + std::to_string(version);
+}
+
 wlcs::VersionSpecifier const& wlcs::AnyVersion = wlcs::AtLeastVersion{1};
