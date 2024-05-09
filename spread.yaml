@@ -7,13 +7,13 @@ backends:
         systems:
             - ubuntu-22.04
             - ubuntu-23.10
+            - ubuntu-24.04
             - ubuntu-devel:
                 image: ubuntu-daily:devel/amd64
-            - fedora-37
-            - fedora-38
             - fedora-39
+            - fedora-40
             - fedora-rawhide:
-                image: images:fedora/39
+                image: images:fedora/40
             - alpine-3.18
             - alpine-edge
 
