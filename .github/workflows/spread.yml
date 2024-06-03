@@ -28,7 +28,8 @@ jobs:
         - lxd:fedora-39:...:gcc
         - lxd:fedora-40:...:gcc
         - lxd:fedora-rawhide:...:gcc
-        - lxd:alpine-3.18:...:gcc
+        - lxd:alpine-3.19:...:gcc
+        - lxd:alpine-3.20:...:gcc
         - lxd:ubuntu-devel:...:gcc
         - lxd:ubuntu-devel:...:clang
         - lxd:alpine-edge:...:gcc
