@@ -14,7 +14,8 @@ backends:
             - fedora-40
             - fedora-rawhide:
                 image: images:fedora/40
-            - alpine-3.18
+            - alpine-3.19
+            - alpine-3.20
             - alpine-edge
 
 suites:
