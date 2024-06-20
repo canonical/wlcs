@@ -88,7 +88,7 @@ public:
 
         // Moving any further should take us out of the surface
         motion_received = false;
-    
+
         client.add_pointer_leave_notification(
             [&](auto)
             {
@@ -182,6 +182,65 @@ TEST_F(WpViewporterTest, when_source_but_no_destination_set_window_has_src_size)
     wp_viewport_set_source(viewport, 0, 0, wl_fixed_from_int(display_width), wl_fixed_from_int(display_height));
     // Oh! I think we handle changing surface properties incorrectly!
     wl_surface_attach(surface, buffer, 0, 0);
+    surface.add_frame_callback([&committed](auto) { committed = true; });
+    wl_surface_commit(surface);
+
+    client.dispatch_until([&committed]() { return committed;} );
+
+    EXPECT_TRUE(surface_has_size(client, surface, display_width, display_height));
+}
+
+TEST_F(WpViewporterTest, when_buffer_is_scaled_destination_is_in_scaled_coordinates)
+{
+    wlcs::Client client{the_server()};
+
+
+    int const buffer_width{100}, buffer_height{100}, display_width{82}, display_height{20};
+    int const scale{2};
+
+    auto surface = client.create_visible_surface(buffer_width, buffer_height);
+    auto buffer = ShmBuffer(client, buffer_width, buffer_height);
+
+    auto viewporter = client.bind_if_supported<wp_viewporter>(wlcs::AnyVersion);
+    auto viewport = wp_viewporter_get_viewport(viewporter, surface);
+
+    bool committed = false;
+
+    wl_surface_set_buffer_scale(surface, scale);
+    wp_viewport_set_destination(viewport, display_width, display_height);
+    surface.add_frame_callback([&committed](auto) { committed = true; });
+    wl_surface_commit(surface);
+
+    client.dispatch_until([&committed]() { return committed;} );
+
+    EXPECT_TRUE(surface_has_size(client, surface, display_width, display_height));
+}
+
+TEST_F(WpViewporterTest, when_buffer_is_scaled_source_is_in_scaled_coordinates)
+{
+    /* TODO: It would be nice to check that the surface is *actually* sampling from
+     * the appropriate source rectangle, rather than relying on the indirect “does it
+     * end up the right size” method here.
+     *
+     * That would require sampling-from-rendering support in WLCS and associated
+     * compositors-under-test.
+     */
+
+    wlcs::Client client{the_server()};
+
+    int const buffer_width{100}, buffer_height{100}, display_width{82}, display_height{20};
+    int const scale{2};
+
+    auto surface = client.create_visible_surface(buffer_width, buffer_height);
+    auto buffer = ShmBuffer(client, buffer_width, buffer_height);
+
+    auto viewporter = client.bind_if_supported<wp_viewporter>(wlcs::AnyVersion);
+    auto viewport = wp_viewporter_get_viewport(viewporter, surface);
+
+    bool committed = false;
+
+    wl_surface_set_buffer_scale(surface, scale);
+    wp_viewport_set_source(viewport, wl_fixed_from_int(0), wl_fixed_from_int(0), wl_fixed_from_int(display_width), wl_fixed_from_int(display_height));
     surface.add_frame_callback([&committed](auto) { committed = true; });
     wl_surface_commit(surface);
 
