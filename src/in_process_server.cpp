@@ -1938,6 +1938,12 @@ public:
         owner_.dispatch_until([surface_rendered]() { return *surface_rendered; });
     }
 
+    void attach_toplevel(xdg_toplevel* toplevel) {
+	    this->toplevel = toplevel;
+    }
+
+    xdg_toplevel* get_toplevel() { return toplevel; }
+
     void run_on_destruction(std::function<void()> callback)
     {
         destruction_callbacks.push_back(callback);
@@ -2019,6 +2025,7 @@ private:
     struct wl_surface* const surface_;
     Client& owner_;
     std::vector<std::function<void()>> destruction_callbacks;
+    struct xdg_toplevel* toplevel;
 };
 
 std::vector<std::pair<wlcs::Surface::Impl const*, wl_callback*>> wlcs::Surface::Impl::pending_callbacks;
@@ -2058,6 +2065,14 @@ void wlcs::Surface::attach_visible_buffer(int width, int height)
 void wlcs::Surface::run_on_destruction(std::function<void()> callback)
 {
     impl->run_on_destruction(callback);
+}
+
+void wlcs::Surface::attach_toplevel(struct xdg_toplevel* toplevel) {
+	impl->attach_toplevel(toplevel);
+}
+
+struct xdg_toplevel* wlcs::Surface::get_toplevel() {
+	return impl->get_toplevel();
 }
 
 wlcs::Client& wlcs::Surface::owner() const

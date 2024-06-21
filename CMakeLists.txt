@@ -149,6 +149,7 @@ GENERATE_PROTOCOL(text-input-unstable-v3)
 GENERATE_PROTOCOL(input-method-unstable-v1)
 GENERATE_PROTOCOL(input-method-unstable-v2)
 GENERATE_PROTOCOL(wlr-virtual-pointer-unstable-v1)
+GENERATE_PROTOCOL(xdg-decoration-unstable-v1)
 
 option(WLCS_BUILD_ASAN "Build a test runner with AddressSanitizer annotations" ON)
 option(WLCS_BUILD_TSAN "Build a test runner with ThreadSanitizer annotations" ON)
@@ -179,6 +180,7 @@ set(WLCS_TESTS
   tests/text_input_v3_with_input_method_v2.cpp
   tests/wlr_virtual_pointer_v1.cpp
   tests/text_input_v2_with_input_method_v1.cpp
+  tests/xdg_decoration.cpp
 )
 
 set(
@@ -201,6 +203,7 @@ set(
   include/layer_shell_v1.h
   include/surface_builder.h
   include/input_method.h
+  include/xdg_decoration_unstable_v1.h
 
   src/data_device.cpp
   src/gtk_primary_selection.cpp
@@ -222,6 +225,7 @@ set(
   src/version_specifier.cpp
   src/surface_builder.cpp
   src/input_method.cpp
+  src/xdg_decoration_unstable_v1.cpp
 
   ${PROTOCOL_SOURCES}
   ${WLCS_TESTS}
