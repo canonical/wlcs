@@ -277,3 +277,49 @@ TEST_F(WpViewporterTest, when_destination_is_not_set_source_must_have_integer_si
 
     FAIL() << "Expected protocol error not raised";
 }
+
+class WpViewporterSrcParamsTest : public WpViewporterTest, public testing::WithParamInterface<std::tuple<double, double, double, double, char const*>>
+{
+};
+
+TEST_P(WpViewporterSrcParamsTest, raises_protocol_error_on_invalid_value)
+{
+    wlcs::Client client{the_server()};
+
+    auto surface = client.create_visible_surface(200, 100);
+
+    auto viewporter = client.bind_if_supported<wp_viewporter>(wlcs::AnyVersion);
+    auto viewport = wp_viewporter_get_viewport(viewporter, surface);
+
+    auto const [x, y, width, height, _] = GetParam();
+
+    try
+    {
+        wp_viewport_set_source(viewport, wl_fixed_from_double(x), wl_fixed_from_double(y), wl_fixed_from_double(width), wl_fixed_from_double(height));
+        client.roundtrip();
+    }
+    catch (wlcs::ProtocolError const& err)
+    {
+        EXPECT_THAT(err.interface(), Eq(&wp_viewport_interface));
+        EXPECT_THAT(err.error_code(), Eq(WP_VIEWPORT_ERROR_BAD_VALUE));
+        return;
+    }
+
+    FAIL() << "Expected protocol error not raised";
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    ,
+    WpViewporterSrcParamsTest,
+    Values(
+        std::make_tuple(0, 0, -1, 0, "src_width_must_be_non_negative"),
+        std::make_tuple(0, 0, 0, -1, "src_height_must_be_non_negative"),
+        std::make_tuple(0, 0, 1, 0, "src_height_must_be_positive"),
+        std::make_tuple(0, 0, 0, 1, "src_width_must_be_positive"),
+        std::make_tuple(-1, 0, 0, 0, "src_x_must_be_non_negative"),
+        std::make_tuple(0, -1, 0, 0, "src_y_must_be_non_negative")
+    ),
+    [](testing::TestParamInfo<WpViewporterSrcParamsTest::ParamType> const& info) -> std::string
+    {
+        return std::get<4>(info.param);
+    });
