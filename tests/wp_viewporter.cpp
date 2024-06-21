@@ -248,3 +248,32 @@ TEST_F(WpViewporterTest, when_buffer_is_scaled_source_is_in_scaled_coordinates)
 
     EXPECT_TRUE(surface_has_size(client, surface, display_width, display_height));
 }
+
+TEST_F(WpViewporterTest, when_destination_is_not_set_source_must_have_integer_size)
+{
+    wlcs::Client client{the_server()};
+
+    auto surface = client.create_visible_surface(200, 100);
+
+    auto viewporter = client.bind_if_supported<wp_viewporter>(wlcs::AnyVersion);
+    auto viewport = wp_viewporter_get_viewport(viewporter, surface);
+
+    bool committed = false;
+
+    wp_viewport_set_source(viewport, wl_fixed_from_int(0), wl_fixed_from_int(0), wl_fixed_from_double(23.2f), wl_fixed_from_int(100));
+    surface.add_frame_callback([&committed](auto) { committed = true; });
+    wl_surface_commit(surface);
+
+    try
+    {
+        client.dispatch_until([&committed]() { return committed;} );
+    }
+    catch (wlcs::ProtocolError const& err)
+    {
+        EXPECT_THAT(err.interface(), Eq(&wp_viewport_interface));
+        EXPECT_THAT(err.error_code(), Eq(WP_VIEWPORT_ERROR_BAD_SIZE));
+        return;
+    }
+
+    FAIL() << "Expected protocol error not raised";
+}
