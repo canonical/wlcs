@@ -359,3 +359,37 @@ TEST_F(WpViewporterTest, all_minus_one_source_unsets_source_rect)
 
     EXPECT_TRUE(surface_has_size(client, surface, buffer_width, buffer_height));
 }
+
+TEST_F(WpViewporterTest, all_minus_one_destination_unsets_destination_viewport)
+{
+    wlcs::Client client{the_server()};
+
+    int const buffer_width{640}, buffer_height{480}, display_width{320}, display_height{200};
+
+    auto surface = client.create_visible_surface(buffer_width, buffer_height);
+    auto buffer = ShmBuffer(client, buffer_width, buffer_height);
+
+    auto viewporter = client.bind_if_supported<wp_viewporter>(wlcs::AnyVersion);
+    auto viewport = wp_viewporter_get_viewport(viewporter, surface);
+
+    bool committed = false;
+
+    // First set the destination viewport, and assert that we get the right surface size...
+    wp_viewport_set_destination(viewport, display_width, display_height);
+    surface.add_frame_callback([&committed](auto) { committed = true; });
+    wl_surface_commit(surface);
+
+    client.dispatch_until([&committed]() { return committed;} );
+
+    ASSERT_TRUE(surface_has_size(client, surface, display_width, display_height));
+
+    // Now, set the source viewport to all -1, and expect that we go back to un-viewported size
+    committed = false;
+    wp_viewport_set_destination(viewport, -1, -1);
+    surface.add_frame_callback([&committed](auto) { committed = true; });
+    wl_surface_commit(surface);
+
+    client.dispatch_until([&committed]() { return committed;} );
+
+    EXPECT_TRUE(surface_has_size(client, surface, buffer_width, buffer_height));
+}
