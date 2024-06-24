@@ -29,7 +29,7 @@ namespace
 auto const any_width = 300;
 auto const any_height = 300;
 
-struct ToplevelDecoration : StartedInProcessServer
+struct XdgDecorationV1Test : StartedInProcessServer
 {
     Client a_client{the_server()};
     Surface a_surface{a_client.create_xdg_shell_stable_surface(any_width, any_height)};
@@ -45,9 +45,9 @@ struct ToplevelDecoration : StartedInProcessServer
 };
 } // namespace
 
-TEST_F(ToplevelDecoration, can_get_decoration) { EXPECT_THAT(decoration, NotNull()); }
+TEST_F(XdgDecorationV1Test, can_get_decoration) { EXPECT_THAT(decoration, NotNull()); }
 
-TEST_F(ToplevelDecoration, abbas)
+TEST_F(XdgDecorationV1Test, abbas)
 {
     EXPECT_CALL(decoration, configure(_)).Times(2);
 

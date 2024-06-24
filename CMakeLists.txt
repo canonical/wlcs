@@ -180,7 +180,7 @@ set(WLCS_TESTS
   tests/text_input_v3_with_input_method_v2.cpp
   tests/wlr_virtual_pointer_v1.cpp
   tests/text_input_v2_with_input_method_v1.cpp
-  tests/xdg_decoration.cpp
+  tests/xdg_decoration_v1.cpp
 )
 
 set(
