@@ -360,6 +360,45 @@ TEST_F(WpViewporterTest, all_minus_one_source_unsets_source_rect)
     EXPECT_TRUE(surface_has_size(client, surface, buffer_width, buffer_height));
 }
 
+class WpViewporterDestParamsTest : public WpViewporterTest, public testing::WithParamInterface<std::tuple<int32_t, int32_t, char const*>>
+{
+};
+
+TEST_P(WpViewporterDestParamsTest, raises_protocol_error_on_invalid_value)
+{
+    wlcs::Client client{the_server()};
+
+    auto surface = client.create_visible_surface(200, 100);
+
+    auto viewporter = client.bind_if_supported<wp_viewporter>(wlcs::AnyVersion);
+    auto viewport = wp_viewporter_get_viewport(viewporter, surface);
+
+    auto const [width, height, _] = GetParam();
+
+    EXPECT_PROTOCOL_ERROR(
+        {
+            wp_viewport_set_destination(viewport, width, height);
+            client.roundtrip();
+        },
+        &wp_viewport_interface,
+        WP_VIEWPORT_ERROR_BAD_VALUE
+    );
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    ,
+    WpViewporterDestParamsTest,
+    Values(
+        std::make_tuple(-1, 0, "width_must_be_non_negative"),
+        std::make_tuple(0, -1, "height_must_be_non_negative"),
+        std::make_tuple(1, 0, "height_must_be_positive"),
+        std::make_tuple(0, 1, "width_must_be_positive")
+    ),
+    [](testing::TestParamInfo<WpViewporterDestParamsTest::ParamType> const& info) -> std::string
+    {
+        return std::get<2>(info.param);
+    });
+
 TEST_F(WpViewporterTest, all_minus_one_destination_unsets_destination_viewport)
 {
     wlcs::Client client{the_server()};
