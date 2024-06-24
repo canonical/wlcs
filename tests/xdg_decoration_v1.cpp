@@ -47,7 +47,7 @@ struct XdgDecorationV1Test : StartedInProcessServer
 
 TEST_F(XdgDecorationV1Test, can_get_decoration) { EXPECT_THAT(decoration, NotNull()); }
 
-TEST_F(XdgDecorationV1Test, abbas)
+TEST_F(XdgDecorationV1Test, configure_happy_path)
 {
     EXPECT_CALL(decoration, configure(_)).Times(2);
 
