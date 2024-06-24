@@ -17,17 +17,13 @@
 #include "in_process_server.h"
 #include "xdg_decoration_unstable_v1.h"
 #include "xdg_shell_stable.h"
-#include "gmock/gmock.h"
 #include <gtest/gtest.h>
-
-using testing::_;
-using testing::NotNull;
 
 using namespace wlcs;
 
-namespace
-{
-struct XdgDecorationV1Test : StartedInProcessServer
+using XdgDecorationV1Test = StartedInProcessServer;
+
+TEST_F(XdgDecorationV1Test, happy_path)
 {
     Client a_client{the_server()};
     Surface a_surface{a_client};
@@ -37,23 +33,20 @@ struct XdgDecorationV1Test : StartedInProcessServer
     ZxdgDecorationManagerV1 manager{a_client};
     ZxdgToplevelDecorationV1 decoration{manager, xdg_toplevel};
 
-    void TearDown() override
-    {
-        a_client.roundtrip();
-        StartedInProcessServer::TearDown();
-    }
-};
-} // namespace
+    EXPECT_NO_THROW(a_client.roundtrip());
+}
 
-TEST_F(XdgDecorationV1Test, can_get_decoration) { EXPECT_THAT(decoration, NotNull()); }
-
-TEST_F(XdgDecorationV1Test, configure_happy_path)
+TEST_F(XdgDecorationV1Test, already_constructed)
 {
-    EXPECT_CALL(decoration, configure(_)).Times(2);
+    Client a_client{the_server()};
+    Surface a_surface{a_client};
+    XdgSurfaceStable xdg_surface{a_client, a_surface};
+    XdgToplevelStable xdg_toplevel{xdg_surface};
 
-    decoration.configure(ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE);
-    a_client.roundtrip();
+    ZxdgDecorationManagerV1 manager{a_client};
 
-    decoration.configure(ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
-    a_client.roundtrip();
+    ZxdgToplevelDecorationV1 decoration{manager, xdg_toplevel};
+    ZxdgToplevelDecorationV1 duplicate_decoration{manager, xdg_toplevel};
+
+    EXPECT_THROW(a_client.roundtrip(), wlcs::ProtocolError);
 }
