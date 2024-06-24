@@ -48,6 +48,9 @@ public:
                 return false;
             });
 
+        // First ensure we are *not* on the surface...
+        pointer.move_to(0, 0);
+        // ...then move onto the surface, so our enter notification fires
         pointer.move_to(100, 100);
         client.dispatch_until([&pointer_entered]() { return pointer_entered; });
 
@@ -322,3 +325,37 @@ INSTANTIATE_TEST_SUITE_P(
     {
         return std::get<4>(info.param);
     });
+
+TEST_F(WpViewporterTest, all_minus_one_source_unsets_source_rect)
+{
+    wlcs::Client client{the_server()};
+
+    int const buffer_width{640}, buffer_height{480}, display_width{320}, display_height{200};
+
+    auto surface = client.create_visible_surface(buffer_width, buffer_height);
+    auto buffer = ShmBuffer(client, buffer_width, buffer_height);
+
+    auto viewporter = client.bind_if_supported<wp_viewporter>(wlcs::AnyVersion);
+    auto viewport = wp_viewporter_get_viewport(viewporter, surface);
+
+    bool committed = false;
+
+    // First set the source viewport, and assert that we get the right surface size...
+    wp_viewport_set_source(viewport, 0, 0, wl_fixed_from_int(display_width), wl_fixed_from_int(display_height));
+    surface.add_frame_callback([&committed](auto) { committed = true; });
+    wl_surface_commit(surface);
+
+    client.dispatch_until([&committed]() { return committed;} );
+
+    ASSERT_TRUE(surface_has_size(client, surface, display_width, display_height));
+
+    // Now, set the source viewport to all -1, and expect that we go back to un-viewported size
+    committed = false;
+    wp_viewport_set_source(viewport, wl_fixed_from_int(-1), wl_fixed_from_int(-1), wl_fixed_from_int(-1), wl_fixed_from_int(-1));
+    surface.add_frame_callback([&committed](auto) { committed = true; });
+    wl_surface_commit(surface);
+
+    client.dispatch_until([&committed]() { return committed;} );
+
+    EXPECT_TRUE(surface_has_size(client, surface, buffer_width, buffer_height));
+}
