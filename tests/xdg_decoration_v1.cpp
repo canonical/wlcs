@@ -16,6 +16,7 @@
 
 #include "in_process_server.h"
 #include "xdg_decoration_unstable_v1.h"
+#include "xdg_shell_stable.h"
 #include "gmock/gmock.h"
 #include <gtest/gtest.h>
 
@@ -26,16 +27,15 @@ using namespace wlcs;
 
 namespace
 {
-auto const any_width = 300;
-auto const any_height = 300;
-
 struct XdgDecorationV1Test : StartedInProcessServer
 {
     Client a_client{the_server()};
-    Surface a_surface{a_client.create_xdg_shell_stable_surface(any_width, any_height)};
+    Surface a_surface{a_client};
+    XdgSurfaceStable xdg_surface{a_client, a_surface};
+    XdgToplevelStable xdg_toplevel{xdg_surface};
 
     ZxdgDecorationManagerV1 manager{a_client};
-    ZxdgToplevelDecorationV1 decoration{manager, a_surface.get_toplevel()};
+    ZxdgToplevelDecorationV1 decoration{manager, xdg_toplevel};
 
     void TearDown() override
     {

@@ -169,8 +169,6 @@ public:
     void add_frame_callback(std::function<void(int)> const& on_frame);
     void attach_visible_buffer(int width, int height);
     void run_on_destruction(std::function<void()> callback);
-    void attach_toplevel(struct xdg_toplevel* toplevel);
-    struct xdg_toplevel* get_toplevel();
 
     Client& owner() const;
     auto current_outputs() -> std::set<wl_output*> const&;
