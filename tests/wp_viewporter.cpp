@@ -249,6 +249,15 @@ TEST_F(WpViewporterTest, when_buffer_is_scaled_source_is_in_scaled_coordinates)
     EXPECT_TRUE(surface_has_size(client, surface, display_width, display_height));
 }
 
+#define EXPECT_PROTOCOL_ERROR(block, iface, err_code) \
+    try { \
+        block \
+        FAIL() << "Expected protocol error not raised"; \
+    } catch (wlcs::ProtocolError const& err) {\
+        EXPECT_THAT(err.interface(), Eq(iface));\
+        EXPECT_THAT(err.error_code(), Eq(err_code));\
+    }
+
 TEST_F(WpViewporterTest, when_destination_is_not_set_source_must_have_integer_size)
 {
     wlcs::Client client{the_server()};
@@ -264,18 +273,13 @@ TEST_F(WpViewporterTest, when_destination_is_not_set_source_must_have_integer_si
     surface.add_frame_callback([&committed](auto) { committed = true; });
     wl_surface_commit(surface);
 
-    try
-    {
-        client.dispatch_until([&committed]() { return committed;} );
-    }
-    catch (wlcs::ProtocolError const& err)
-    {
-        EXPECT_THAT(err.interface(), Eq(&wp_viewport_interface));
-        EXPECT_THAT(err.error_code(), Eq(WP_VIEWPORT_ERROR_BAD_SIZE));
-        return;
-    }
-
-    FAIL() << "Expected protocol error not raised";
+    EXPECT_PROTOCOL_ERROR(
+        {
+            client.dispatch_until([&committed]() { return committed;} );
+        },
+        &wp_viewport_interface,
+        WP_VIEWPORT_ERROR_BAD_SIZE
+    );
 }
 
 class WpViewporterSrcParamsTest : public WpViewporterTest, public testing::WithParamInterface<std::tuple<double, double, double, double, char const*>>
@@ -293,19 +297,14 @@ TEST_P(WpViewporterSrcParamsTest, raises_protocol_error_on_invalid_value)
 
     auto const [x, y, width, height, _] = GetParam();
 
-    try
-    {
-        wp_viewport_set_source(viewport, wl_fixed_from_double(x), wl_fixed_from_double(y), wl_fixed_from_double(width), wl_fixed_from_double(height));
-        client.roundtrip();
-    }
-    catch (wlcs::ProtocolError const& err)
-    {
-        EXPECT_THAT(err.interface(), Eq(&wp_viewport_interface));
-        EXPECT_THAT(err.error_code(), Eq(WP_VIEWPORT_ERROR_BAD_VALUE));
-        return;
-    }
-
-    FAIL() << "Expected protocol error not raised";
+    EXPECT_PROTOCOL_ERROR(
+        {
+            wp_viewport_set_source(viewport, wl_fixed_from_double(x), wl_fixed_from_double(y), wl_fixed_from_double(width), wl_fixed_from_double(height));
+            client.roundtrip();
+        },
+        &wp_viewport_interface,
+        WP_VIEWPORT_ERROR_BAD_VALUE
+    );
 }
 
 INSTANTIATE_TEST_SUITE_P(
