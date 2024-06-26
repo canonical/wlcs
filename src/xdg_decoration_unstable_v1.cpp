@@ -27,17 +27,38 @@ wlcs::ZxdgDecorationManagerV1::ZxdgDecorationManagerV1(Client& client) :
 
 wlcs::ZxdgDecorationManagerV1::~ZxdgDecorationManagerV1() = default;
 
-wlcs::ZxdgDecorationManagerV1::operator zxdg_decoration_manager_v1*() const { return manager; }
-
-wlcs::ZxdgToplevelDecorationV1::ZxdgToplevelDecorationV1(ZxdgDecorationManagerV1& manager, xdg_toplevel* toplevel) :
-    toplevel{zxdg_decoration_manager_v1_get_toplevel_decoration(manager, toplevel)},
-    version{zxdg_decoration_manager_v1_get_version(manager)}
+wlcs::ZxdgDecorationManagerV1::operator zxdg_decoration_manager_v1*() const
 {
+    return manager;
 }
 
-wlcs::ZxdgToplevelDecorationV1::~ZxdgToplevelDecorationV1() { zxdg_toplevel_decoration_v1_destroy(toplevel); }
+wlcs::ZxdgToplevelDecorationV1::ZxdgToplevelDecorationV1(ZxdgDecorationManagerV1& manager, xdg_toplevel* toplevel) :
+    version{zxdg_decoration_manager_v1_get_version(manager)},
+    toplevel_decoration{zxdg_decoration_manager_v1_get_toplevel_decoration(manager, toplevel)}
+{
+    zxdg_toplevel_decoration_v1_set_user_data(toplevel_decoration, this);
+    zxdg_toplevel_decoration_v1_add_listener(toplevel_decoration, &listener, this);
+}
 
-wlcs::ZxdgToplevelDecorationV1::operator zxdg_toplevel_decoration_v1*() const { return toplevel; }
+wlcs::ZxdgToplevelDecorationV1::~ZxdgToplevelDecorationV1() { zxdg_toplevel_decoration_v1_destroy(toplevel_decoration); }
+
+void wlcs::ZxdgToplevelDecorationV1::set_mode(uint32_t mode)
+{
+    zxdg_toplevel_decoration_v1_set_mode(toplevel_decoration, mode);
+}
+
+void wlcs::ZxdgToplevelDecorationV1::unset_mode()
+{
+    zxdg_toplevel_decoration_v1_unset_mode(toplevel_decoration);
+}
+
+wlcs::ZxdgToplevelDecorationV1::operator zxdg_toplevel_decoration_v1*() const
+{
+    return toplevel_decoration;
+}
 
 zxdg_toplevel_decoration_v1_listener const wlcs::ZxdgToplevelDecorationV1::listener = {
-    [](void* self, auto*, auto... args) { static_cast<ZxdgToplevelDecorationV1*>(self)->configure(args...); }};
+    [](void* self, auto*, auto... args)
+    {
+        static_cast<ZxdgToplevelDecorationV1*>(self)->configure(args...);
+    }};

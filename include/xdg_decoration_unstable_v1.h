@@ -49,12 +49,16 @@ public:
 
     MOCK_METHOD1(configure, void(uint32_t mode));
 
+    void set_mode(uint32_t mode);
+    void unset_mode();
+
     operator zxdg_toplevel_decoration_v1*() const;
     friend void zxdg_toplevel_manager_v1_destroy(ZxdgToplevelDecorationV1 const&) = delete;
 
 private:
-    zxdg_toplevel_decoration_v1* const toplevel;
     uint32_t const version;
+    zxdg_toplevel_decoration_v1* const toplevel_decoration;
+
     static zxdg_toplevel_decoration_v1_listener const listener;
 };
 }
