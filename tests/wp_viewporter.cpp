@@ -291,6 +291,33 @@ TEST_F(WpViewporterTest, when_destination_is_not_set_source_must_have_integer_si
     );
 }
 
+TEST_F(WpViewporterTest, source_rectangle_out_of_buffer_bounds_raises_protocol_error)
+{
+    wlcs::Client client{the_server()};
+
+    auto surface = client.create_visible_surface(200, 100);
+
+    auto viewporter = client.bind_if_supported<wp_viewporter>(wlcs::AnyVersion);
+    auto viewport = wp_viewporter_get_viewport(viewporter, surface);
+
+    bool committed = false;
+
+    // Set the surface scale to test that interaction with surface coördinates
+    wl_surface_set_buffer_scale(surface, 2);
+    // Set a source viewport outside the (transformed) buffer coordinates - this corresponds to the rectangle with corners (100, 0) -> (201, 100)
+    wp_viewport_set_source(viewport, wl_fixed_from_int(50), wl_fixed_from_int(0), wl_fixed_from_double(50.5), wl_fixed_from_int(50));
+    surface.add_frame_callback([&committed](auto) { committed = true; });
+    wl_surface_commit(surface);
+
+    EXPECT_PROTOCOL_ERROR(
+        {
+            client.dispatch_until([&committed]() { return committed;} );
+        },
+        &wp_viewport_interface,
+        WP_VIEWPORT_ERROR_OUT_OF_BUFFER
+    );
+}
+
 class WpViewporterSrcParamsTest : public WpViewporterTest, public testing::WithParamInterface<std::tuple<double, double, double, double, char const*>>
 {
 };
