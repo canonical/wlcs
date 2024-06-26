@@ -71,9 +71,15 @@ public:
                 motion_received = true;
                 return false;
             });
+        client.add_pointer_leave_notification(
+            [&](auto)
+            {
+                pointer_entered = false;
+                return false;
+            });
 
         pointer.move_by(width - 1, height - 1);
-        client.dispatch_until([&motion_received]() { return motion_received; });
+        client.dispatch_until([&]() { return motion_received || !pointer_entered; });
 
         // Should now be at bottom corner of surface
         if (client.window_under_cursor() != surface)
