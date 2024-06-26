@@ -318,6 +318,92 @@ TEST_F(WpViewporterTest, source_rectangle_out_of_buffer_bounds_raises_protocol_e
     );
 }
 
+TEST_F(WpViewporterTest, assigning_a_viewport_to_a_surface_with_an_existing_viewport_is_an_error)
+{
+    wlcs::Client client{the_server()};
+
+    auto surface = client.create_visible_surface(200, 100);
+
+    auto viewporter = client.bind_if_supported<wp_viewporter>(wlcs::AnyVersion);
+    wp_viewporter_get_viewport(viewporter, surface);
+
+    EXPECT_PROTOCOL_ERROR(
+        {
+            wp_viewporter_get_viewport(viewporter, surface);
+            client.roundtrip();
+        },
+        &wp_viewporter_interface,
+        WP_VIEWPORTER_ERROR_VIEWPORT_EXISTS
+    );
+}
+
+TEST_F(WpViewporterTest, setting_destination_after_surface_has_been_destroyed_is_an_error)
+{
+    wlcs::Client client{the_server()};
+
+    int const buffer_width{100}, buffer_height{100};
+
+    auto viewporter = client.bind_if_supported<wp_viewporter>(wlcs::AnyVersion);
+    struct wp_viewport* viewport = nullptr;
+
+    {
+        auto surface = client.create_visible_surface(buffer_width, buffer_height);
+        viewport = wp_viewporter_get_viewport(viewporter, surface);
+    }
+
+    EXPECT_PROTOCOL_ERROR(
+        {
+            wp_viewport_set_destination(viewport, 10, 10);
+            client.roundtrip();
+        },
+        &wp_viewport_interface,
+        WP_VIEWPORT_ERROR_NO_SURFACE
+    );
+}
+
+TEST_F(WpViewporterTest, setting_surface_after_surface_has_been_destroyed_is_an_error)
+{
+    wlcs::Client client{the_server()};
+
+    int const buffer_width{100}, buffer_height{100};
+
+    auto viewporter = client.bind_if_supported<wp_viewporter>(wlcs::AnyVersion);
+    struct wp_viewport* viewport = nullptr;
+
+    {
+        auto surface = client.create_visible_surface(buffer_width, buffer_height);
+        viewport = wp_viewporter_get_viewport(viewporter, surface);
+    }
+
+    EXPECT_PROTOCOL_ERROR(
+        {
+            wp_viewport_set_source(viewport, wl_fixed_from_int(0), wl_fixed_from_int(0), wl_fixed_from_int(10), wl_fixed_from_int(10));
+            client.roundtrip();
+        },
+        &wp_viewport_interface,
+        WP_VIEWPORT_ERROR_NO_SURFACE
+    );
+}
+
+TEST_F(WpViewporterTest, can_destroy_viewport_after_surface_is_destroyed)
+{
+    wlcs::Client client{the_server()};
+
+    int const buffer_width{100}, buffer_height{100};
+
+    auto viewporter = client.bind_if_supported<wp_viewporter>(wlcs::AnyVersion);
+    struct wp_viewport* viewport = nullptr;
+
+    {
+        auto surface = client.create_visible_surface(buffer_width, buffer_height);
+        viewport = wp_viewporter_get_viewport(viewporter, surface);
+        client.roundtrip();
+    }
+
+    wp_viewport_destroy(viewport);
+    client.roundtrip();
+}
+
 class WpViewporterSrcParamsTest : public WpViewporterTest, public testing::WithParamInterface<std::tuple<double, double, double, double, char const*>>
 {
 };
