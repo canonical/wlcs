@@ -231,7 +231,7 @@ TEST_F(WpViewporterTest, when_buffer_is_scaled_source_is_in_scaled_coordinates)
 
     wlcs::Client client{the_server()};
 
-    int const buffer_width{100}, buffer_height{100}, display_width{82}, display_height{20};
+    int const buffer_width{200}, buffer_height{100}, display_width{82}, display_height{20};
     int const scale{2};
 
     auto surface = client.create_visible_surface(buffer_width, buffer_height);
