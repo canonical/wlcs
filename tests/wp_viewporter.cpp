@@ -125,8 +125,10 @@ public:
     }
 };
 
+namespace wlcs
+{
 WLCS_CREATE_INTERFACE_DESCRIPTOR(wp_viewporter)
-
+}
 
 TEST_F(WpViewporterTest, set_destination_sets_output_size)
 {
