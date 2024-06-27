@@ -203,7 +203,6 @@ TEST_F(WpViewporterTest, when_buffer_is_scaled_destination_is_in_scaled_coordina
 {
     wlcs::Client client{the_server()};
 
-
     int const buffer_width{100}, buffer_height{100}, display_width{82}, display_height{20};
     int const scale{2};
 
