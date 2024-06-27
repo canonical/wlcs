@@ -29,6 +29,13 @@
 using namespace testing;
 using namespace wlcs;
 
+namespace wlcs
+{
+WLCS_CREATE_INTERFACE_DESCRIPTOR(wp_viewporter)
+WLCS_CREATE_INTERFACE_DESCRIPTOR(wp_viewport)
+}
+
+
 class WpViewporterTest : public wlcs::InProcessServer
 {
 public:
@@ -125,11 +132,6 @@ public:
     }
 };
 
-namespace wlcs
-{
-WLCS_CREATE_INTERFACE_DESCRIPTOR(wp_viewporter)
-}
-
 TEST_F(WpViewporterTest, set_destination_sets_output_size)
 {
     wlcs::Client client{the_server()};
@@ -140,7 +142,7 @@ TEST_F(WpViewporterTest, set_destination_sets_output_size)
     auto buffer = ShmBuffer(client, buffer_width, buffer_height);
 
     auto viewporter = client.bind_if_supported<wp_viewporter>(wlcs::AnyVersion);
-    auto viewport = wp_viewporter_get_viewport(viewporter, surface);
+    auto viewport = wrap_wl_object(wp_viewporter_get_viewport(viewporter, surface));
 
     bool committed = false;
 
@@ -163,7 +165,7 @@ TEST_F(WpViewporterTest, committing_new_destination_without_new_buffer_still_cha
     auto surface = client.create_visible_surface(buffer_width, buffer_height);
 
     auto viewporter = client.bind_if_supported<wp_viewporter>(wlcs::AnyVersion);
-    auto viewport = wp_viewporter_get_viewport(viewporter, surface);
+    auto viewport = wrap_wl_object(wp_viewporter_get_viewport(viewporter, surface));
 
     bool committed = false;
 
@@ -186,7 +188,7 @@ TEST_F(WpViewporterTest, when_source_but_no_destination_set_window_has_src_size)
     auto buffer = ShmBuffer(client, buffer_width, buffer_height);
 
     auto viewporter = client.bind_if_supported<wp_viewporter>(wlcs::AnyVersion);
-    auto viewport = wp_viewporter_get_viewport(viewporter, surface);
+    auto viewport = wrap_wl_object(wp_viewporter_get_viewport(viewporter, surface));
 
     bool committed = false;
 
@@ -212,7 +214,7 @@ TEST_F(WpViewporterTest, when_buffer_is_scaled_destination_is_in_scaled_coordina
     auto buffer = ShmBuffer(client, buffer_width, buffer_height);
 
     auto viewporter = client.bind_if_supported<wp_viewporter>(wlcs::AnyVersion);
-    auto viewport = wp_viewporter_get_viewport(viewporter, surface);
+    auto viewport = wrap_wl_object(wp_viewporter_get_viewport(viewporter, surface));
 
     bool committed = false;
 
@@ -245,7 +247,7 @@ TEST_F(WpViewporterTest, when_buffer_is_scaled_source_is_in_scaled_coordinates)
     auto buffer = ShmBuffer(client, buffer_width, buffer_height);
 
     auto viewporter = client.bind_if_supported<wp_viewporter>(wlcs::AnyVersion);
-    auto viewport = wp_viewporter_get_viewport(viewporter, surface);
+    auto viewport = wrap_wl_object(wp_viewporter_get_viewport(viewporter, surface));
 
     bool committed = false;
 
@@ -266,7 +268,7 @@ TEST_F(WpViewporterTest, when_destination_is_not_set_source_must_have_integer_si
     auto surface = client.create_visible_surface(200, 100);
 
     auto viewporter = client.bind_if_supported<wp_viewporter>(wlcs::AnyVersion);
-    auto viewport = wp_viewporter_get_viewport(viewporter, surface);
+    auto viewport = wrap_wl_object(wp_viewporter_get_viewport(viewporter, surface));
 
     bool committed = false;
 
@@ -290,7 +292,7 @@ TEST_F(WpViewporterTest, source_rectangle_out_of_buffer_bounds_raises_protocol_e
     auto surface = client.create_visible_surface(200, 100);
 
     auto viewporter = client.bind_if_supported<wp_viewporter>(wlcs::AnyVersion);
-    auto viewport = wp_viewporter_get_viewport(viewporter, surface);
+    auto viewport = wrap_wl_object(wp_viewporter_get_viewport(viewporter, surface));
 
     bool committed = false;
 
@@ -407,7 +409,7 @@ TEST_P(WpViewporterSrcParamsTest, raises_protocol_error_on_invalid_value)
     auto surface = client.create_visible_surface(200, 100);
 
     auto viewporter = client.bind_if_supported<wp_viewporter>(wlcs::AnyVersion);
-    auto viewport = wp_viewporter_get_viewport(viewporter, surface);
+    auto viewport = wrap_wl_object(wp_viewporter_get_viewport(viewporter, surface));
 
     auto const [x, y, width, height, _] = GetParam();
 
@@ -447,7 +449,7 @@ TEST_F(WpViewporterTest, all_minus_one_source_unsets_source_rect)
     auto buffer = ShmBuffer(client, buffer_width, buffer_height);
 
     auto viewporter = client.bind_if_supported<wp_viewporter>(wlcs::AnyVersion);
-    auto viewport = wp_viewporter_get_viewport(viewporter, surface);
+    auto viewport = wrap_wl_object(wp_viewporter_get_viewport(viewporter, surface));
 
     bool committed = false;
 
@@ -482,7 +484,7 @@ TEST_P(WpViewporterDestParamsTest, raises_protocol_error_on_invalid_value)
     auto surface = client.create_visible_surface(200, 100);
 
     auto viewporter = client.bind_if_supported<wp_viewporter>(wlcs::AnyVersion);
-    auto viewport = wp_viewporter_get_viewport(viewporter, surface);
+    auto viewport = wrap_wl_object(wp_viewporter_get_viewport(viewporter, surface));
 
     auto const [width, height, _] = GetParam();
 
@@ -520,7 +522,7 @@ TEST_F(WpViewporterTest, all_minus_one_destination_unsets_destination_viewport)
     auto buffer = ShmBuffer(client, buffer_width, buffer_height);
 
     auto viewporter = client.bind_if_supported<wp_viewporter>(wlcs::AnyVersion);
-    auto viewport = wp_viewporter_get_viewport(viewporter, surface);
+    auto viewport = wrap_wl_object(wp_viewporter_get_viewport(viewporter, surface));
 
     bool committed = false;
 
