@@ -360,7 +360,7 @@ TEST_F(WpViewporterTest, setting_destination_after_surface_has_been_destroyed_is
     );
 }
 
-TEST_F(WpViewporterTest, setting_surface_after_surface_has_been_destroyed_is_an_error)
+TEST_F(WpViewporterTest, setting_source_after_surface_has_been_destroyed_is_an_error)
 {
     wlcs::Client client{the_server()};
 
