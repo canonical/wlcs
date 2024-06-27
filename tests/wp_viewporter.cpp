@@ -142,7 +142,6 @@ TEST_F(WpViewporterTest, set_destination_sets_output_size)
     bool committed = false;
 
     wp_viewport_set_destination(viewport, display_width, display_height);
-    // Oh! I think we handle changing surface properties incorrectly!
     wl_surface_attach(surface, buffer, 0, 0);
     surface.add_frame_callback([&committed](auto) { committed = true; });
     wl_surface_commit(surface);
