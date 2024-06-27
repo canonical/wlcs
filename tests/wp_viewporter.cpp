@@ -15,6 +15,7 @@
  */
 
 #include "in_process_server.h"
+#include "expect_protocol_error.h"
 #include "version_specifier.h"
 #include "wayland-util.h"
 
@@ -255,15 +256,6 @@ TEST_F(WpViewporterTest, when_buffer_is_scaled_source_is_in_scaled_coordinates)
 
     EXPECT_TRUE(surface_has_size(client, surface, display_width, display_height));
 }
-
-#define EXPECT_PROTOCOL_ERROR(block, iface, err_code) \
-    try { \
-        block \
-        FAIL() << "Expected protocol error not raised"; \
-    } catch (wlcs::ProtocolError const& err) {\
-        EXPECT_THAT(err.interface(), Eq(iface));\
-        EXPECT_THAT(err.error_code(), Eq(err_code));\
-    }
 
 TEST_F(WpViewporterTest, when_destination_is_not_set_source_must_have_integer_size)
 {

@@ -189,6 +189,7 @@ set(
   include/wlcs/display_server.h
   include/wlcs/pointer.h
   include/wlcs/touch.h
+  include/expect_protocol_error.h
   include/helpers.h
   include/wl_handle.h
   include/in_process_server.h
