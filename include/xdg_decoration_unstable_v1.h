@@ -47,7 +47,7 @@ public:
     ZxdgToplevelDecorationV1(ZxdgDecorationManagerV1& manager, xdg_toplevel* toplevel);
     ~ZxdgToplevelDecorationV1();
 
-    MOCK_METHOD1(configure, void(uint32_t mode));
+    MOCK_METHOD(void, configure, (uint32_t mode), ());
 
     void set_mode(uint32_t mode);
     void unset_mode();
