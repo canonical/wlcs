@@ -149,6 +149,7 @@ GENERATE_PROTOCOL(text-input-unstable-v3)
 GENERATE_PROTOCOL(input-method-unstable-v1)
 GENERATE_PROTOCOL(input-method-unstable-v2)
 GENERATE_PROTOCOL(wlr-virtual-pointer-unstable-v1)
+GENERATE_PROTOCOL(viewporter)
 
 option(WLCS_BUILD_ASAN "Build a test runner with AddressSanitizer annotations" ON)
 option(WLCS_BUILD_TSAN "Build a test runner with ThreadSanitizer annotations" ON)
@@ -179,6 +180,7 @@ set(WLCS_TESTS
   tests/text_input_v3_with_input_method_v2.cpp
   tests/wlr_virtual_pointer_v1.cpp
   tests/text_input_v2_with_input_method_v1.cpp
+  tests/wp_viewporter.cpp
 )
 
 set(
@@ -187,6 +189,7 @@ set(
   include/wlcs/display_server.h
   include/wlcs/pointer.h
   include/wlcs/touch.h
+  include/expect_protocol_error.h
   include/helpers.h
   include/wl_handle.h
   include/in_process_server.h
