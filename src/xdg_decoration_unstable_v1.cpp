@@ -42,16 +42,6 @@ wlcs::ZxdgToplevelDecorationV1::ZxdgToplevelDecorationV1(ZxdgDecorationManagerV1
 
 wlcs::ZxdgToplevelDecorationV1::~ZxdgToplevelDecorationV1() { zxdg_toplevel_decoration_v1_destroy(toplevel_decoration); }
 
-void wlcs::ZxdgToplevelDecorationV1::set_mode(uint32_t mode)
-{
-    zxdg_toplevel_decoration_v1_set_mode(toplevel_decoration, mode);
-}
-
-void wlcs::ZxdgToplevelDecorationV1::unset_mode()
-{
-    zxdg_toplevel_decoration_v1_unset_mode(toplevel_decoration);
-}
-
 wlcs::ZxdgToplevelDecorationV1::operator zxdg_toplevel_decoration_v1*() const
 {
     return toplevel_decoration;

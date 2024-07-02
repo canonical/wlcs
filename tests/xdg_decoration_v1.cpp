@@ -69,15 +69,14 @@ TEST_F(XdgDecorationV1Test, destroy_toplevel_before_decoration)
 
 TEST_F(XdgDecorationV1Test, set_and_unset_mode)
 {
-    {
-        XdgToplevelStable xdg_toplevel{xdg_surface};
-        ZxdgToplevelDecorationV1 decoration{manager, xdg_toplevel};
+    XdgToplevelStable xdg_toplevel{xdg_surface};
+    ZxdgToplevelDecorationV1 decoration{manager, xdg_toplevel};
 
-        decoration.set_mode(ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE);
-        decoration.set_mode(ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
-        decoration.unset_mode();
-        EXPECT_CALL(decoration, configure(_)).Times(3);
-    }
+    zxdg_toplevel_decoration_v1_set_mode(decoration, ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE);
+    zxdg_toplevel_decoration_v1_set_mode(decoration, ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+    zxdg_toplevel_decoration_v1_unset_mode(decoration);
+
+    EXPECT_CALL(decoration, configure(_)).Times(3);
 
     a_client.roundtrip();
 }
