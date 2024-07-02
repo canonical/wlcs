@@ -42,7 +42,7 @@ TEST_F(XdgDecorationV1Test, happy_path)
     EXPECT_NO_THROW(a_client.roundtrip());
 }
 
-TEST_F(XdgDecorationV1Test, already_constructed)
+TEST_F(XdgDecorationV1Test, duplicate_decorations_throw_already_constructed)
 {
     XdgToplevelStable xdg_toplevel{xdg_surface};
     ZxdgToplevelDecorationV1 decoration{manager, xdg_toplevel};
@@ -51,7 +51,7 @@ TEST_F(XdgDecorationV1Test, already_constructed)
     EXPECT_THROW(a_client.roundtrip(), wlcs::ProtocolError);
 }
 
-TEST_F(XdgDecorationV1Test, destroy_toplevel_before_decoration)
+TEST_F(XdgDecorationV1Test, destroying_toplevel_before_decoration_throws_orphaned)
 {
     auto* xdg_toplevel2 = new XdgToplevelStable{xdg_surface};
     ZxdgToplevelDecorationV1 decoration{manager, *xdg_toplevel2};
@@ -60,7 +60,7 @@ TEST_F(XdgDecorationV1Test, destroy_toplevel_before_decoration)
     EXPECT_THROW(a_client.roundtrip(), wlcs::ProtocolError);
 }
 
-TEST_F(XdgDecorationV1Test, set_and_unset_mode)
+TEST_F(XdgDecorationV1Test, set_and_unset_mode_result_in_a_config_event)
 {
     XdgToplevelStable xdg_toplevel{xdg_surface};
     ZxdgToplevelDecorationV1 decoration{manager, xdg_toplevel};
