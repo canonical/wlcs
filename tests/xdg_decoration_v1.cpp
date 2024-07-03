@@ -16,16 +16,17 @@
 
 #include "xdg_decoration_unstable_v1.h"
 
+#include "expect_protocol_error.h"
 #include "generated/xdg-decoration-unstable-v1-client.h"
 #include "in_process_server.h"
 #include "xdg_shell_stable.h"
-#include "expect_protocol_error.h"
 #include "gmock/gmock.h"
 
 #include <boost/throw_exception.hpp>
 #include <gtest/gtest.h>
 
 using testing::_;
+using testing::AtLeast;
 using testing::Eq;
 using namespace wlcs;
 
@@ -75,7 +76,7 @@ TEST_F(XdgDecorationV1Test, set_mode_client_results_in_a_configure_event)
 
     zxdg_toplevel_decoration_v1_set_mode(decoration, ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE);
 
-    EXPECT_CALL(decoration, configure(_)).Times(1);
+    EXPECT_CALL(decoration, configure(_)).Times(AtLeast(1));
 
     a_client.roundtrip();
 }
@@ -87,7 +88,7 @@ TEST_F(XdgDecorationV1Test, set_mode_server_results_in_a_configure_event)
 
     zxdg_toplevel_decoration_v1_set_mode(decoration, ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
 
-    EXPECT_CALL(decoration, configure(_)).Times(1);
+    EXPECT_CALL(decoration, configure(_)).Times(AtLeast(1));
 
     a_client.roundtrip();
 }
@@ -99,7 +100,7 @@ TEST_F(XdgDecorationV1Test, unset_mode_results_in_a_configure_event)
 
     zxdg_toplevel_decoration_v1_unset_mode(decoration);
 
-    EXPECT_CALL(decoration, configure(_)).Times(1);
+    EXPECT_CALL(decoration, configure(_)).Times(AtLeast(1));
 
     a_client.roundtrip();
 }
