@@ -14,15 +14,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "xdg_decoration_unstable_v1.h"
+
 #include "generated/xdg-decoration-unstable-v1-client.h"
 #include "in_process_server.h"
-#include "xdg_decoration_unstable_v1.h"
 #include "xdg_shell_stable.h"
+#include "expect_protocol_error.h"
 #include "gmock/gmock.h"
+
 #include <boost/throw_exception.hpp>
 #include <gtest/gtest.h>
 
 using testing::_;
+using testing::Eq;
 using namespace wlcs;
 
 class XdgDecorationV1Test : public StartedInProcessServer
@@ -48,7 +52,10 @@ TEST_F(XdgDecorationV1Test, duplicate_decorations_throw_already_constructed)
     ZxdgToplevelDecorationV1 decoration{manager, xdg_toplevel};
     ZxdgToplevelDecorationV1 duplicate_decoration{manager, xdg_toplevel};
 
-    EXPECT_THROW(a_client.roundtrip(), wlcs::ProtocolError);
+    EXPECT_PROTOCOL_ERROR(
+        { a_client.roundtrip(); },
+        &zxdg_decoration_manager_v1_interface,
+        ZXDG_TOPLEVEL_DECORATION_V1_ERROR_ALREADY_CONSTRUCTED);
 }
 
 TEST_F(XdgDecorationV1Test, destroying_toplevel_before_decoration_throws_orphaned)
@@ -57,7 +64,8 @@ TEST_F(XdgDecorationV1Test, destroying_toplevel_before_decoration_throws_orphane
     ZxdgToplevelDecorationV1 decoration{manager, *xdg_toplevel2};
     delete xdg_toplevel2;
 
-    EXPECT_THROW(a_client.roundtrip(), wlcs::ProtocolError);
+    EXPECT_PROTOCOL_ERROR(
+        { a_client.roundtrip(); }, &zxdg_decoration_manager_v1_interface, ZXDG_TOPLEVEL_DECORATION_V1_ERROR_ORPHANED);
 }
 
 TEST_F(XdgDecorationV1Test, set_and_unset_mode_result_in_a_config_event)
