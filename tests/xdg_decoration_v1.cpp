@@ -68,16 +68,38 @@ TEST_F(XdgDecorationV1Test, destroying_toplevel_before_decoration_throws_orphane
         { a_client.roundtrip(); }, &zxdg_decoration_manager_v1_interface, ZXDG_TOPLEVEL_DECORATION_V1_ERROR_ORPHANED);
 }
 
-TEST_F(XdgDecorationV1Test, set_and_unset_mode_result_in_a_config_event)
+TEST_F(XdgDecorationV1Test, set_mode_client_results_in_a_configure_event)
 {
     XdgToplevelStable xdg_toplevel{xdg_surface};
     ZxdgToplevelDecorationV1 decoration{manager, xdg_toplevel};
 
     zxdg_toplevel_decoration_v1_set_mode(decoration, ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE);
+
+    EXPECT_CALL(decoration, configure(_)).Times(1);
+
+    a_client.roundtrip();
+}
+
+TEST_F(XdgDecorationV1Test, set_mode_server_results_in_a_configure_event)
+{
+    XdgToplevelStable xdg_toplevel{xdg_surface};
+    ZxdgToplevelDecorationV1 decoration{manager, xdg_toplevel};
+
     zxdg_toplevel_decoration_v1_set_mode(decoration, ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+
+    EXPECT_CALL(decoration, configure(_)).Times(1);
+
+    a_client.roundtrip();
+}
+
+TEST_F(XdgDecorationV1Test, unset_mode_results_in_a_configure_event)
+{
+    XdgToplevelStable xdg_toplevel{xdg_surface};
+    ZxdgToplevelDecorationV1 decoration{manager, xdg_toplevel};
+
     zxdg_toplevel_decoration_v1_unset_mode(decoration);
 
-    EXPECT_CALL(decoration, configure(_)).Times(3);
+    EXPECT_CALL(decoration, configure(_)).Times(1);
 
     a_client.roundtrip();
 }
