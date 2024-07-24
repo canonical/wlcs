@@ -8,14 +8,7 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 COMMON_CONFIGURE_OPTIONS =\
   -DWLCS_BUILD_ASAN=ON \
   -DWLCS_BUILD_UBSAN=ON \
-  -DWLCS_BUILD_TSAN=ON \
-  -DWLCS_LINK_TIME_OPTIMIZATION=ON
-
-# Disable LTO if optimizations are off
-ifeq ($(filter noopt,$(DEB_BUILD_OPTIONS)),noopt)
-	COMMON_CONFIGURE_OPTIONS += -DWLCS_LINK_TIME_OPTIMIZATION=OFF
-	DEB_BUILD_MAINT_OPTIONS += optimize=-lto
-endif
+  -DWLCS_BUILD_TSAN=ON
 
 ifneq ($(filter i386 armhf, $(DEB_HOST_ARCH)),)
   # i386 and armhf do not have tsan
