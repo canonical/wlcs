@@ -50,21 +50,6 @@ if (HAVE_W_GNU_VARIADIC_MACROS)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=gnu-zero-variadic-macro-arguments")
 endif ()
 
-# Link time optimization allows leaner, cleaner libraries
-option(WLCS_LINK_TIME_OPTIMIZATION "Enables the linker to optimize binaries." OFF)
-if(WLCS_LINK_TIME_OPTIMIZATION)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -flto")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto")
-  if(${CMAKE_COMPILER_IS_GNUCXX})
-    # clang defaults to fat LTO, but gcc needs an option to specify
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffat-lto-objects")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffat-lto-objects")
-    set(CMAKE_NM "gcc-nm")
-    set(CMAKE_AR "gcc-ar")
-    set(CMAKE_RANLIB "gcc-ranlib")
-  endif()
-endif()
-
 include(CheckCXXSymbolExists)
 list(APPEND CMAKE_REQUIRED_HEADERS ${GTEST_INCLUDE_DIRECTORIES})
 check_cxx_symbol_exists(INSTANTIATE_TEST_SUITE_P "gtest/gtest.h" HAVE_INSTANTIATE_TEST_SUITE_P)
