@@ -20,12 +20,15 @@
 #include "generated/fractional-scale-v1-client.h"
 #include "wl_handle.h"
 #include "wl_interface_descriptor.h"
+#include "gmock/gmock.h"
+#include <cstdint>
 
 namespace wlcs
 {
 WLCS_CREATE_INTERFACE_DESCRIPTOR(wp_fractional_scale_manager_v1);
 
 class Client;
+class Surface;
 
 class WpFractionalScaleManagerV1
 {
@@ -43,14 +46,16 @@ private:
 class WpFractionalScaleV1
 {
 public:
-    WpFractionalScaleV1(WpFractionalScaleManagerV1 const& manager);
+    WpFractionalScaleV1(WpFractionalScaleManagerV1 const& manager, wlcs::Surface const& surface);
     ~WpFractionalScaleV1();
 
+    MOCK_METHOD(void, preferred_scale, (uint32_t scale), ());
 
     operator wp_fractional_scale_v1*() const;
     friend void wp_fractional_scale_v1_destroy(WpFractionalScaleManagerV1 const&) = delete;
 
 private:
+    uint32_t const version;
     wp_fractional_scale_v1* const fractional_scale;
 
     static wp_fractional_scale_v1_listener const listener;
