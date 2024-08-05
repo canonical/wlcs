@@ -169,6 +169,7 @@ set(WLCS_TESTS
   tests/text_input_v2_with_input_method_v1.cpp
   tests/xdg_decoration_v1.cpp
   tests/wp_viewporter.cpp
+  tests/fractional_scale_v1.cpp
 )
 
 set(
