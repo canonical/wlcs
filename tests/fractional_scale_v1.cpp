@@ -23,16 +23,10 @@
 using namespace wlcs;
 using testing::Eq;
 
-#define WL_INTERFACE_DESCRIPTOR_SPECIALIZATION(WAYLAND_TYPE)                                                           \
-    template <> struct wlcs::WlInterfaceDescriptor<WAYLAND_TYPE>                                                       \
-    {                                                                                                                  \
-        static constexpr bool const has_specialisation = true;                                                         \
-        static constexpr wl_interface const* const interface = &WAYLAND_TYPE##_interface;                              \
-        static constexpr void (*const destructor)(WAYLAND_TYPE*) = &WAYLAND_TYPE##_destroy;                            \
-    };
-
-WL_INTERFACE_DESCRIPTOR_SPECIALIZATION(wp_fractional_scale_manager_v1)
-WL_INTERFACE_DESCRIPTOR_SPECIALIZATION(wp_fractional_scale_v1)
+namespace wlcs {
+    WLCS_CREATE_INTERFACE_DESCRIPTOR(wp_fractional_scale_manager_v1)
+    WLCS_CREATE_INTERFACE_DESCRIPTOR(wp_fractional_scale_v1)
+}
 
 class FractionalScaleV1Test : public wlcs::StartedInProcessServer
 {
