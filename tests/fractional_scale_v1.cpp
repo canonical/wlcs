@@ -14,33 +14,49 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fractional_scale_v1.h"
-
 #include "expect_protocol_error.h"
+#include "generated/fractional-scale-v1-client.h"
 #include "in_process_server.h"
+#include "version_specifier.h"
+#include "wl_handle.h"
 
 using namespace wlcs;
 using testing::Eq;
+
+#define WL_INTERFACE_DESCRIPTOR_SPECIALIZATION(WAYLAND_TYPE)                                                           \
+    template <> struct wlcs::WlInterfaceDescriptor<WAYLAND_TYPE>                                                       \
+    {                                                                                                                  \
+        static constexpr bool const has_specialisation = true;                                                         \
+        static constexpr wl_interface const* const interface = &WAYLAND_TYPE##_interface;                              \
+        static constexpr void (*const destructor)(WAYLAND_TYPE*) = &WAYLAND_TYPE##_destroy;                            \
+    };
+
+WL_INTERFACE_DESCRIPTOR_SPECIALIZATION(wp_fractional_scale_manager_v1)
+WL_INTERFACE_DESCRIPTOR_SPECIALIZATION(wp_fractional_scale_v1)
 
 class FractionalScaleV1Test : public wlcs::StartedInProcessServer
 {
 public:
     Client a_client{the_server()};
-    WpFractionalScaleManagerV1 manager{a_client};
     Surface a_surface{a_client};
+    WlHandle<wp_fractional_scale_manager_v1> fractional_scale_manager{
+        a_client.bind_if_supported<wp_fractional_scale_manager_v1>(AnyVersion)};
 };
 
 TEST_F(FractionalScaleV1Test, fractional_scale_creation_does_not_throw)
 {
-    WpFractionalScaleV1 fractional_scale{manager, a_surface};
+    auto fractional_scale =
+        wrap_wl_object(wp_fractional_scale_manager_v1_get_fractional_scale(fractional_scale_manager, a_surface));
 
     EXPECT_NO_THROW(a_client.roundtrip());
 }
 
 TEST_F(FractionalScaleV1Test, duplicate_fractional_scales_throw_fractional_scale_exists)
 {
-    WpFractionalScaleV1 fractional_scale1{manager, a_surface};
-    WpFractionalScaleV1 fractional_scale2{manager, a_surface};
+    auto fractional_scale1 =
+        wrap_wl_object(wp_fractional_scale_manager_v1_get_fractional_scale(fractional_scale_manager, a_surface));
+    auto fractional_scale2 =
+        wrap_wl_object(wp_fractional_scale_manager_v1_get_fractional_scale(fractional_scale_manager, a_surface));
 
     EXPECT_PROTOCOL_ERROR(
         { a_client.roundtrip(); },

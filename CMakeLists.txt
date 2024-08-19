@@ -194,7 +194,6 @@ set(
   include/surface_builder.h
   include/input_method.h
   include/xdg_decoration_unstable_v1.h
-  include/fractional_scale_v1.h
 
   src/data_device.cpp
   src/gtk_primary_selection.cpp
@@ -217,7 +216,6 @@ set(
   src/surface_builder.cpp
   src/input_method.cpp
   src/xdg_decoration_unstable_v1.cpp
-  src/fractional_scale_v1.cpp
 
   ${PROTOCOL_SOURCES}
   ${WLCS_TESTS}
