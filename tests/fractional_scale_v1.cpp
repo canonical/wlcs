@@ -1,5 +1,5 @@
 /*
- * Copyright © 2020 Canonical Ltd.
+ * Copyright © Canonical Ltd.
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 3,
@@ -18,7 +18,6 @@
 #include "generated/fractional-scale-v1-client.h"
 #include "in_process_server.h"
 #include "version_specifier.h"
-#include "wl_handle.h"
 
 using namespace wlcs;
 using testing::Eq;
