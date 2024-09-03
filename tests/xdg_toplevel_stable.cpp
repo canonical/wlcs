@@ -25,14 +25,17 @@
  * SOFTWARE.
  */
 
-#include "helpers.h"
+#include "generated/xdg-shell-client.h"
 #include "in_process_server.h"
 #include "version_specifier.h"
 #include "xdg_shell_stable.h"
 
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 #include <gmock/gmock.h>
 
-#include <optional>
+#include <numbers>
+#include <wayland-client-protocol.h>
 
 using namespace testing;
 
@@ -373,7 +376,7 @@ TEST_F(XdgToplevelStableTest, surface_can_be_resized_interactively)
 
     xdg_toplevel_resize(toplevel, client.seat(), last_serial, XDG_TOPLEVEL_RESIZE_EDGE_TOP_LEFT);
     client.roundtrip();
-    pointer.move_to(start_x + dx, start_x + dy);
+    pointer.move_to(start_x + dx, start_y + dy);
     pointer.left_button_up();
     client.roundtrip();
 
@@ -682,4 +685,103 @@ TEST_F(XdgToplevelStableConfigurationTest, activated_state_follows_pointer)
 
     EXPECT_THAT(state_a.activated, Eq(false));
     EXPECT_THAT(state_b.activated, Eq(true));
+}
+
+TEST_F(XdgToplevelStableTest, no_ping_pong)
+{
+    int const window_x = 100, window_y = 100;
+    int const initial_width = 420, initial_height = 390;
+    int const start_x = window_x + 5, start_y = window_y + 5;
+
+    wlcs::Client client{the_server()};
+    wlcs::Surface surface{client};
+
+    wlcs::XdgSurfaceStable xdg_shell_surface{client, surface};
+    wlcs::XdgToplevelStable toplevel{xdg_shell_surface};
+
+    surface.attach_visible_buffer(initial_width, initial_height);
+    xdg_surface_set_window_geometry(xdg_shell_surface, 0, 0, initial_width, initial_height);
+    wl_surface_commit(surface);
+    client.roundtrip();
+
+    the_server().move_surface_to(surface, window_x, window_y);
+
+    auto pointer = the_server().create_pointer();
+
+    bool button_down{false};
+    uint32_t last_serial{0};
+
+    client.add_pointer_button_notification([&](uint32_t serial, uint32_t, bool is_down) -> bool {
+            last_serial = serial;
+            button_down = is_down;
+            return true;
+        });
+
+    pointer.move_to(start_x, start_y);
+    pointer.left_button_down();
+
+    client.dispatch_until([&](){
+            return button_down;
+        });
+
+    EXPECT_CALL(xdg_shell_surface, configure)
+        .Times(Exactly(1))
+        .WillRepeatedly(
+            [&](auto serial)
+            {
+                xdg_surface_ack_configure(xdg_shell_surface, serial);
+            });
+
+    auto width = initial_width, height = initial_width;
+
+    EXPECT_CALL(toplevel, configure)
+        .Times(Exactly(1))
+        .WillRepeatedly(
+            [&](int32_t server_requested_width, int32_t server_requested_height, wl_array*)
+            {
+                if(width != server_requested_width || height != server_requested_height)
+                {
+                    width = server_requested_width;
+                    height = server_requested_height;
+
+                    // Playing around trying to get close to bomber's log
+                    wl_region* region = wl_compositor_create_region(client.compositor());
+                    wl_region_add(region, 0, 0, width, height);
+
+                    surface.attach_visible_buffer(width, height);
+                    xdg_surface_set_window_geometry(xdg_shell_surface, 0, 0, width, height);
+                    wl_surface_damage_buffer(surface, 0, 0, width, height);
+                    wl_surface_set_opaque_region(surface, region);
+                    xdg_toplevel_resize(toplevel, client.seat(), last_serial, XDG_TOPLEVEL_RESIZE_EDGE_LEFT);
+
+                    wl_surface_commit(surface);
+                    client.roundtrip();
+
+                    wl_region_destroy(region);
+                }
+            });
+
+    // For some reason, the first iteration doesn't seem to register?
+    for(int i = 0; i < 2; i++)
+    {
+        auto const ddx = (i % 2 == 0)? -100 : 100;
+        pointer.move_to(start_x + ddx, start_y);
+        client.roundtrip();
+
+        xdg_toplevel_resize(toplevel, client.seat(), last_serial, XDG_TOPLEVEL_RESIZE_EDGE_LEFT);
+
+        wl_surface_commit(surface);
+
+        client.roundtrip();
+    }
+
+    for(int i = 0; i < 20; i++)
+    {
+        // Probably need more here?
+        wl_surface_commit(surface);
+        client.roundtrip();
+    }
+
+    pointer.left_button_up();
+    client.roundtrip();
 }
