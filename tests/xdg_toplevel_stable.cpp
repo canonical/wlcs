@@ -35,6 +35,7 @@
 #include <gmock/gmock.h>
 
 #include <numbers>
+#include <unistd.h>
 #include <wayland-client-protocol.h>
 
 using namespace testing;
@@ -687,6 +688,34 @@ TEST_F(XdgToplevelStableConfigurationTest, activated_state_follows_pointer)
     EXPECT_THAT(state_b.activated, Eq(true));
 }
 
+// How to repro (manually)
+//
+// 1. Make sure you're running Mir 2.17 or earlier (it's fixed on main by
+// db0f621a0f79721f32222d7184aa7587e3bde8dc)
+//
+// 2. Open a QT application (bomber, qtcreator, etc..). Note that GNOME apps
+// don't seem to suffer from this bug
+//
+// 3. Press the left mouse button on a resize edge and move the edge.
+//
+// You should see the application rapidly change between two sizes, the effect
+// is more visible if you flick the mouse instead of moving it gently
+//
+//
+//
+// This test doesn't seem to properly reproduce this bug, this is most likely
+// related to the code reacting to `xdg_toplevel.configure` not being 1:1 with
+// QT
+//
+// A quick rundown of what it does:
+//  1. Create window
+//  2. Move cursor to left edge
+//  3. Press left mouse button
+//  4. Move the mouse on the X axis with different offsets
+//  5. See how many times `toplevel.configure` was called
+//
+// If the bug occurs, `toplevel.configure` should be called A LOT, doesn't seem
+// to happen as of right now.
 TEST_F(XdgToplevelStableTest, no_ping_pong)
 {
     int const window_x = 100, window_y = 100;
@@ -724,18 +753,21 @@ TEST_F(XdgToplevelStableTest, no_ping_pong)
             return button_down;
         });
 
+    wl_surface_commit(surface);
+    client.roundtrip();
+
     EXPECT_CALL(xdg_shell_surface, configure)
-        .Times(Exactly(1))
+        .Times(Exactly(5)) // Should fail if the bug occurs
         .WillRepeatedly(
             [&](auto serial)
             {
                 xdg_surface_ack_configure(xdg_shell_surface, serial);
             });
 
-    auto width = initial_width, height = initial_width;
+    auto width = initial_width, height = initial_height;
 
     EXPECT_CALL(toplevel, configure)
-        .Times(Exactly(1))
+        .Times(Exactly(5)) // Should fail if the bug occurs
         .WillRepeatedly(
             [&](int32_t server_requested_width, int32_t server_requested_height, wl_array*)
             {
@@ -745,43 +777,42 @@ TEST_F(XdgToplevelStableTest, no_ping_pong)
                     height = server_requested_height;
 
                     // Playing around trying to get close to bomber's log
+                    // Order doesn't matter, right???
                     wl_region* region = wl_compositor_create_region(client.compositor());
                     wl_region_add(region, 0, 0, width, height);
-
-                    surface.attach_visible_buffer(width, height);
-                    xdg_surface_set_window_geometry(xdg_shell_surface, 0, 0, width, height);
-                    wl_surface_damage_buffer(surface, 0, 0, width, height);
                     wl_surface_set_opaque_region(surface, region);
-                    xdg_toplevel_resize(toplevel, client.seat(), last_serial, XDG_TOPLEVEL_RESIZE_EDGE_LEFT);
+                    wl_region_destroy(region);
+
+                    xdg_surface_set_window_geometry(xdg_shell_surface, 0, 0, width, height);
+                    surface.attach_visible_buffer(width, height);
+                    wl_surface_damage_buffer(surface, 0, 0, width, height);
 
                     wl_surface_commit(surface);
                     client.roundtrip();
 
-                    wl_region_destroy(region);
                 }
             });
 
-    // For some reason, the first iteration doesn't seem to register?
-    for(int i = 0; i < 2; i++)
-    {
-        auto const ddx = (i % 2 == 0)? -100 : 100;
-        pointer.move_to(start_x + ddx, start_y);
-        client.roundtrip();
 
+    // configure gets called for every unique size the window takes
+    //
+    // So if we start at 420x390, move the mouse -100 on the x (configure!),
+    // then move the mouse back again (no configure!), only one _new_ unique
+    // size is counted
+    auto dxs = {-100, 90, -70, 60, 30}; // If the sum up to a certain
+                                        // point is zero, it wount count
+                                        // as a unique size!
+    for(auto dx : dxs)
+    {
         xdg_toplevel_resize(toplevel, client.seat(), last_serial, XDG_TOPLEVEL_RESIZE_EDGE_LEFT);
+        client.roundtrip();
 
-        wl_surface_commit(surface);
-
+        pointer.move_by(dx, 0);
         client.roundtrip();
     }
 
-    for(int i = 0; i < 20; i++)
-    {
-        // Probably need more here?
-        wl_surface_commit(surface);
-        client.roundtrip();
-    }
-
+    // Not strictly necessary, the bug occurs even if you don't let go of the
+    // left mouse button
     pointer.left_button_up();
     client.roundtrip();
 }
