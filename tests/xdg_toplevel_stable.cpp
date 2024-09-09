@@ -32,6 +32,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include <cmath>
 #include <gmock/gmock.h>
 
 #include <numbers>
@@ -716,6 +717,41 @@ TEST_F(XdgToplevelStableConfigurationTest, activated_state_follows_pointer)
 //
 // If the bug occurs, `toplevel.configure` should be called A LOT, doesn't seem
 // to happen as of right now.
+//
+// A snippet of `WAYLAND_DEBUG=client bomber` when the bug occurs:
+// [3973075.596] xdg_toplevel@28.configure(701, 774, array[4])
+// [3973075.602] xdg_surface@27.configure(1275)
+// [3973075.613] wl_buffer@39.release()
+// [3973075.790]  -> xdg_surface@27.set_window_geometry(0, 0, 701, 774)
+// [3973075.800]  -> wl_compositor@4.create_region(new id wl_region@37)
+// [3973075.805]  -> wl_region@37.add(3, 30, 695, 741)
+// [3973075.809]  -> wl_surface@22.set_opaque_region(wl_region@37)
+// [3973075.811]  -> wl_region@37.destroy()
+// [3973075.815]  -> xdg_surface@27.ack_configure(1275)
+// [3973076.629] wl_display@1.delete_id(41)
+// [3973076.642] wl_display@1.delete_id(29)
+// [3973076.648] wl_display@1.delete_id(35)
+// [3973076.654] wl_callback@35.done(3818883)
+// [3973077.260]  -> zwp_text_input_v2@12.update_state(49, 0)
+// [3973077.341]  -> wl_shm_pool@40.destroy()
+// [3973077.349]  -> wl_buffer@39.destroy()
+// [3973077.395]  -> wl_shm@13.create_pool(new id wl_shm_pool@35, fd 83, 2170296)
+// [3973077.401]  -> wl_shm_pool@35.create_buffer(new id wl_buffer@29, 0, 701, 774, 2804, 0)
+// [3973079.006] wl_display@1.delete_id(37)
+// [3973084.796]  -> wl_surface@22.damage_buffer(0, 0, 701, 30)
+// [3973084.811]  -> wl_surface@22.damage_buffer(0, 30, 3, 741)
+// [3973084.815]  -> wl_surface@22.damage_buffer(698, 30, 3, 741)
+// [3973084.818]  -> wl_surface@22.damage_buffer(0, 771, 701, 3)
+// [3973084.822]  -> wl_surface@22.damage_buffer(0, 774, 3, 30)
+// [3973084.932]  -> wl_surface@22.frame(new id wl_callback@37)
+// [3973084.945]  -> wl_surface@22.attach(wl_buffer@29, 0, 0)
+// [3973084.952]  -> wl_surface@22.damage_buffer(3, 30, 695, 741)
+// [3973084.955]  -> wl_surface@22.commit()
+// [3973084.995] wl_pointer@16.leave(1276, wl_surface@22)
+// [3973085.006] wl_pointer@16.frame()
+// [3973085.011] xdg_toplevel@28.configure(327, 774, array[4])
+// [3973085.018] xdg_surface@27.configure(1278)
+// [3973085.026] wl_buffer@38.release()
 TEST_F(XdgToplevelStableTest, no_ping_pong)
 {
     int const window_x = 100, window_y = 100;
@@ -756,8 +792,11 @@ TEST_F(XdgToplevelStableTest, no_ping_pong)
     wl_surface_commit(surface);
     client.roundtrip();
 
+    auto const start = 2, end = 17;
+    auto const count = end - start + 1;
+
     EXPECT_CALL(xdg_shell_surface, configure)
-        .Times(Exactly(5)) // Should fail if the bug occurs
+        .Times(Exactly(count)) // Should fail if the bug occurs
         .WillRepeatedly(
             [&](auto serial)
             {
@@ -767,7 +806,7 @@ TEST_F(XdgToplevelStableTest, no_ping_pong)
     auto width = initial_width, height = initial_height;
 
     EXPECT_CALL(toplevel, configure)
-        .Times(Exactly(5)) // Should fail if the bug occurs
+        .Times(Exactly(count)) // Should fail if the bug occurs
         .WillRepeatedly(
             [&](int32_t server_requested_width, int32_t server_requested_height, wl_array*)
             {
@@ -778,36 +817,34 @@ TEST_F(XdgToplevelStableTest, no_ping_pong)
 
                     // Playing around trying to get close to bomber's log
                     // Order doesn't matter, right???
+                    xdg_surface_set_window_geometry(xdg_shell_surface, 0, 0, width, height);
                     wl_region* region = wl_compositor_create_region(client.compositor());
                     wl_region_add(region, 0, 0, width, height);
                     wl_surface_set_opaque_region(surface, region);
                     wl_region_destroy(region);
 
-                    xdg_surface_set_window_geometry(xdg_shell_surface, 0, 0, width, height);
-                    surface.attach_visible_buffer(width, height);
+                    auto& buffer = client.create_buffer(width, height);
+                    wl_surface_attach(surface, buffer, 0, 0);
                     wl_surface_damage_buffer(surface, 0, 0, width, height);
 
                     wl_surface_commit(surface);
                     client.roundtrip();
-
                 }
             });
 
 
-    // configure gets called for every unique size the window takes
-    //
-    // So if we start at 420x390, move the mouse -100 on the x (configure!),
-    // then move the mouse back again (no configure!), only one _new_ unique
-    // size is counted
-    auto dxs = {-100, 90, -70, 60, 30}; // If the sum up to a certain
-                                        // point is zero, it wount count
-                                        // as a unique size!
-    for(auto dx : dxs)
+    auto sum = 0;
+    for(int i = start; i <= end; i++)
     {
         xdg_toplevel_resize(toplevel, client.seat(), last_serial, XDG_TOPLEVEL_RESIZE_EDGE_LEFT);
         client.roundtrip();
 
-        pointer.move_by(dx, 0);
+        auto t = float(i) / 2.0;
+
+        sum += t;
+        assert(sum < 100.0 && "No more space to resize to the left!");
+
+        pointer.move_by(-t, 0);
         client.roundtrip();
     }
 
