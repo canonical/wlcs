@@ -1,0 +1,16 @@
+summary: Build (on Arch Linux)
+systems: [archlinux-*]
+
+execute: |
+    pacman -S \
+        base-devel \
+        cmake \
+        boost \
+        wayland-protocols \
+        gtest
+
+    cd $SPREAD_PATH
+    cd $(mktemp --directory)
+    cmake $SPREAD_PATH
+    make -j$(nproc)
+
