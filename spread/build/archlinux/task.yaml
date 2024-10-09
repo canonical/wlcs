@@ -2,7 +2,7 @@ summary: Build (on Arch Linux)
 systems: [archlinux-*]
 
 execute: |
-    pacman -S \
+    pacman --noconfirm --sync \
         base-devel \
         cmake \
         boost \
