@@ -6,6 +6,7 @@ execute: |
         base-devel \
         cmake \
         boost \
+        wayland \
         wayland-protocols \
         gtest
 
