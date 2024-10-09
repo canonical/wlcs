@@ -17,6 +17,7 @@ backends:
             - alpine-3.19
             - alpine-3.20
             - alpine-edge
+            - archlinux-cloud
 
 suites:
     spread/build/:
