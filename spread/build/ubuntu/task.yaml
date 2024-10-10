@@ -1,5 +1,5 @@
 summary: Build (on Ubuntu)
-systems: [-fedora-*, -alpine-*]
+systems: [ubuntu-*]
 
 execute: |
     # Grab builds of Mir git master
