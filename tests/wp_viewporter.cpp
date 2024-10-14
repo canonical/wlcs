@@ -112,12 +112,12 @@ public:
                 pointer_entered = false;
                 return false;
             });
-        client.add_pointer_motion_notification(
-            [&](auto, auto)
-            {
-                motion_received = true;
-                return false;
-            });
+
+        client.add_pointer_motion_notification([&](auto, auto)
+        {
+            motion_received = true;
+            return false;
+        });
 
         pointer.move_by(1, 1);
         client.dispatch_until([&]() { return !pointer_entered || motion_received; });
@@ -128,6 +128,7 @@ public:
             return false;
         }
 
+        client.clear_pointer_motion_notifications();
         return true;
     }
 };
