@@ -272,7 +272,6 @@ public:
     void add_pointer_enter_notification(PointerEnterNotifier const& on_enter);
     void add_pointer_leave_notification(PointerLeaveNotifier const& on_leave);
     void add_pointer_motion_notification(PointerMotionNotifier const& on_motion);
-    void clear_pointer_motion_notifications();
     void add_pointer_button_notification(PointerButtonNotifier const& on_button);
 
     void dispatch_until(

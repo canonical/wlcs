@@ -21,6 +21,7 @@
 
 #include "generated/viewporter-client.h"
 
+#include <memory>
 #include <utility>
 
 #include <gtest/gtest.h>
@@ -47,12 +48,15 @@ public:
 
         auto pointer = the_server().create_pointer();
 
-        bool pointer_entered = false;
-        bool motion_received = false;
+        // Use a shared ptr to extend the lifetime of the variables until the
+        // pointer/motion notifications are done with them. Otherwise, we get a
+        // use-after-free.
+        auto pointer_entered = std::make_shared<bool>(false);
+        auto motion_received = std::make_shared<bool>(false);
         client.add_pointer_enter_notification(
-            [&](auto entered_surface, auto, auto)
+            [&surface, pointer_entered](auto entered_surface, auto, auto)
             {
-                pointer_entered = entered_surface == surface;
+                *pointer_entered = (entered_surface == surface);
                 return false;
             });
 
@@ -60,7 +64,7 @@ public:
         pointer.move_to(0, 0);
         // ...then move onto the surface, so our enter notification fires
         pointer.move_to(100, 100);
-        client.dispatch_until([&pointer_entered]() { return pointer_entered; });
+        client.dispatch_until([pointer_entered]() { return *pointer_entered; });
 
         // Should be on the top left of the surface
         if (client.window_under_cursor() != surface)
@@ -74,20 +78,20 @@ public:
         }
 
         client.add_pointer_motion_notification(
-            [&](auto, auto)
+            [motion_received](auto, auto)
             {
-                motion_received = true;
+                *motion_received = true;
                 return false;
             });
         client.add_pointer_leave_notification(
-            [&](auto)
+            [pointer_entered](auto)
             {
-                pointer_entered = false;
+                *pointer_entered = false;
                 return false;
             });
 
         pointer.move_by(width - 1, height - 1);
-        client.dispatch_until([&]() { return motion_received || !pointer_entered; });
+        client.dispatch_until([&]() { return *motion_received || !*pointer_entered; });
 
         // Should now be at bottom corner of surface
         if (client.window_under_cursor() != surface)
@@ -104,23 +108,23 @@ public:
         }
 
         // Moving any further should take us out of the surface
-        motion_received = false;
+        *motion_received = false;
 
         client.add_pointer_leave_notification(
-            [&](auto)
+            [pointer_entered](auto)
             {
-                pointer_entered = false;
+                *pointer_entered = false;
                 return false;
             });
 
-        client.add_pointer_motion_notification([&](auto, auto)
+        client.add_pointer_motion_notification([motion_received](auto, auto)
         {
-            motion_received = true;
+            *motion_received = true;
             return false;
         });
 
         pointer.move_by(1, 1);
-        client.dispatch_until([&]() { return !pointer_entered || motion_received; });
+        client.dispatch_until([&]() { return !*pointer_entered || *motion_received; });
 
         if (client.window_under_cursor() == surface)
         {
@@ -128,7 +132,6 @@ public:
             return false;
         }
 
-        client.clear_pointer_motion_notifications();
         return true;
     }
 };

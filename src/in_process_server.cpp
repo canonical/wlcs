@@ -967,10 +967,6 @@ public:
     {
         motion_notifiers.push_back(on_motion);
     }
-    void clear_pointer_motion_notifications()
-    {
-        motion_notifiers.clear();
-    }
     void add_pointer_button_notification(PointerButtonNotifier const& on_button)
     {
         button_notifiers.push_back(on_button);
@@ -1843,11 +1839,6 @@ void wlcs::Client::add_pointer_leave_notification(PointerLeaveNotifier const& on
 void wlcs::Client::add_pointer_motion_notification(PointerMotionNotifier const& on_motion)
 {
     impl->add_pointer_motion_notification(on_motion);
-}
-
-void wlcs::Client::clear_pointer_motion_notifications()
-{
-    impl->clear_pointer_motion_notifications();
 }
 
 void wlcs::Client::add_pointer_button_notification(PointerButtonNotifier const& on_button)
