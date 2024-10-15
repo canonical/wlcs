@@ -51,8 +51,8 @@ public:
         // Use a shared ptr to extend the lifetime of the variables until the
         // pointer/motion notifications are done with them. Otherwise, we get a
         // use-after-free.
-        auto pointer_entered = std::make_shared<bool>(false);
-        auto motion_received = std::make_shared<bool>(false);
+        auto const pointer_entered = std::make_shared<bool>(false);
+        auto const motion_received = std::make_shared<bool>(false);
         client.add_pointer_enter_notification(
             [&surface, pointer_entered](auto entered_surface, auto, auto)
             {
@@ -117,11 +117,12 @@ public:
                 return false;
             });
 
-        client.add_pointer_motion_notification([motion_received](auto, auto)
-        {
-            *motion_received = true;
-            return false;
-        });
+        client.add_pointer_motion_notification(
+            [motion_received](auto, auto)
+            {
+                *motion_received = true;
+                return false;
+            });
 
         pointer.move_by(1, 1);
         client.dispatch_until([&]() { return !*pointer_entered || *motion_received; });
