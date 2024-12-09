@@ -23,6 +23,7 @@
 #include "xf86drm.h"
 
 #include "fcntl.h"
+#include <chrono>
 #include <drm.h>
 #include <fcntl.h>
 #include <system_error>
@@ -60,7 +61,12 @@ public:
     {
         from.fd = -1;
     }
-    
+
+    auto dup() const -> Fd
+    {
+        return Fd{::dup(fd)};
+    }
+
     Fd(Fd const&) = delete;
     auto operator=(Fd const&) -> Fd& = delete;
 
@@ -81,7 +87,7 @@ auto get_drm_devices() -> std::vector<DRMDeviceHandle>
     std::array<drmDevicePtr, 6> devices;
     std::vector<DRMDeviceHandle> result;
 
-    if (auto count = drmGetDevices(devices.data(), devices.size()); count > 0) 
+    if (auto count = drmGetDevices(devices.data(), devices.size()); count > 0)
     {
         result.reserve(count);
         for (auto i = 0; i < count; ++i)
@@ -115,7 +121,7 @@ public:
     {
         ::testing::Test::RecordProperty("wlcs-skip-test", "DRM_CAP_SYNCOBJ_TIMELINE not supported by any available DRM devices.");
     }
-    
+
 };
 
 auto open_timeline_capable_drm_node() -> Fd
@@ -179,6 +185,10 @@ public:
         return Fd{timeline_fd};
     }
 
+    operator uint32_t() const
+    {
+        return handle;
+    }
 private:
     static auto syncobj_create_checked(Fd const& drm_fd) -> uint32_t
     {
@@ -191,7 +201,7 @@ private:
         }
         return timeline_handle;
     }
-    
+
     Fd const fd;
     uint32_t const handle;
 };
@@ -201,7 +211,7 @@ TEST_F(LinuxDRMSyncobjV1Test, can_import_timeline)
 {
     Syncobj syncobj{open_timeline_capable_drm_node()};
     auto timeline_fd = syncobj.get_fd_handle();
-    
+
     wlcs::WlHandle<wp_linux_drm_syncobj_timeline_v1> timeline{
         wp_linux_drm_syncobj_manager_v1_import_timeline(syncobj_manager, timeline_fd)};
 
@@ -213,7 +223,7 @@ TEST_F(LinuxDRMSyncobjV1Test, request_to_import_non_timeline_fails)
     using namespace testing;
 
     Fd not_a_syncobj{open("/dev/null", O_RDWR | O_CLOEXEC)};
-    
+
     wlcs::WlHandle<wp_linux_drm_syncobj_timeline_v1> timeline{
         wp_linux_drm_syncobj_manager_v1_import_timeline(syncobj_manager, not_a_syncobj)};
 
@@ -256,7 +266,7 @@ TEST_F(LinuxDRMSyncobjV1Test, can_set_timeline_acquire_point)
 TEST_F(LinuxDRMSyncobjV1Test, get_surface_twice_is_an_error)
 {
     using namespace testing;
-    
+
     auto surface =  a_client.create_visible_surface(200, 200);
     wlcs::WlHandle<wp_linux_drm_syncobj_surface_v1> surface_timeline{
         wp_linux_drm_syncobj_manager_v1_get_surface(syncobj_manager, surface)
@@ -273,3 +283,166 @@ TEST_F(LinuxDRMSyncobjV1Test, get_surface_twice_is_an_error)
         WP_LINUX_DRM_SYNCOBJ_MANAGER_V1_ERROR_SURFACE_EXISTS
     );
 }
+
+TEST_F(LinuxDRMSyncobjV1Test, committing_without_setting_acquire_point_is_an_error)
+{
+    using namespace testing;
+
+    auto surface =  a_client.create_visible_surface(200, 200);
+    wlcs::WlHandle<wp_linux_drm_syncobj_surface_v1> surface_timeline{
+        wp_linux_drm_syncobj_manager_v1_get_surface(syncobj_manager, surface)
+    };
+
+    Syncobj syncobj{open_timeline_capable_drm_node()};
+    auto timeline_fd = syncobj.get_fd_handle();
+    wlcs::WlHandle<wp_linux_drm_syncobj_timeline_v1> timeline{
+        wp_linux_drm_syncobj_manager_v1_import_timeline(syncobj_manager, timeline_fd)};
+
+    wp_linux_drm_syncobj_surface_v1_set_release_point(surface_timeline, timeline, 0, 0);
+
+    auto const& buffer = a_client.create_buffer(200, 200);
+    wl_surface_attach(surface, buffer, 0, 0);
+
+    EXPECT_PROTOCOL_ERROR(
+        {
+            wl_surface_commit(surface);
+            a_client.roundtrip();
+        },
+        &wp_linux_drm_syncobj_surface_v1_interface,
+        WP_LINUX_DRM_SYNCOBJ_SURFACE_V1_ERROR_NO_ACQUIRE_POINT);
+}
+
+TEST_F(LinuxDRMSyncobjV1Test, committing_without_setting_release_point_is_an_error)
+{
+    using namespace testing;
+
+    auto surface =  a_client.create_visible_surface(200, 200);
+    wlcs::WlHandle<wp_linux_drm_syncobj_surface_v1> surface_timeline{
+        wp_linux_drm_syncobj_manager_v1_get_surface(syncobj_manager, surface)
+    };
+
+    Syncobj syncobj{open_timeline_capable_drm_node()};
+    auto timeline_fd = syncobj.get_fd_handle();
+    wlcs::WlHandle<wp_linux_drm_syncobj_timeline_v1> timeline{
+        wp_linux_drm_syncobj_manager_v1_import_timeline(syncobj_manager, timeline_fd)};
+
+    wp_linux_drm_syncobj_surface_v1_set_acquire_point(surface_timeline, timeline, 0, 0);
+
+    auto const& buffer = a_client.create_buffer(200, 200);
+    wl_surface_attach(surface, buffer, 0, 0);
+
+    EXPECT_PROTOCOL_ERROR(
+        {
+            wl_surface_commit(surface);
+            a_client.roundtrip();
+        },
+        &wp_linux_drm_syncobj_surface_v1_interface,
+        WP_LINUX_DRM_SYNCOBJ_SURFACE_V1_ERROR_NO_RELEASE_POINT);
+}
+
+TEST_F(LinuxDRMSyncobjV1Test, setting_acqiure_point_without_buffer_is_error)
+{
+    using namespace testing;
+
+    auto surface =  a_client.create_visible_surface(200, 200);
+    wlcs::WlHandle<wp_linux_drm_syncobj_surface_v1> surface_timeline{
+        wp_linux_drm_syncobj_manager_v1_get_surface(syncobj_manager, surface)
+    };
+
+    Syncobj syncobj{open_timeline_capable_drm_node()};
+    auto timeline_fd = syncobj.get_fd_handle();
+    wlcs::WlHandle<wp_linux_drm_syncobj_timeline_v1> timeline{
+        wp_linux_drm_syncobj_manager_v1_import_timeline(syncobj_manager, timeline_fd)};
+
+    wp_linux_drm_syncobj_surface_v1_set_acquire_point(surface_timeline, timeline, 0, 0);
+
+    EXPECT_PROTOCOL_ERROR(
+        {
+            wl_surface_commit(surface);
+            a_client.roundtrip();
+        },
+        &wp_linux_drm_syncobj_surface_v1_interface,
+        WP_LINUX_DRM_SYNCOBJ_SURFACE_V1_ERROR_NO_BUFFER);
+}
+
+TEST_F(LinuxDRMSyncobjV1Test, setting_release_point_without_buffer_is_error)
+{
+    using namespace testing;
+
+    auto surface =  a_client.create_visible_surface(200, 200);
+    wlcs::WlHandle<wp_linux_drm_syncobj_surface_v1> surface_timeline{
+        wp_linux_drm_syncobj_manager_v1_get_surface(syncobj_manager, surface)
+    };
+
+    Syncobj syncobj{open_timeline_capable_drm_node()};
+    auto timeline_fd = syncobj.get_fd_handle();
+    wlcs::WlHandle<wp_linux_drm_syncobj_timeline_v1> timeline{
+        wp_linux_drm_syncobj_manager_v1_import_timeline(syncobj_manager, timeline_fd)};
+
+    wp_linux_drm_syncobj_surface_v1_set_release_point(surface_timeline, timeline, 0, 0);
+
+    EXPECT_PROTOCOL_ERROR(
+        {
+            wl_surface_commit(surface);
+            a_client.roundtrip();
+        },
+        &wp_linux_drm_syncobj_surface_v1_interface,
+        WP_LINUX_DRM_SYNCOBJ_SURFACE_V1_ERROR_NO_BUFFER);
+}
+
+TEST_F(LinuxDRMSyncobjV1Test, release_point_signalled_on_buffer_release)
+{
+    using namespace testing;
+
+    auto surface =  a_client.create_visible_surface(200, 200);
+    wlcs::WlHandle<wp_linux_drm_syncobj_surface_v1> surface_timeline{
+        wp_linux_drm_syncobj_manager_v1_get_surface(syncobj_manager, surface)
+    };
+
+    auto drm_fd = open_timeline_capable_drm_node();
+    Syncobj syncobj{drm_fd.dup()};
+    auto timeline_fd = syncobj.get_fd_handle();
+    wlcs::WlHandle<wp_linux_drm_syncobj_timeline_v1> timeline{
+        wp_linux_drm_syncobj_manager_v1_import_timeline(syncobj_manager, timeline_fd)};
+
+    wp_linux_drm_syncobj_surface_v1_set_acquire_point(surface_timeline, timeline, 0, 0);
+
+    uint64_t const release_point = 42;    // This only needs to be >= the acquire point
+    uint32_t const release_point_lo = release_point & 0xffffffff;
+    uint32_t const release_point_hi = release_point >> 32;
+    wp_linux_drm_syncobj_surface_v1_set_release_point(surface_timeline, timeline, release_point_hi, release_point_lo);
+
+    // Submit a buffer with the syncobj
+    wlcs::ShmBuffer buffer_one{a_client, 200, 200};
+    wl_surface_attach(surface, buffer_one, 0, 0);
+    wl_surface_commit(surface);
+
+    a_client.roundtrip();
+
+    // Submit another buffer so that the original buffer is released
+    {
+        Syncobj syncobj_two{drm_fd.dup()};
+        auto timeline_fd_two = syncobj.get_fd_handle();
+        wlcs::WlHandle<wp_linux_drm_syncobj_timeline_v1> timeline_two{
+            wp_linux_drm_syncobj_manager_v1_import_timeline(syncobj_manager, timeline_fd_two)};
+
+        wp_linux_drm_syncobj_surface_v1_set_acquire_point(surface_timeline, timeline, 0, 0);
+        wp_linux_drm_syncobj_surface_v1_set_release_point(surface_timeline, timeline, 0, 1);
+
+        wlcs::ShmBuffer buffer_two{a_client, 200, 200};
+        wl_surface_attach(surface, buffer_two, 0, 0);
+        wl_surface_commit(surface);
+    }
+
+    a_client.roundtrip();
+
+    using namespace std::chrono;
+    using namespace std::chrono_literals;
+    // The release timepoint should now be signalled at some point.
+    uint32_t handle = syncobj;
+    if (auto err = drmSyncobjTimelineWait(drm_fd, &handle, const_cast<uint64_t*>(&release_point), 1, duration_cast<nanoseconds>((steady_clock::now() + 10s).time_since_epoch()).count(), DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT | DRM_SYNCOBJ_WAIT_FLAGS_WAIT_ALL, nullptr))
+    {
+        FAIL() << "Error (or timeout) waiting for release syncpoint to be signalled: " << strerror(-err);
+    }
+}
+
