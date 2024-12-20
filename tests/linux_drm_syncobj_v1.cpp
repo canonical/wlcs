@@ -19,10 +19,12 @@
 #include "in_process_server.h"
 #include "version_specifier.h"
 #include "wl_interface_descriptor.h"
+#include "gtest_matchers.h"
 
 #include "xf86drm.h"
 
 #include "fcntl.h"
+#include <boost/throw_exception.hpp>
 #include <chrono>
 #include <drm.h>
 #include <fcntl.h>
@@ -183,6 +185,18 @@ public:
             BOOST_THROW_EXCEPTION(failure);
         }
         return Fd{timeline_fd};
+    }
+
+    void signal(uint64_t point)
+    {
+        if (auto err = drmSyncobjTimelineSignal(fd, &handle, &point, 1))
+        {
+            BOOST_THROW_EXCEPTION((
+                std::system_error{
+                    -err,
+                    std::system_category(),
+                    "Failed to signal DRM syncobj"}));
+        }
     }
 
     operator uint32_t() const
@@ -406,6 +420,8 @@ TEST_F(LinuxDRMSyncobjV1Test, release_point_signalled_on_buffer_release)
         wp_linux_drm_syncobj_manager_v1_import_timeline(syncobj_manager, timeline_fd)};
 
     wp_linux_drm_syncobj_surface_v1_set_acquire_point(surface_timeline, timeline, 0, 0);
+    // The buffer needs to be ready for the commit to be applied.
+    syncobj.signal(0);
 
     uint64_t const release_point = 42;    // This only needs to be >= the acquire point
     uint32_t const release_point_lo = release_point & 0xffffffff;
