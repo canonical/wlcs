@@ -299,6 +299,7 @@ TEST_F(LinuxDRMSyncobjV1Test, get_surface_twice_is_an_error)
 }
 
 TEST_F(LinuxDRMSyncobjV1Test, committing_without_setting_acquire_point_is_an_error)
+try
 {
     using namespace testing;
 
@@ -325,8 +326,18 @@ TEST_F(LinuxDRMSyncobjV1Test, committing_without_setting_acquire_point_is_an_err
         &wp_linux_drm_syncobj_surface_v1_interface,
         WP_LINUX_DRM_SYNCOBJ_SURFACE_V1_ERROR_NO_ACQUIRE_POINT);
 }
+catch(wlcs::ProtocolError const& err)
+{
+    if (err.interface() == &wp_linux_drm_syncobj_surface_v1_interface &&
+        err.error_code() == WP_LINUX_DRM_SYNCOBJ_SURFACE_V1_ERROR_UNSUPPORTED_BUFFER)
+    {
+        ::testing::Test::RecordProperty("wlcs-skip-test", "wp_linux_drm_syncobj implementation doesn't support wl_shm buffers");
+    }
+    throw;
+}
 
 TEST_F(LinuxDRMSyncobjV1Test, committing_without_setting_release_point_is_an_error)
+try
 {
     using namespace testing;
 
@@ -353,8 +364,18 @@ TEST_F(LinuxDRMSyncobjV1Test, committing_without_setting_release_point_is_an_err
         &wp_linux_drm_syncobj_surface_v1_interface,
         WP_LINUX_DRM_SYNCOBJ_SURFACE_V1_ERROR_NO_RELEASE_POINT);
 }
+catch(wlcs::ProtocolError const& err)
+{
+    if (err.interface() == &wp_linux_drm_syncobj_surface_v1_interface &&
+        err.error_code() == WP_LINUX_DRM_SYNCOBJ_SURFACE_V1_ERROR_UNSUPPORTED_BUFFER)
+    {
+        ::testing::Test::RecordProperty("wlcs-skip-test", "wp_linux_drm_syncobj implementation doesn't support wl_shm buffers");
+    }
+    throw;
+}
 
 TEST_F(LinuxDRMSyncobjV1Test, setting_syncpoint_without_buffer_is_error)
+try
 {
     using namespace testing;
 
@@ -379,8 +400,18 @@ TEST_F(LinuxDRMSyncobjV1Test, setting_syncpoint_without_buffer_is_error)
         &wp_linux_drm_syncobj_surface_v1_interface,
         WP_LINUX_DRM_SYNCOBJ_SURFACE_V1_ERROR_NO_BUFFER);
 }
+catch(wlcs::ProtocolError const& err)
+{
+    if (err.interface() == &wp_linux_drm_syncobj_surface_v1_interface &&
+        err.error_code() == WP_LINUX_DRM_SYNCOBJ_SURFACE_V1_ERROR_UNSUPPORTED_BUFFER)
+    {
+        ::testing::Test::RecordProperty("wlcs-skip-test", "wp_linux_drm_syncobj implementation doesn't support wl_shm buffers");
+    }
+    throw;
+}
 
 TEST_F(LinuxDRMSyncobjV1Test, release_point_signalled_on_buffer_release)
+try
 {
     using namespace testing;
 
@@ -438,8 +469,18 @@ TEST_F(LinuxDRMSyncobjV1Test, release_point_signalled_on_buffer_release)
         FAIL() << "Error (or timeout) waiting for release syncpoint to be signalled: " << strerror(-err);
     }
 }
+catch(wlcs::ProtocolError const& err)
+{
+    if (err.interface() == &wp_linux_drm_syncobj_surface_v1_interface &&
+        err.error_code() == WP_LINUX_DRM_SYNCOBJ_SURFACE_V1_ERROR_UNSUPPORTED_BUFFER)
+    {
+        ::testing::Test::RecordProperty("wlcs-skip-test", "wp_linux_drm_syncobj implementation doesn't support wl_shm buffers");
+    }
+    throw;
+}
 
 TEST_F(LinuxDRMSyncobjV1Test, committed_buffer_not_applied_until_acquire_point_signalled)
+try
 {
     using namespace testing;
     using namespace std::chrono_literals;
@@ -483,4 +524,13 @@ TEST_F(LinuxDRMSyncobjV1Test, committed_buffer_not_applied_until_acquire_point_s
     std::this_thread::sleep_for(1s);
 
     EXPECT_THAT(surface,IsSurfaceOfSize(new_width, new_height));
+}
+catch(wlcs::ProtocolError const& err)
+{
+    if (err.interface() == &wp_linux_drm_syncobj_surface_v1_interface &&
+        err.error_code() == WP_LINUX_DRM_SYNCOBJ_SURFACE_V1_ERROR_UNSUPPORTED_BUFFER)
+    {
+        ::testing::Test::RecordProperty("wlcs-skip-test", "wp_linux_drm_syncobj implementation doesn't support wl_shm buffers");
+    }
+    throw;
 }
