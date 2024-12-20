@@ -354,7 +354,7 @@ TEST_F(LinuxDRMSyncobjV1Test, committing_without_setting_release_point_is_an_err
         WP_LINUX_DRM_SYNCOBJ_SURFACE_V1_ERROR_NO_RELEASE_POINT);
 }
 
-TEST_F(LinuxDRMSyncobjV1Test, setting_acqiure_point_without_buffer_is_error)
+TEST_F(LinuxDRMSyncobjV1Test, setting_syncpoint_without_buffer_is_error)
 {
     using namespace testing;
 
@@ -369,31 +369,7 @@ TEST_F(LinuxDRMSyncobjV1Test, setting_acqiure_point_without_buffer_is_error)
         wp_linux_drm_syncobj_manager_v1_import_timeline(syncobj_manager, timeline_fd)};
 
     wp_linux_drm_syncobj_surface_v1_set_acquire_point(surface_timeline, timeline, 0, 0);
-
-    EXPECT_PROTOCOL_ERROR(
-        {
-            wl_surface_commit(surface);
-            a_client.roundtrip();
-        },
-        &wp_linux_drm_syncobj_surface_v1_interface,
-        WP_LINUX_DRM_SYNCOBJ_SURFACE_V1_ERROR_NO_BUFFER);
-}
-
-TEST_F(LinuxDRMSyncobjV1Test, setting_release_point_without_buffer_is_error)
-{
-    using namespace testing;
-
-    auto surface =  a_client.create_visible_surface(200, 200);
-    wlcs::WlHandle<wp_linux_drm_syncobj_surface_v1> surface_timeline{
-        wp_linux_drm_syncobj_manager_v1_get_surface(syncobj_manager, surface)
-    };
-
-    Syncobj syncobj{open_timeline_capable_drm_node()};
-    auto timeline_fd = syncobj.get_fd_handle();
-    wlcs::WlHandle<wp_linux_drm_syncobj_timeline_v1> timeline{
-        wp_linux_drm_syncobj_manager_v1_import_timeline(syncobj_manager, timeline_fd)};
-
-    wp_linux_drm_syncobj_surface_v1_set_release_point(surface_timeline, timeline, 0, 0);
+    wp_linux_drm_syncobj_surface_v1_set_release_point(surface_timeline, timeline, 0, 1);
 
     EXPECT_PROTOCOL_ERROR(
         {
@@ -436,21 +412,22 @@ TEST_F(LinuxDRMSyncobjV1Test, release_point_signalled_on_buffer_release)
     a_client.roundtrip();
 
     // Submit another buffer so that the original buffer is released
-    {
-        Syncobj syncobj_two{drm_fd.dup()};
-        auto timeline_fd_two = syncobj.get_fd_handle();
-        wlcs::WlHandle<wp_linux_drm_syncobj_timeline_v1> timeline_two{
-            wp_linux_drm_syncobj_manager_v1_import_timeline(syncobj_manager, timeline_fd_two)};
+    Syncobj syncobj_two{drm_fd.dup()};
+    auto timeline_fd_two = syncobj.get_fd_handle();
+    wlcs::WlHandle<wp_linux_drm_syncobj_timeline_v1> timeline_two{
+        wp_linux_drm_syncobj_manager_v1_import_timeline(syncobj_manager, timeline_fd_two)};
 
-        wp_linux_drm_syncobj_surface_v1_set_acquire_point(surface_timeline, timeline, 0, 0);
-        wp_linux_drm_syncobj_surface_v1_set_release_point(surface_timeline, timeline, 0, 1);
+    wp_linux_drm_syncobj_surface_v1_set_acquire_point(surface_timeline, timeline_two, 0, 0);
+    wp_linux_drm_syncobj_surface_v1_set_release_point(surface_timeline, timeline_two, 0, 1);
 
-        wlcs::ShmBuffer buffer_two{a_client, 200, 200};
-        wl_surface_attach(surface, buffer_two, 0, 0);
-        wl_surface_commit(surface);
-    }
+    // We need to actually mark the buffer as ready
+    syncobj_two.signal(0);
 
+    wlcs::ShmBuffer buffer_two{a_client, 200, 200};
+    wl_surface_attach(surface, buffer_two, 0, 0);
+    wl_surface_commit(surface);
     a_client.roundtrip();
+
 
     using namespace std::chrono;
     using namespace std::chrono_literals;
@@ -462,3 +439,48 @@ TEST_F(LinuxDRMSyncobjV1Test, release_point_signalled_on_buffer_release)
     }
 }
 
+TEST_F(LinuxDRMSyncobjV1Test, committed_buffer_not_applied_until_acquire_point_signalled)
+{
+    using namespace testing;
+    using namespace std::chrono_literals;
+
+    int const original_width = 200, original_height = 200;
+    int const new_width = 400, new_height = 400;
+
+    auto surface =  a_client.create_visible_surface(original_width, original_height);
+
+    ASSERT_THAT(surface, IsSurfaceOfSize(original_width, original_height));
+
+    wlcs::WlHandle<wp_linux_drm_syncobj_surface_v1> surface_timeline{
+        wp_linux_drm_syncobj_manager_v1_get_surface(syncobj_manager, surface)
+    };
+
+    auto drm_fd = open_timeline_capable_drm_node();
+    Syncobj syncobj{drm_fd.dup()};
+    auto timeline_fd = syncobj.get_fd_handle();
+    wlcs::WlHandle<wp_linux_drm_syncobj_timeline_v1> timeline{
+        wp_linux_drm_syncobj_manager_v1_import_timeline(syncobj_manager, timeline_fd)};
+
+    wp_linux_drm_syncobj_surface_v1_set_acquire_point(surface_timeline, timeline, 0, 0);
+    wp_linux_drm_syncobj_surface_v1_set_release_point(surface_timeline, timeline, 0, 1);
+
+    // Submit a buffer with a different size
+    wlcs::ShmBuffer buffer_one{a_client, new_width, new_height};
+    wl_surface_attach(surface, buffer_one, 0, 0);
+    wl_surface_commit(surface);
+
+    a_client.roundtrip();
+
+    // We don't have a way to ensure that WM has settled down, so just wait a little
+    std::this_thread::sleep_for(1s);
+
+    // We haven't signalled the acquire point, so we should see the old size.
+    EXPECT_THAT(surface, IsSurfaceOfSize(original_width, original_height));
+
+    syncobj.signal(0);
+
+    // Again, we don't have a way to ensure that WM has settled down, so just wait a little
+    std::this_thread::sleep_for(1s);
+
+    EXPECT_THAT(surface,IsSurfaceOfSize(new_width, new_height));
+}
