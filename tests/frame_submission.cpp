@@ -19,6 +19,7 @@
 #include "helpers.h"
 #include "in_process_server.h"
 
+#include <functional>
 #include <gmock/gmock.h>
 
 using namespace testing;
@@ -143,4 +144,27 @@ TEST_F(FrameSubmission, when_client_endlessly_requests_frame_then_callbacks_are_
     while (frame_callback_called && std::chrono::steady_clock::now() < timeout);
 
     EXPECT_THAT(std::chrono::steady_clock::now(), Lt(timeout)) << "Timed out looping in frame callback storm";
+}
+
+/*
+ * The above test checks that frame callbacks are throttled, but not that
+ * they are sent at all.
+ *
+ * We also need to test that these type of buffer-less frame requests
+ * *do* get a callback, eventually.
+ */
+TEST_F(FrameSubmission, frame_requests_without_buffer_are_called_back_eventually)
+{
+    std::array<bool, 5> called = {0};
+
+    wlcs::Client client{the_server()};
+    auto surface = client.create_visible_surface(640, 480);
+
+    for (auto i = 0u; i < called.size(); ++i)
+    {
+        surface.add_frame_callback([&called, i](auto) { called[i] = true; });
+        wl_surface_commit(surface);
+    }
+
+    client.dispatch_until([&called]() { return std::all_of(called.begin(), called.end(), [](bool value) { return value; }); });
 }
