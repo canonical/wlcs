@@ -11,8 +11,9 @@ backends:
             - ubuntu-devel:
                 image: ubuntu-daily:devel/amd64
             - fedora-41
+            - fedora-42
             - fedora-rawhide:
-                image: images:fedora/41
+                image: images:fedora/42
             - alpine-3.20
             - alpine-3.21
             - alpine-edge
