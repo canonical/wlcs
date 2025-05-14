@@ -27,6 +27,8 @@
     } catch (wlcs::ProtocolError const& err) {\
         EXPECT_THAT(err.interface(), Eq(iface));\
         EXPECT_THAT(err.error_code(), Eq(err_code));\
+        if (err.interface() != iface || err.error_code() != err_code)\
+            throw;\
     }
 
 #endif // WLCS_EXPECT_PROTOCOL_ERROR_H_

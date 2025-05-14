@@ -18,6 +18,7 @@
 #include "expect_protocol_error.h"
 #include "version_specifier.h"
 #include "wayland-util.h"
+#include "gtest_matchers.h"
 
 #include "generated/viewporter-client.h"
 
@@ -41,100 +42,6 @@ class WpViewporterTest : public wlcs::InProcessServer
 {
 public:
     WpViewporterTest() = default;
-
-    auto surface_has_size(wlcs::Client& client, wlcs::Surface& surface, int32_t width, int32_t height) -> bool
-    {
-        the_server().move_surface_to(surface, 100, 100);
-
-        auto pointer = the_server().create_pointer();
-
-        // Use a shared ptr to extend the lifetime of the variables until the
-        // pointer/motion notifications are done with them. Otherwise, we get a
-        // use-after-free.
-        auto const pointer_entered = std::make_shared<bool>(false);
-        auto const motion_received = std::make_shared<bool>(false);
-        client.add_pointer_enter_notification(
-            [&surface, pointer_entered](auto entered_surface, auto, auto)
-            {
-                *pointer_entered = (entered_surface == surface);
-                return false;
-            });
-
-        // First ensure we are *not* on the surface...
-        pointer.move_to(0, 0);
-        // ...then move onto the surface, so our enter notification fires
-        pointer.move_to(100, 100);
-        client.dispatch_until([pointer_entered]() { return *pointer_entered; });
-
-        // Should be on the top left of the surface
-        if (client.window_under_cursor() != surface)
-        {
-            ADD_FAILURE() << "Surface is not mapped at expected location?";
-            return false;
-        }
-        if (client.pointer_position() != std::make_pair(wl_fixed_from_int(0), wl_fixed_from_int(0)))
-        {
-            BOOST_THROW_EXCEPTION((std::runtime_error{"Surface at unexpected location (test harness bug?)"}));
-        }
-
-        client.add_pointer_motion_notification(
-            [motion_received](auto, auto)
-            {
-                *motion_received = true;
-                return false;
-            });
-        client.add_pointer_leave_notification(
-            [pointer_entered](auto)
-            {
-                *pointer_entered = false;
-                return false;
-            });
-
-        pointer.move_by(width - 1, height - 1);
-        client.dispatch_until([&]() { return *motion_received || !*pointer_entered; });
-
-        // Should now be at bottom corner of surface
-        if (client.window_under_cursor() != surface)
-        {
-            ADD_FAILURE() << "Surface size too small";
-            return false;
-        }
-        if (client.pointer_position() != std::make_pair(wl_fixed_from_int(width - 1), wl_fixed_from_int(height - 1)))
-        {
-            auto const [x, y] = client.pointer_position();
-            ADD_FAILURE() << "Surface coordinate system incorrect; expected (" << width - 1 << ", " << height - 1 << ") got ("
-                << wl_fixed_to_double(x) << ", " << wl_fixed_to_double(y) << ")";
-            return false;
-        }
-
-        // Moving any further should take us out of the surface
-        *motion_received = false;
-
-        client.add_pointer_leave_notification(
-            [pointer_entered](auto)
-            {
-                *pointer_entered = false;
-                return false;
-            });
-
-        client.add_pointer_motion_notification(
-            [motion_received](auto, auto)
-            {
-                *motion_received = true;
-                return false;
-            });
-
-        pointer.move_by(1, 1);
-        client.dispatch_until([&]() { return !*pointer_entered || *motion_received; });
-
-        if (client.window_under_cursor() == surface)
-        {
-            ADD_FAILURE() << "Surface size too large";
-            return false;
-        }
-
-        return true;
-    }
 };
 
 TEST_F(WpViewporterTest, set_destination_sets_output_size)
@@ -158,7 +65,7 @@ TEST_F(WpViewporterTest, set_destination_sets_output_size)
 
     client.dispatch_until([&committed]() { return committed;} );
 
-    EXPECT_TRUE(surface_has_size(client, surface, display_width, display_height));
+    EXPECT_THAT(surface, IsSurfaceOfSize(display_width, display_height));
 }
 
 TEST_F(WpViewporterTest, committing_new_destination_without_new_buffer_still_changes_size)
@@ -180,7 +87,7 @@ TEST_F(WpViewporterTest, committing_new_destination_without_new_buffer_still_cha
 
     client.dispatch_until([&committed]() { return committed;} );
 
-    EXPECT_TRUE(surface_has_size(client, surface, display_width, display_height));
+    EXPECT_THAT(surface, IsSurfaceOfSize(display_width, display_height));
 }
 
 TEST_F(WpViewporterTest, when_source_but_no_destination_set_window_has_src_size)
@@ -205,7 +112,7 @@ TEST_F(WpViewporterTest, when_source_but_no_destination_set_window_has_src_size)
 
     client.dispatch_until([&committed]() { return committed;} );
 
-    EXPECT_TRUE(surface_has_size(client, surface, display_width, display_height));
+    EXPECT_THAT(surface, IsSurfaceOfSize(display_width, display_height));
 }
 
 TEST_F(WpViewporterTest, when_buffer_is_scaled_destination_is_in_scaled_coordinates)
@@ -230,7 +137,7 @@ TEST_F(WpViewporterTest, when_buffer_is_scaled_destination_is_in_scaled_coordina
 
     client.dispatch_until([&committed]() { return committed;} );
 
-    EXPECT_TRUE(surface_has_size(client, surface, display_width, display_height));
+    EXPECT_THAT(surface, IsSurfaceOfSize(display_width, display_height));
 }
 
 TEST_F(WpViewporterTest, when_buffer_is_scaled_source_is_in_scaled_coordinates)
@@ -263,7 +170,7 @@ TEST_F(WpViewporterTest, when_buffer_is_scaled_source_is_in_scaled_coordinates)
 
     client.dispatch_until([&committed]() { return committed;} );
 
-    EXPECT_TRUE(surface_has_size(client, surface, display_width, display_height));
+    EXPECT_THAT(surface, IsSurfaceOfSize(display_width, display_height));
 }
 
 TEST_F(WpViewporterTest, when_destination_is_not_set_source_must_have_integer_size)
@@ -465,7 +372,7 @@ TEST_F(WpViewporterTest, all_minus_one_source_unsets_source_rect)
 
     client.dispatch_until([&committed]() { return committed;} );
 
-    ASSERT_TRUE(surface_has_size(client, surface, display_width, display_height));
+    ASSERT_THAT(surface, IsSurfaceOfSize(display_width, display_height));
 
     // Now, set the source viewport to all -1, and expect that we go back to un-viewported size
     committed = false;
@@ -475,7 +382,7 @@ TEST_F(WpViewporterTest, all_minus_one_source_unsets_source_rect)
 
     client.dispatch_until([&committed]() { return committed;} );
 
-    EXPECT_TRUE(surface_has_size(client, surface, buffer_width, buffer_height));
+    EXPECT_THAT(surface, IsSurfaceOfSize(buffer_width, buffer_height));
 }
 
 class WpViewporterDestParamsTest : public WpViewporterTest, public testing::WithParamInterface<std::tuple<int32_t, int32_t, char const*>>
@@ -538,7 +445,7 @@ TEST_F(WpViewporterTest, all_minus_one_destination_unsets_destination_viewport)
 
     client.dispatch_until([&committed]() { return committed;} );
 
-    ASSERT_TRUE(surface_has_size(client, surface, display_width, display_height));
+    ASSERT_THAT(surface, IsSurfaceOfSize(display_width, display_height));
 
     // Now, set the source viewport to all -1, and expect that we go back to un-viewported size
     committed = false;
@@ -548,5 +455,5 @@ TEST_F(WpViewporterTest, all_minus_one_destination_unsets_destination_viewport)
 
     client.dispatch_until([&committed]() { return committed;} );
 
-    EXPECT_TRUE(surface_has_size(client, surface, buffer_width, buffer_height));
+    EXPECT_THAT(surface, IsSurfaceOfSize(buffer_width, buffer_height));
 }
