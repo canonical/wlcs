@@ -153,7 +153,7 @@ TEST_F(FrameSubmission, when_client_endlessly_requests_frame_then_callbacks_are_
  */
 TEST_F(FrameSubmission, frame_requests_without_buffer_are_called_back_eventually)
 {
-    std::array<bool, 5> called = {0};
+    std::array<bool, 5> called{};
 
     wlcs::Client client{the_server()};
     auto surface = client.create_visible_surface(640, 480);
