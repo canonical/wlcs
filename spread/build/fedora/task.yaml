@@ -20,7 +20,8 @@ execute: |
         pkg-config \
         boost-devel \
         gtest-devel \
-        gmock-devel
+        gmock-devel \
+        libdrm-devel
 
     cd $SPREAD_PATH
     cd $(mktemp --directory)
