@@ -16,10 +16,8 @@
  * Authored by: Alan Griffiths <alan@octopull.co.uk>
  */
 
-#include "helpers.h"
 #include "in_process_server.h"
 
-#include <functional>
 #include <gmock/gmock.h>
 
 using namespace testing;
