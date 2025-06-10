@@ -410,6 +410,73 @@ catch(wlcs::ProtocolError const& err)
     throw;
 }
 
+TEST_F(LinuxDRMSyncobjV1Test, committing_without_both_syncpoint_and_buffer_is_valid)
+try
+{
+    using namespace testing;
+
+    auto surface =  a_client.create_visible_surface(200, 200);
+    wlcs::WlHandle<wp_linux_drm_syncobj_surface_v1> surface_timeline{
+        wp_linux_drm_syncobj_manager_v1_get_surface(syncobj_manager, surface)
+    };
+
+    Syncobj syncobj{open_timeline_capable_drm_node()};
+    auto timeline_fd = syncobj.get_fd_handle();
+    wlcs::WlHandle<wp_linux_drm_syncobj_timeline_v1> timeline{
+        wp_linux_drm_syncobj_manager_v1_import_timeline(syncobj_manager, timeline_fd)};
+
+    /* “Clients must set both acquire and release points if and only if a non-null buffer is
+     * attached in the same commit”
+     *
+     * We don't have a buffer, and we haven't set any release points; this is valid
+     */
+    wl_surface_commit(surface);
+    a_client.roundtrip();
+}
+catch(wlcs::ProtocolError const& err)
+{
+    if (err.interface() == &wp_linux_drm_syncobj_surface_v1_interface &&
+        err.error_code() == WP_LINUX_DRM_SYNCOBJ_SURFACE_V1_ERROR_UNSUPPORTED_BUFFER)
+    {
+        ::testing::Test::RecordProperty("wlcs-skip-test", "wp_linux_drm_syncobj implementation doesn't support wl_shm buffers");
+    }
+    throw;
+}
+
+TEST_F(LinuxDRMSyncobjV1Test, committing_a_null_buffer_without_syncpoint_is_valid)
+try
+{
+    using namespace testing;
+
+    auto surface =  a_client.create_visible_surface(200, 200);
+    wlcs::WlHandle<wp_linux_drm_syncobj_surface_v1> surface_timeline{
+        wp_linux_drm_syncobj_manager_v1_get_surface(syncobj_manager, surface)
+    };
+
+    Syncobj syncobj{open_timeline_capable_drm_node()};
+    auto timeline_fd = syncobj.get_fd_handle();
+    wlcs::WlHandle<wp_linux_drm_syncobj_timeline_v1> timeline{
+        wp_linux_drm_syncobj_manager_v1_import_timeline(syncobj_manager, timeline_fd)};
+
+    /* “Clients must set both acquire and release points if and only if a non-null buffer is
+     * attached in the same commit”
+     *
+     * We are attaching a NULL buffer, and we haven't set any release points; this is valid
+     */
+    wl_surface_attach(surface, nullptr, 0, 0);
+    wl_surface_commit(surface);
+    a_client.roundtrip();
+}
+catch(wlcs::ProtocolError const& err)
+{
+    if (err.interface() == &wp_linux_drm_syncobj_surface_v1_interface &&
+        err.error_code() == WP_LINUX_DRM_SYNCOBJ_SURFACE_V1_ERROR_UNSUPPORTED_BUFFER)
+    {
+        ::testing::Test::RecordProperty("wlcs-skip-test", "wp_linux_drm_syncobj implementation doesn't support wl_shm buffers");
+    }
+    throw;
+}
+
 TEST_F(LinuxDRMSyncobjV1Test, release_point_signalled_on_buffer_release)
 try
 {
