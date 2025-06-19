@@ -19,6 +19,7 @@
 #ifndef WLCS_HELPERS_H_
 #define WLCS_HELPERS_H_
 
+#include <chrono>
 #include <cstddef>
 #include <memory>
 
@@ -38,6 +39,24 @@ char const** get_argv();
 void set_entry_point(std::shared_ptr<WlcsServerIntegration const> const& entry_point);
 
 std::shared_ptr<WlcsServerIntegration const> get_test_hooks();
+
+/**
+ * A short duration.
+ *
+ * Use this when you need to wait for something to happen in the success case
+ * (that you have no way of monitoring otherwise), like verifying that an action
+ * did *not* change a window property.
+ */
+auto a_short_time() -> std::chrono::seconds;
+
+/**
+ * A long duration.
+ *
+ * Use this where you're waiting for something to happen and need a timeout
+ * to determine when to give up waiting, like committing a buffer to a surface
+ * and waiting for the previous buffer to be released.
+ */
+auto a_long_time() -> std::chrono::seconds;
 }
 }
 
