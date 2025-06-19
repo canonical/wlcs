@@ -221,6 +221,14 @@ set(
   ${WLCS_TESTS}
 )
 
+if (CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
+  set(TEST_TIMEOUT_MULTIPLIER "2")
+else()
+  set(TEST_TIMEOUT_MULTIPLIER "1")
+endif()
+
+set_property(SOURCE src/helpers.cpp APPEND PROPERTY COMPILE_DEFINITIONS -DTEST_TIMEOUT_MULTIPLIER=${TEST_TIMEOUT_MULTIPLIER})
+
 # g++ 9.4 (on 20.04) hates the MOCK_METHOD macro
 if (CMAKE_COMPILER_IS_GNUCXX AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 10)
   # Neither gnu-zero-variadic-macro-arguments nor variadic-macro help,

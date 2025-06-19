@@ -136,3 +136,13 @@ std::shared_ptr<WlcsServerIntegration const> wlcs::helpers::get_test_hooks()
 {
     return ::entry_point;
 }
+
+auto wlcs::helpers::a_short_time() -> std::chrono::seconds
+{
+    return std::chrono::seconds{1 * TEST_TIMEOUT_MULTIPLIER};
+}
+
+auto wlcs::helpers::a_long_time() -> std::chrono::seconds
+{
+    return std::chrono::seconds{10 * TEST_TIMEOUT_MULTIPLIER};
+}
