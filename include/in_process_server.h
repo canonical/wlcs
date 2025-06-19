@@ -31,6 +31,7 @@
 #include <unordered_map>
 #include <chrono>
 
+#include "helpers.h"
 #include "shared_library.h"
 #include "wl_handle.h"
 
@@ -276,7 +277,7 @@ public:
 
     void dispatch_until(
         std::function<bool()> const& predicate,
-        std::chrono::seconds timeout = std::chrono::seconds{10});
+        std::chrono::seconds timeout = helpers::a_long_time());
 
     template<typename WlType>
     auto bind_if_supported(VersionSpecifier const& version) -> WlHandle<WlType>
