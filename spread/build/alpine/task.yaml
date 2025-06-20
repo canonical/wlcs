@@ -9,7 +9,8 @@ execute: |
         wayland-dev \
         cmake \
         boost-dev \
-        gtest-dev
+        gtest-dev \
+        libdrm-dev
 
     cd $SPREAD_PATH
     cd $(mktemp --directory)

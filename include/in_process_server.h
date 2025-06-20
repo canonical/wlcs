@@ -232,6 +232,8 @@ public:
 
     // Accessors
 
+    Server& owner() const;
+
     operator wl_display*() const;
 
     wl_compositor* compositor() const;
