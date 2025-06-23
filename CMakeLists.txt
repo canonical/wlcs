@@ -35,12 +35,29 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread -g -Werror -Wall -pedantic -Wextra -fPIC")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -g -Werror -Wall -fno-strict-aliasing -pedantic -Wnon-virtual-dtor -Wextra -fPIC")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread -g -Wall -pedantic -Wextra -fPIC")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -g -Wall -fno-strict-aliasing -pedantic -Wnon-virtual-dtor -Wextra -fPIC")
 if ("${CMAKE_SHARED_LINKER_FLAGS}" MATCHES ".*-fsanitize=.*")
   set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}")
 else()
   set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--as-needed -Wl,--no-undefined")
+endif()
+
+set(WLCS_FATAL_COMPILE_WARNINGS ON CACHE BOOL "Should compiler warnings fail the build")
+if(WLCS_FATAL_COMPILE_WARNINGS)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
+  # Disable maybe-uninitialized errors on GCC when optimisation is enabled
+  # They are notorious for false-positives
+  # Also, disable array-bounds errors, they are likewise significantly
+  # false-positivey
+  # (We particularly hit https://gcc.gnu.org/bugzilla/show_bug.cgi?id=111415)
+  if ((CMAKE_C_COMPILER_ID MATCHES "GNU") AND NOT (CMAKE_BUILD_TYPE MATCHES "Debug"))
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-error=maybe-uninitialized -Wno-error=array-bounds")
+  endif()
+  if ((CMAKE_CXX_COMPILER_ID MATCHES "GNU") AND NOT (CMAKE_BUILD_TYPE MATCHES "Debug"))
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=maybe-uninitialized -Wno-error=array-bounds")
+  endif()
 endif()
 
 include(CheckCXXCompilerFlag)
