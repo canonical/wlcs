@@ -547,7 +547,7 @@ TEST_F(ClientSurfaceEventsTest, frame_timestamp_increases)
      * things easier for the integration by waiting a simulated
      * refresh cycle (at 60Hz) before submitting the next buffer.
      */
-    std::this_thread::sleep_for(std::chrono::ceil<std::chrono::milliseconds>(wlcs::helpers::a_short_time()/60));
+    std::this_thread::sleep_for(std::chrono::ceil<std::chrono::milliseconds>(wlcs::helpers::a_short_time()/60.0));
 
     wl_surface_attach(surface, buffers[2], 0, 0);
     surface.add_frame_callback(check_time_and_increment_count);
