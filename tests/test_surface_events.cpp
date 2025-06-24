@@ -533,21 +533,63 @@ TEST_F(ClientSurfaceEventsTest, frame_timestamp_increases)
     surface.add_frame_callback(check_time_and_increment_count);
     wl_surface_commit(surface);
 
+    client.dispatch_until([&frame_callback_count]()
+        {
+            return frame_callback_count == 1;
+        });
+
+    std::this_thread::sleep_for(1ms);
+
+    wl_surface_attach(surface, buffers[2], 0, 0);
+    surface.add_frame_callback(check_time_and_increment_count);
+    wl_surface_commit(surface);
+
+    client.dispatch_until([&frame_callback_count]()
+        {
+            return frame_callback_count == 2;
+        });
+}
+
+TEST_F(ClientSurfaceEventsTest, frame_timestamp_never_decreases)
+{
+    using namespace testing;
+    using namespace std::chrono_literals;
+
+    wlcs::Client client{the_server()};
+
+    auto surface = client.create_visible_surface(100, 100);
+
+    std::array<wlcs::ShmBuffer, 3> buffers = {{
+        wlcs::ShmBuffer{client, 100, 100},
+        wlcs::ShmBuffer{client, 100, 100},
+        wlcs::ShmBuffer{client, 100, 100}
+    }};
+
+    /*
+     * The first buffer must never be released, since it is replaced before
+     * it is committed, therefore it never becomes busy.
+     */
+    wl_surface_attach(surface, buffers[0], 0, 0);
+    wl_surface_attach(surface, buffers[1], 0, 0);
+
+    uint32_t prev_frame_time = 0;
+    int frame_callback_count = 0;
+
+    auto const check_time_and_increment_count =
+        [&](uint32_t timestamp)
+        {
+            EXPECT_THAT(timestamp, Ge(prev_frame_time));
+            prev_frame_time = timestamp;
+            frame_callback_count++;
+        };
+
+    surface.add_frame_callback(check_time_and_increment_count);
+    wl_surface_commit(surface);
+
     /* We don't need to wait for the server, but we *do* need
      * the server to see this commit
      */
     client.flush();
-
-    /**
-     * When run against a *real* compositor we should not need any
-     * delay here - when running on a real display, we would expect
-     * the second commit to wait for the next refresh cycle.
-     *
-     * But we're probably not running on a real display, so make
-     * things easier for the integration by waiting a simulated
-     * refresh cycle (at 60Hz) before submitting the next buffer.
-     */
-    std::this_thread::sleep_for(std::chrono::ceil<std::chrono::milliseconds>(wlcs::helpers::a_short_time()/60.0));
 
     wl_surface_attach(surface, buffers[2], 0, 0);
     surface.add_frame_callback(check_time_and_increment_count);
