@@ -538,6 +538,8 @@ TEST_F(ClientSurfaceEventsTest, frame_timestamp_increases)
             return frame_callback_count == 1;
         });
 
+    std::this_thread::sleep_for(1ms);
+
     wl_surface_attach(surface, buffers[2], 0, 0);
     surface.add_frame_callback(check_time_and_increment_count);
     wl_surface_commit(surface);
