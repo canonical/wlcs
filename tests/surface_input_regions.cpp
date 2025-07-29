@@ -70,6 +70,24 @@ struct Region
         wl_surface_commit(surface);
         client.roundtrip();
     }
+
+    Region rotate() const
+    {
+        std::vector<Element> new_elements;
+        for (auto const& e: elements)
+        {
+            new_elements.push_back(Element{
+                RegionAction::add,
+                std::make_pair(e.top_left.second, e.top_left.first),
+                std::make_pair(e.size.second, e.size.first)});
+        }
+
+        return {
+            .name = name,
+            .surface_size = std::make_pair(surface_size.second, surface_size.first),
+            .elements = new_elements
+        };
+    }
 };
 
 struct RegionWithTestPoints
@@ -92,6 +110,15 @@ struct RegionWithTestPoints
           on_surface{on_surface},
           off_surface{on_surface.first + delta.first, on_surface.second + delta.second}
     {
+    }
+
+    RegionWithTestPoints rotate() const
+    {
+        return RegionWithTestPoints{
+            name,
+            region.rotate(),
+            std::make_pair(on_surface.second, on_surface.first),
+            std::make_pair(off_surface.second, off_surface.first)};
     }
 
     std::string name;
@@ -792,6 +819,60 @@ TEST_P(ToplevelInputCombinations, input_falls_through_surface_without_region_aft
         << input << " not seen by lower toplevel after null buffer committed to " << builder;
 }
 
+class BufferTransformInputCombinations :
+    public wlcs::InProcessServer,
+    public WithParamInterface<std::tuple<
+        RegionWithTestPoints,
+        wl_output_transform,
+        std::shared_ptr<wlcs::SurfaceBuilder>,
+        std::shared_ptr<wlcs::InputMethod>>>
+{
+};
+
+TEST_P(BufferTransformInputCombinations, input_inside_transformed_region_seen)
+{
+    auto const top_left = std::make_pair(64, 49);
+    wlcs::Client client{the_server()};
+    RegionWithTestPoints region;
+    wl_output_transform transform;
+    std::shared_ptr<wlcs::SurfaceBuilder> builder;
+    std::shared_ptr<wlcs::InputMethod> input;
+
+    std::tie(region, transform, builder, input) = GetParam();
+
+    if (transform == WL_OUTPUT_TRANSFORM_90
+        || transform == WL_OUTPUT_TRANSFORM_270
+        || transform == WL_OUTPUT_TRANSFORM_FLIPPED_90
+        || transform == WL_OUTPUT_TRANSFORM_FLIPPED_270)
+    {
+        region = region.rotate();
+    }
+
+    auto surface = builder->build(
+        the_server(),
+        client,
+        top_left,
+        region.region.surface_size);
+    wl_surface_set_buffer_transform(*surface, transform);
+    region.region.apply_to_surface(client, *surface);
+    struct wl_surface* const wl_surface = *surface;
+
+    auto const device = input->create_device(the_server());
+    device->down_at({
+        top_left.first + region.on_surface.first,
+        top_left.second + region.on_surface.second});
+    client.roundtrip();
+
+    EXPECT_THAT(input->current_surface(client), Eq(wl_surface))
+        << input << " not seen by "<< builder << " when inside " << region.name << " of " << region.region.name << " region";
+
+    if (input->current_surface(client) == wl_surface)
+    {
+        EXPECT_THAT(input->position_on_surface(client), Eq(region.on_surface))
+            << input << " in the wrong place over " << builder << " while testing " << region;
+    }
+}
+
 // There's way too many region edges/surface type/input device combinations, so we don't run all of them
 // multi_rect_edges covers most cases, so we test it against all surface type/input device combinations
 // We test the rest against just XDG toplevel
@@ -835,3 +916,19 @@ INSTANTIATE_TEST_SUITE_P(
     ToplevelInputRegions,
     ToplevelInputCombinations,
     Combine(toplevel_surface_types, all_input_types));
+
+auto const all_transforms = Values(
+    // WL_OUTPUT_TRANSFORM_NORMAL,
+    WL_OUTPUT_TRANSFORM_90
+    // WL_OUTPUT_TRANSFORM_180,
+    // WL_OUTPUT_TRANSFORM_270,
+    // WL_OUTPUT_TRANSFORM_FLIPPED,
+    // WL_OUTPUT_TRANSFORM_FLIPPED_90,
+    // WL_OUTPUT_TRANSFORM_FLIPPED_180,
+    // WL_OUTPUT_TRANSFORM_FLIPPED_270
+);
+
+INSTANTIATE_TEST_SUITE_P(
+    BufferTransformInputCombinations,
+    BufferTransformInputCombinations,
+    Combine(multi_rect_edges, all_transforms, all_surface_types, all_input_types));
