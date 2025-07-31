@@ -54,14 +54,14 @@ struct TextInputV2WithInputMethodV1Test : wlcs::StartedInProcessServer
         app_client.roundtrip();
     }
 
-    MOCK_METHOD1(on_activate, void(zwp_input_method_context_v1*));
+    MOCK_METHOD(void, on_activate, (zwp_input_method_context_v1*));
     void activate(zwp_input_method_context_v1* context)
     {
         input_method_context = std::make_unique<NiceMock<wlcs::MockInputMethodContextV1>>(context);
         on_activate(context);
     }
 
-    MOCK_METHOD1(deactivate, void(zwp_input_method_context_v1*));
+    MOCK_METHOD(void, deactivate, (zwp_input_method_context_v1*));
 
     static zwp_input_method_v1_listener constexpr listener {
         wlcs::method_event_impl<&TextInputV2WithInputMethodV1Test::activate>,

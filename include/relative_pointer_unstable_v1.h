@@ -55,10 +55,10 @@ public:
     ZwpRelativePointerV1(ZwpRelativePointerManagerV1& manager, wl_pointer* pointer);
     ~ZwpRelativePointerV1();
 
-    MOCK_METHOD6(relative_motion,
-                 void(uint32_t utime_hi, uint32_t utime_lo,
-                     wl_fixed_t dx, wl_fixed_t dy,
-                     wl_fixed_t dx_unaccel, wl_fixed_t dy_unaccel));
+    MOCK_METHOD(void, relative_motion,
+                 (uint32_t utime_hi, uint32_t utime_lo,
+                 wl_fixed_t dx, wl_fixed_t dy,
+                 wl_fixed_t dx_unaccel, wl_fixed_t dy_unaccel));
 
     operator zwp_relative_pointer_v1*() const;
 

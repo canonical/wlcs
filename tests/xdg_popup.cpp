@@ -236,7 +236,7 @@ public:
     virtual auto create_child_popup() -> std::unique_ptr<XdgPopupManagerBase> = 0;
     virtual void dispatch_until_popup_configure() = 0;
 
-    MOCK_METHOD0(popup_done, void());
+    MOCK_METHOD(void, popup_done, ());
 
     wlcs::Server& the_server;
 
