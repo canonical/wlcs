@@ -19,6 +19,8 @@
 
 #include <gmock/gmock.h>
 
+using namespace testing;
+
 class LinuxDmabufTest
     : public wlcs::StartedInProcessServer
 {
@@ -31,11 +33,11 @@ TEST_F(LinuxDmabufTest, default_feedback)
     wlcs::LinuxDmabufV1 linux_dmabuf{client};
 
     auto feedback = linux_dmabuf.get_default_feedback();
-    EXPECT_CALL(*feedback, format_table(testing::_, testing::_));
-    EXPECT_CALL(*feedback, main_device(testing::_));
-    EXPECT_CALL(*feedback, tranche_target_device(testing::_));
-    EXPECT_CALL(*feedback, tranche_flags(testing::_));
-    EXPECT_CALL(*feedback, tranche_formats(testing::_));
+    EXPECT_CALL(*feedback, format_table(_, _));
+    EXPECT_CALL(*feedback, main_device(_));
+    EXPECT_CALL(*feedback, tranche_target_device(_));
+    EXPECT_CALL(*feedback, tranche_flags(_));
+    EXPECT_CALL(*feedback, tranche_formats(_));
     EXPECT_CALL(*feedback, tranche_done());
     EXPECT_CALL(*feedback, done());
     client.roundtrip();
