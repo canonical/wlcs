@@ -44,12 +44,12 @@ public:
         zwp_text_input_v3_add_listener(proxy, &listener, this);
     }
 
-    MOCK_METHOD1(enter, void(wl_surface *));
-    MOCK_METHOD1(leave, void(wl_surface *));
-    MOCK_METHOD3(preedit_string, void(std::string const&, int32_t, int32_t));
-    MOCK_METHOD1(commit_string, void(std::string const&));
-    MOCK_METHOD2(delete_surrounding_text, void(int32_t, int32_t));
-    MOCK_METHOD1(done, void(int32_t));
+    MOCK_METHOD(void, enter, (wl_surface *));
+    MOCK_METHOD(void, leave, (wl_surface *));
+    MOCK_METHOD(void, preedit_string, (std::string const&, int32_t, int32_t));
+    MOCK_METHOD(void, commit_string, (std::string const&));
+    MOCK_METHOD(void, delete_surrounding_text, (int32_t, int32_t));
+    MOCK_METHOD(void, done, (int32_t));
 
     static zwp_text_input_v3_listener constexpr listener {
         method_event_impl<&MockTextInputV3::enter>,

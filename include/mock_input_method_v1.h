@@ -44,11 +44,11 @@ public:
         zwp_input_method_context_v1_add_listener(proxy, &listener, this);
     }
 
-    MOCK_METHOD3(surrounding_text, void(std::string const&, uint32_t, uint32_t));
-    MOCK_METHOD0(reset, void());
-    MOCK_METHOD2(content_type, void(uint32_t, uint32_t));
-    MOCK_METHOD2(invoke_action, void(uint32_t, uint32_t));
-    MOCK_METHOD1(preferred_language, void(std::string const&));
+    MOCK_METHOD(void, surrounding_text, (std::string const&, uint32_t, uint32_t));
+    MOCK_METHOD(void, reset, ());
+    MOCK_METHOD(void, content_type, (uint32_t, uint32_t));
+    MOCK_METHOD(void, invoke_action, (uint32_t, uint32_t));
+    MOCK_METHOD(void, preferred_language, (std::string const&));
 
     void commit_state(uint32_t in_serial)
     {

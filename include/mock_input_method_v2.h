@@ -50,13 +50,13 @@ public:
         zwp_input_method_v2_add_listener(proxy, &listener, this);
     }
 
-    MOCK_METHOD0(activate, void());
-    MOCK_METHOD0(deactivate, void());
-    MOCK_METHOD3(surrounding_text, void(std::string const&, uint32_t, uint32_t));
-    MOCK_METHOD1(text_change_cause, void(uint32_t));
-    MOCK_METHOD2(content_type, void(uint32_t, uint32_t));
-    MOCK_METHOD0(done, void());
-    MOCK_METHOD0(unavailable, void());
+    MOCK_METHOD(void, activate, ());
+    MOCK_METHOD(void, deactivate, ());
+    MOCK_METHOD(void, surrounding_text, (std::string const&, uint32_t, uint32_t));
+    MOCK_METHOD(void, text_change_cause, (uint32_t));
+    MOCK_METHOD(void, content_type, (uint32_t, uint32_t));
+    MOCK_METHOD(void, done, ());
+    MOCK_METHOD(void, unavailable, ());
 
     auto done_count() -> uint32_t { return done_count_; }
 

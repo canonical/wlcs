@@ -81,24 +81,24 @@ struct MockPrimarySelectionDeviceListener : PrimarySelectionDeviceListener
 {
     using PrimarySelectionDeviceListener::PrimarySelectionDeviceListener;
 
-    MOCK_METHOD2(data_offer, void(zwp_primary_selection_device_v1* device, zwp_primary_selection_offer_v1* offer));
-    MOCK_METHOD2(selection, void(zwp_primary_selection_device_v1* device, zwp_primary_selection_offer_v1* offer));
+    MOCK_METHOD(void, data_offer, (zwp_primary_selection_device_v1* device, zwp_primary_selection_offer_v1* offer), (override));
+    MOCK_METHOD(void, selection, (zwp_primary_selection_device_v1* device, zwp_primary_selection_offer_v1* offer), (override));
 };
 
 struct MockPrimarySelectionOfferListener : PrimarySelectionOfferListener
 {
     using PrimarySelectionOfferListener::PrimarySelectionOfferListener;
 
-    MOCK_METHOD2(offer, void(zwp_primary_selection_offer_v1* offer, const char* mime_type));
+    MOCK_METHOD(void, offer, (zwp_primary_selection_offer_v1* offer, const char* mime_type), (override));
 };
 
 struct MockPrimarySelectionSourceListener : PrimarySelectionSourceListener
 {
     using PrimarySelectionSourceListener::PrimarySelectionSourceListener;
 
-    MOCK_METHOD3(send, void(zwp_primary_selection_source_v1* source, const char* mime_type, int32_t fd));
+    MOCK_METHOD(void, send, (zwp_primary_selection_source_v1* source, const char* mime_type, int32_t fd), (override));
 
-    MOCK_METHOD1(cancelled, void(zwp_primary_selection_source_v1*));
+    MOCK_METHOD(void, cancelled, (zwp_primary_selection_source_v1*), (override));
 };
 
 struct StubPrimarySelectionDeviceListener : PrimarySelectionDeviceListener

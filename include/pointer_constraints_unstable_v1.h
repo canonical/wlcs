@@ -61,8 +61,8 @@ public:
 
     ~ZwpConfinedPointerV1();
 
-    MOCK_METHOD0(confined, void());
-    MOCK_METHOD0(unconfined, void());
+    MOCK_METHOD(void, confined, ());
+    MOCK_METHOD(void, unconfined, ());
 
     operator zwp_confined_pointer_v1*() const;
 
@@ -86,8 +86,8 @@ public:
 
     ~ZwpLockedPointerV1();
 
-    MOCK_METHOD0(locked, void());
-    MOCK_METHOD0(unlocked, void());
+    MOCK_METHOD(void, locked, ());
+    MOCK_METHOD(void, unlocked, ());
 
     operator zwp_locked_pointer_v1*() const;
 
