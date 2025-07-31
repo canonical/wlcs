@@ -80,24 +80,24 @@ struct MockGtkPrimarySelectionDeviceListener : GtkPrimarySelectionDeviceListener
 {
     using GtkPrimarySelectionDeviceListener::GtkPrimarySelectionDeviceListener;
 
-    MOCK_METHOD(void, data_offer, (gtk_primary_selection_device* device, gtk_primary_selection_offer* offer));
-    MOCK_METHOD(void, selection, (gtk_primary_selection_device* device, gtk_primary_selection_offer* offer));
+    MOCK_METHOD(void, data_offer, (gtk_primary_selection_device* device, gtk_primary_selection_offer* offer), (override));
+    MOCK_METHOD(void, selection, (gtk_primary_selection_device* device, gtk_primary_selection_offer* offer), (override));
 };
 
 struct MockGtkPrimarySelectionOfferListener : GtkPrimarySelectionOfferListener
 {
     using GtkPrimarySelectionOfferListener::GtkPrimarySelectionOfferListener;
 
-    MOCK_METHOD(void, offer, (gtk_primary_selection_offer* offer, const char* mime_type));
+    MOCK_METHOD(void, offer, (gtk_primary_selection_offer* offer, const char* mime_type), (override));
 };
 
 struct MockGtkPrimarySelectionSourceListener : GtkPrimarySelectionSourceListener
 {
     using GtkPrimarySelectionSourceListener::GtkPrimarySelectionSourceListener;
 
-    MOCK_METHOD(void, send, (gtk_primary_selection_source* source, const char* mime_type, int32_t fd));
+    MOCK_METHOD(void, send, (gtk_primary_selection_source* source, const char* mime_type, int32_t fd), (override));
 
-    MOCK_METHOD(void, cancelled, (gtk_primary_selection_source*));
+    MOCK_METHOD(void, cancelled, (gtk_primary_selection_source*), (override));
 };
 
 struct StubGtkPrimarySelectionDeviceListener : GtkPrimarySelectionDeviceListener

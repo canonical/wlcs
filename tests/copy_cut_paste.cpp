@@ -61,14 +61,14 @@ struct MockDataDeviceListener : DataDeviceListener
 {
     using DataDeviceListener::DataDeviceListener;
 
-    MOCK_METHOD(void, data_offer, (struct wl_data_device* wl_data_device, struct wl_data_offer* id));
+    MOCK_METHOD(void, data_offer, (struct wl_data_device* wl_data_device, struct wl_data_offer* id), (override));
 };
 
 struct MockDataOfferListener : DataOfferListener
 {
     using DataOfferListener::DataOfferListener;
 
-    MOCK_METHOD(void, offer, (struct wl_data_offer* data_offer, char const* MimeType));
+    MOCK_METHOD(void, offer, (struct wl_data_offer* data_offer, char const* MimeType), (override));
 };
 
 struct CCnPSink : Client
