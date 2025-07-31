@@ -48,21 +48,6 @@ private:
     std::unique_ptr<Impl> const impl;
 };
 
-class LinuxDmabufV1
-{
-public:
-    LinuxDmabufV1(Client& client);
-    LinuxDmabufV1(LinuxDmabufV1 const&) = delete;
-    LinuxDmabufV1& operator=(LinuxDmabufV1 const&) = delete;
-    ~LinuxDmabufV1();
-
-    std::shared_ptr<LinuxDmabufFeedbackV1> get_default_feedback();
-
-private:
-    struct Impl;
-    std::unique_ptr<Impl> const impl;
-};
-
 }
 
 #endif // WLCS_LINUX_DMABUF_V1_

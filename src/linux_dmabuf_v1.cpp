@@ -87,27 +87,3 @@ wlcs::LinuxDmabufFeedbackV1::LinuxDmabufFeedbackV1(struct zwp_linux_dmabuf_feedb
 }
 
 wlcs::LinuxDmabufFeedbackV1::~LinuxDmabufFeedbackV1() = default;
-
-struct wlcs::LinuxDmabufV1::Impl
-{
-    Impl(Client& client)
-        : client{client},
-          linux_dmabuf{client.bind_if_supported<zwp_linux_dmabuf_v1>(AnyVersion)}
-    {
-    }
-
-    Client& client;
-    WlHandle<zwp_linux_dmabuf_v1> const linux_dmabuf;
-};
-
-wlcs::LinuxDmabufV1::LinuxDmabufV1(Client& client)
-    : impl{std::make_unique<Impl>(client)}
-{
-}
-
-wlcs::LinuxDmabufV1::~LinuxDmabufV1() = default;
-
-std::shared_ptr<wlcs::LinuxDmabufFeedbackV1> wlcs::LinuxDmabufV1::get_default_feedback()
-{
-    return std::make_shared<wlcs::LinuxDmabufFeedbackV1>(zwp_linux_dmabuf_v1_get_default_feedback(impl->linux_dmabuf));
-}

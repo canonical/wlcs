@@ -16,10 +16,12 @@
 
 #include "in_process_server.h"
 #include "linux_dmabuf_v1.h"
+#include "version_specifier.h"
 
 #include <gmock/gmock.h>
 
 using namespace testing;
+using namespace wlcs;
 
 class LinuxDmabufTest
     : public wlcs::StartedInProcessServer
@@ -30,9 +32,10 @@ TEST_F(LinuxDmabufTest, default_feedback)
 {
     wlcs::Client client{the_server()};
 
-    wlcs::LinuxDmabufV1 linux_dmabuf{client};
+    auto linux_dmabuf = client.bind_if_supported<zwp_linux_dmabuf_v1>(AnyVersion);
+    auto f = wrap_wl_object(zwp_linux_dmabuf_v1_get_default_feedback(linux_dmabuf));
+    auto feedback = std::make_shared<LinuxDmabufFeedbackV1>(f);
 
-    auto feedback = linux_dmabuf.get_default_feedback();
     EXPECT_CALL(*feedback, format_table(_, _));
     EXPECT_CALL(*feedback, main_device(_));
     EXPECT_CALL(*feedback, tranche_target_device(_));
