@@ -35,13 +35,13 @@ public:
     LinuxDmabufFeedbackV1& operator=(LinuxDmabufFeedbackV1 const&) = delete;
     ~LinuxDmabufFeedbackV1();
 
-    MOCK_METHOD0(done, void());
-    MOCK_METHOD2(format_table, void(int fd, uint32_t size));
-    MOCK_METHOD1(main_device, void(dev_t devnum));
-    MOCK_METHOD0(tranche_done, void());
-    MOCK_METHOD1(tranche_target_device, void(dev_t devnum));
-    MOCK_METHOD1(tranche_formats, void(std::vector<uint32_t> indices));
-    MOCK_METHOD1(tranche_flags, void(uint32_t flags));
+    MOCK_METHOD(void, done, ());
+    MOCK_METHOD(void, format_table, (int fd, uint32_t size));
+    MOCK_METHOD(void, main_device, (dev_t devnum));
+    MOCK_METHOD(void, tranche_done, ());
+    MOCK_METHOD(void, tranche_target_device, (dev_t devnum));
+    MOCK_METHOD(void, tranche_formats, (std::vector<uint32_t> indices));
+    MOCK_METHOD(void, tranche_flags, (uint32_t flags));
 
 private:
     struct Impl;
