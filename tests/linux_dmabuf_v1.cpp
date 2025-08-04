@@ -32,7 +32,7 @@ TEST_F(LinuxDmabufTest, default_feedback)
 {
     wlcs::Client client{the_server()};
 
-    auto linux_dmabuf = client.bind_if_supported<zwp_linux_dmabuf_v1>(AnyVersion);
+    auto linux_dmabuf = client.bind_if_supported<zwp_linux_dmabuf_v1>(AtLeastVersion{4});
     auto f = wrap_wl_object(zwp_linux_dmabuf_v1_get_default_feedback(linux_dmabuf));
     auto feedback = std::make_shared<LinuxDmabufFeedbackV1>(f);
 
