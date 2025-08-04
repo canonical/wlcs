@@ -35,12 +35,12 @@ TEST_F(LinuxDmabufTest, default_feedback)
     auto linux_dmabuf = client.bind_if_supported<zwp_linux_dmabuf_v1>(AtLeastVersion{4});
     LinuxDmabufFeedbackV1 feedback{zwp_linux_dmabuf_v1_get_default_feedback(linux_dmabuf)};
 
-    EXPECT_CALL(*feedback, format_table(_, _));
-    EXPECT_CALL(*feedback, main_device(_));
-    EXPECT_CALL(*feedback, tranche_target_device(_));
-    EXPECT_CALL(*feedback, tranche_flags(_));
-    EXPECT_CALL(*feedback, tranche_formats(_));
-    EXPECT_CALL(*feedback, tranche_done());
-    EXPECT_CALL(*feedback, done());
+    EXPECT_CALL(feedback, format_table(_, _));
+    EXPECT_CALL(feedback, main_device(_));
+    EXPECT_CALL(feedback, tranche_target_device(_));
+    EXPECT_CALL(feedback, tranche_flags(_));
+    EXPECT_CALL(feedback, tranche_formats(_));
+    EXPECT_CALL(feedback, tranche_done());
+    EXPECT_CALL(feedback, done());
     client.roundtrip();
 }
