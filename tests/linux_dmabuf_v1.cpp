@@ -35,6 +35,10 @@ TEST_F(LinuxDmabufTest, default_feedback)
     auto linux_dmabuf = client.bind_if_supported<zwp_linux_dmabuf_v1>(AtLeastVersion{4});
     LinuxDmabufFeedbackV1 feedback{zwp_linux_dmabuf_v1_get_default_feedback(linux_dmabuf)};
 
+    // TODO: Check the ordering and amound of these calls.
+    // There should be a single main format_table/device/done.
+    // There is one or more tranches.
+    // Properties can be in different orders (target_device/flags/formats) but done must be last.
     EXPECT_CALL(feedback, format_table(_, _));
     EXPECT_CALL(feedback, main_device(_));
     EXPECT_CALL(feedback, tranche_target_device(_));
