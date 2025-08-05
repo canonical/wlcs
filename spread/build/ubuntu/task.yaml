@@ -15,6 +15,7 @@ execute: |
         libgtest-dev \
         google-mock \
         libboost-dev \
+        libdrm-dev \
         mir-test-tools
 
     # Check that we build…

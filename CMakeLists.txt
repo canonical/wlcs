@@ -80,6 +80,7 @@ find_package(GtestGmock)
 pkg_check_modules(WAYLAND_CLIENT REQUIRED wayland-client)
 pkg_check_modules(WAYLAND_SERVER REQUIRED wayland-server)
 pkg_check_modules(WAYLAND_SCANNER REQUIRED wayland-scanner)
+pkg_check_modules(DRM REQUIRED libdrm IMPORTED_TARGET)
 
 include_directories(include)
 include_directories(${Boost_INCLUDE_DIRS})
@@ -154,6 +155,7 @@ GENERATE_PROTOCOL(wlr-virtual-pointer-unstable-v1)
 GENERATE_PROTOCOL(xdg-decoration-unstable-v1)
 GENERATE_PROTOCOL(viewporter)
 GENERATE_PROTOCOL(fractional-scale-v1)
+GENERATE_PROTOCOL(linux-drm-syncobj-v1)
 
 option(WLCS_BUILD_ASAN "Build a test runner with AddressSanitizer annotations" ON)
 option(WLCS_BUILD_TSAN "Build a test runner with ThreadSanitizer annotations" ON)
@@ -187,6 +189,7 @@ set(WLCS_TESTS
   tests/xdg_decoration_v1.cpp
   tests/wp_viewporter.cpp
   tests/fractional_scale_v1.cpp
+  tests/linux_drm_syncobj_v1.cpp
 )
 
 set(
@@ -196,6 +199,7 @@ set(
   include/wlcs/pointer.h
   include/wlcs/touch.h
   include/expect_protocol_error.h
+  include/gtest_matchers.h
   include/helpers.h
   include/wl_handle.h
   include/in_process_server.h
@@ -305,6 +309,7 @@ foreach(TARGET IN LISTS EXECUTABLE_TARGETS)
 
     ${GMOCK_LIBRARY}
     ${GTEST_LIBRARY}
+    PkgConfig::DRM
   )
 endforeach(TARGET)
 

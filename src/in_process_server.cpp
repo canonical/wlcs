@@ -664,7 +664,8 @@ class wlcs::Client::Impl
 {
 public:
     Impl(Server& server)
-        : supported_extensions{server.supported_extensions()}
+        : owner_{server},
+          supported_extensions{server.supported_extensions()}
     {
         try
         {
@@ -706,6 +707,11 @@ public:
             callback();
         destruction_callbacks.clear();
         wl_display_disconnect(display);
+    }
+
+    auto owner() const -> Server&
+    {
+        return owner_;
     }
 
     struct wl_display* wl_display() const
@@ -1646,6 +1652,8 @@ private:
         &global_removed
     };
 
+    Server& owner_;
+
     std::shared_ptr<std::unordered_map<std::string, uint32_t> const> const supported_extensions;
 
     struct wl_display* display;
@@ -1704,6 +1712,11 @@ wlcs::Client::Client(Server& server)
 }
 
 wlcs::Client::~Client() = default;
+
+auto wlcs::Client::owner() const -> Server&
+{
+    return impl->owner();
+}
 
 wlcs::Client::operator wl_display*() const
 {
