@@ -40,6 +40,7 @@
 #include <unordered_map>
 #include <chrono>
 #include <poll.h>
+#include <ranges>
 
 using namespace std::literals::chrono_literals;
 
@@ -1369,7 +1370,8 @@ private:
                 to_remove.push_back(notifier);
             }
         }
-        for (auto removed : to_remove)
+        // `::erase` invalidates iterators, so iterate in reverse
+        for (auto removed : to_remove | std::views::reverse)
         {
             enter_notifiers.erase(removed);
         }
@@ -1385,7 +1387,8 @@ private:
                 to_remove.push_back(notifier);
             }
         }
-        for (auto removed : to_remove)
+        // `::erase` invalidates iterators, so iterate in reverse
+        for (auto removed : to_remove | std::views::reverse)
         {
             leave_notifiers.erase(removed);
         }
@@ -1402,7 +1405,8 @@ private:
                 to_remove.push_back(notifier);
             }
         }
-        for (auto removed : to_remove)
+        // `::erase` invalidates iterators, so iterate in reverse
+        for (auto removed : to_remove | std::views::reverse)
         {
             motion_notifiers.erase(removed);
         }
@@ -1420,7 +1424,8 @@ private:
                     to_remove.push_back(notifier);
                 }
             }
-            for (auto removed : to_remove)
+            // `::erase` invalidates iterators, so iterate in reverse
+            for (auto removed : to_remove | std::views::reverse)
             {
                 button_notifiers.erase(removed);
             }
