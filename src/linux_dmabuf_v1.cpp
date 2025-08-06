@@ -72,8 +72,8 @@ wlcs::LinuxDmabufFeedbackV1::LinuxDmabufFeedbackV1(struct zwp_linux_dmabuf_feedb
             struct zwp_linux_dmabuf_feedback_v1 *,
             struct wl_array *indices)
             {
-	        auto i = static_cast<uint32_t*>(indices->data);
-                static_cast<LinuxDmabufFeedbackV1*>(data)->tranche_formats(std::vector<uint32_t>(i, i + indices->size));
+                auto i = static_cast<uint32_t*>(indices->data);
+                static_cast<LinuxDmabufFeedbackV1*>(data)->tranche_formats(std::vector<uint32_t>(i, i + (indices->size/sizeof(uint32_t))));
             },
         [] /* tranche_flags */ (
             void *data,
