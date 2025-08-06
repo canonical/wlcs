@@ -40,7 +40,6 @@
 #include <unordered_map>
 #include <chrono>
 #include <poll.h>
-#include <ranges>
 
 using namespace std::literals::chrono_literals;
 
@@ -1362,73 +1361,60 @@ private:
 
     void notify_of_pointer_enter(wl_surface* surface, std::pair<int, int> position)
     {
-        std::vector<decltype(enter_notifiers)::const_iterator> to_remove;
-        for (auto notifier = enter_notifiers.begin(); notifier != enter_notifiers.end(); ++notifier)
-        {
-            if (!(*notifier)(surface, position.first, position.second))
-            {
-                to_remove.push_back(notifier);
-            }
-        }
-        // `::erase` invalidates iterators, so iterate in reverse
-        for (auto removed : to_remove | std::views::reverse)
-        {
-            enter_notifiers.erase(removed);
-        }
+        enter_notifiers.erase(
+            std::remove_if(
+                enter_notifiers.begin(),
+                enter_notifiers.end(),
+                [&](auto const& notifier)
+                {
+                    return !notifier(surface, position.first, position.second);
+                }),
+            enter_notifiers.end()
+        );
     }
 
     void notify_of_pointer_leave(wl_surface* surface)
     {
-        std::vector<decltype(leave_notifiers)::const_iterator> to_remove;
-        for (auto notifier = leave_notifiers.begin(); notifier != leave_notifiers.end(); ++notifier)
-        {
-            if (!(*notifier)(surface))
-            {
-                to_remove.push_back(notifier);
-            }
-        }
-        // `::erase` invalidates iterators, so iterate in reverse
-        for (auto removed : to_remove | std::views::reverse)
-        {
-            leave_notifiers.erase(removed);
-        }
+        leave_notifiers.erase(
+            std::remove_if(
+                leave_notifiers.begin(),
+                leave_notifiers.end(),
+                [&](auto const& notifier)
+                {
+                    return !notifier(surface);
+                }),
+            leave_notifiers.end()
+        );
     }
 
     void notify_of_pointer_motion(std::pair<int, int> position)
     {
-
-        std::vector<decltype(motion_notifiers)::const_iterator> to_remove;
-        for (auto notifier = motion_notifiers.begin(); notifier != motion_notifiers.end(); ++notifier)
-        {
-            if (!(*notifier)(position.first, position.second))
-            {
-                to_remove.push_back(notifier);
-            }
-        }
-        // `::erase` invalidates iterators, so iterate in reverse
-        for (auto removed : to_remove | std::views::reverse)
-        {
-            motion_notifiers.erase(removed);
-        }
+        motion_notifiers.erase(
+            std::remove_if(
+                motion_notifiers.begin(),
+                motion_notifiers.end(),
+                [&](auto const& notifier)
+                {
+                    return !notifier(position.first, position.second);
+                }),
+            motion_notifiers.end()
+        );
     }
 
     void notify_of_pointer_buttons(std::map<uint32_t, std::pair<uint32_t, bool>> const& buttons)
     {
         for (auto const& button : buttons)
         {
-            std::vector<decltype(button_notifiers)::const_iterator> to_remove;
-            for (auto notifier = button_notifiers.begin(); notifier != button_notifiers.end(); ++notifier)
-            {
-                if (!(*notifier)(button.second.first, button.first, button.second.second))
-                {
-                    to_remove.push_back(notifier);
-                }
-            }
-            // `::erase` invalidates iterators, so iterate in reverse
-            for (auto removed : to_remove | std::views::reverse)
-            {
-                button_notifiers.erase(removed);
-            }
+            button_notifiers.erase(
+                std::remove_if(
+                    button_notifiers.begin(),
+                    button_notifiers.end(),
+                    [&](auto const& notifier)
+                    {
+                        return !notifier(button.second.first, button.first, button.second.second);
+                    }),
+                button_notifiers.end()
+            );
         }
     }
 
