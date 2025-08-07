@@ -1365,7 +1365,9 @@ private:
             std::remove_if(
                 enter_notifiers.begin(),
                 enter_notifiers.end(),
-                [&](auto const& notifier)
+                // FIXME: copy `position` to avoid a GCC-15 bug yielding
+                // `-Wuninitialized` under `--sanitize=undefined`
+                [&, position](auto const& notifier)
                 {
                     return !notifier(surface, position.first, position.second);
                 }),
