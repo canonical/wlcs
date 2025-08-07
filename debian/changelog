@@ -1,3 +1,16 @@
+wlcs (1.8.0-0ubuntu0) UNRELEASED; urgency=medium
+
+  * New upstream release
+    . Tests for wp_viewporter (#340)
+    . Add tests for xdg-decoration-unstable-v1. (#339)
+    . Add tests for fractional-scale-v1 (#342)
+    . Use the latest GPLv2 license text (#352)
+    . FrameSubmission: Expand test for Firefox frame storm. (#350)
+    . Add helpers for "how long should a timeout be" (#354)
+    . cmake: avoid false-positive warnings (#356)
+
+ -- Michał Sawicz <michal.sawicz@canonical.com>  Tue, 05 Aug 2025 15:12:56 +0200
+
 wlcs (1.7.0-0ubuntu0) UNRELEASED; urgency=medium
 
   * New upstream release. Notable changes:
