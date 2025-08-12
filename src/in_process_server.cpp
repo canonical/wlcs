@@ -1366,7 +1366,7 @@ private:
                 enter_notifiers.begin(),
                 enter_notifiers.end(),
                 // FIXME: copy `position` to avoid a GCC-15 bug yielding
-                // `-Wuninitialized` under `--sanitize=undefined`
+                // `-Wuninitialized` under `--sanitize=undefined` on armhf
                 [&, position](auto const& notifier)
                 {
                     return !notifier(surface, position.first, position.second);
