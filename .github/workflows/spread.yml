@@ -52,7 +52,7 @@ jobs:
         sudo snap run lxd init --auto
 
     - name: Check out code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Run Spread task
       run: snap run spread-mir-ci.spread -v ${{ matrix.spread-task }}
