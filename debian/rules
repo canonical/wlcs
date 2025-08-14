@@ -24,22 +24,6 @@ ifeq ($(DEB_HOST_ARCH), riscv64)
   COMMON_CONFIGURE_OPTIONS += -DWLCS_BUILD_TSAN=OFF
 endif
 
-# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=105329
-ifeq ($(DEB_HOST_ARCH), ppc64el)
-  ifneq ($(shell gcc --version | grep '1[34].[[:digit:]]\+.[[:digit:]]\+$$'),)
-    export DEB_CFLAGS_MAINT_APPEND = -O2
-    export DEB_CXXFLAGS_MAINT_APPEND = -O2
-    export DEB_FCFLAGS_MAINT_APPEND = -O2
-    export DEB_FFLAGS_MAINT_APPEND = -O2
-  endif
-endif
-
-# Disable LTO on broken binutils
-# https://bugs.launchpad.net/ubuntu/+source/binutils/+bug/2070302
-ifneq ($(shell ld --version | grep '2.43.1$$'),)
-	DEB_BUILD_MAINT_OPTIONS += optimize=-lto
-endif
-
 override_dh_auto_configure:
 	dh_auto_configure -- $(COMMON_CONFIGURE_OPTIONS)
 

@@ -154,6 +154,7 @@ GENERATE_PROTOCOL(wlr-virtual-pointer-unstable-v1)
 GENERATE_PROTOCOL(xdg-decoration-unstable-v1)
 GENERATE_PROTOCOL(viewporter)
 GENERATE_PROTOCOL(fractional-scale-v1)
+GENERATE_PROTOCOL(linux-dmabuf-stable-v1)
 
 option(WLCS_BUILD_ASAN "Build a test runner with AddressSanitizer annotations" ON)
 option(WLCS_BUILD_TSAN "Build a test runner with ThreadSanitizer annotations" ON)
@@ -187,6 +188,7 @@ set(WLCS_TESTS
   tests/xdg_decoration_v1.cpp
   tests/wp_viewporter.cpp
   tests/fractional_scale_v1.cpp
+  tests/linux_dmabuf_v1.cpp
 )
 
 set(
@@ -211,6 +213,7 @@ set(
   include/surface_builder.h
   include/input_method.h
   include/xdg_decoration_unstable_v1.h
+  include/linux_dmabuf_v1.h
 
   src/data_device.cpp
   src/gtk_primary_selection.cpp
@@ -233,6 +236,7 @@ set(
   src/surface_builder.cpp
   src/input_method.cpp
   src/xdg_decoration_unstable_v1.cpp
+  src/linux_dmabuf_v1.cpp
 
   ${PROTOCOL_SOURCES}
   ${WLCS_TESTS}
