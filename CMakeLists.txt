@@ -21,7 +21,7 @@ cmake_minimum_required(VERSION 3.5)
 cmake_policy(SET CMP0015 NEW)
 cmake_policy(SET CMP0022 NEW)
 
-project(wlcs VERSION 1.7.0)
+project(wlcs VERSION 1.8.1)
 
 add_definitions(-D_GNU_SOURCE)
 add_definitions(-D_FILE_OFFSET_BITS=64)
