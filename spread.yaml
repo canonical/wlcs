@@ -8,6 +8,7 @@ backends:
             - ubuntu-24.04
             - ubuntu-24.10
             - ubuntu-25.04
+            - ubuntu-25.10
             - ubuntu-devel:
                 image: ubuntu-daily:devel/amd64
             - fedora-41

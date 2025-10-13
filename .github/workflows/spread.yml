@@ -24,7 +24,8 @@ jobs:
         spread-task:
         - lxd:ubuntu-24.04:...:gcc
         - lxd:ubuntu-25.04:...:gcc
-        - lxd:ubuntu-25.04:...:clang
+        - lxd:ubuntu-25.10:...:gcc
+        - lxd:ubuntu-25.10:...:clang
         - lxd:fedora-41:...:gcc
         - lxd:fedora-42:...:gcc
         - lxd:fedora-rawhide:...:gcc
