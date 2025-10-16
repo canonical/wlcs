@@ -21,6 +21,39 @@
 wlcs::ActiveListeners wlcs::DataDeviceListener::active_listeners;
 constexpr wl_data_device_listener wlcs::DataDeviceListener::thunks;
 
+wlcs::DataSource::DataSource(struct wl_data_source* ds) :
+    self{ds, deleter}
+{
+    static wl_data_source_listener constexpr listener{
+        .target =
+            [](auto...)
+        {
+        },
+        .send =
+            [](auto* data, auto, auto* mime_type, auto fd)
+        {
+            auto* self = reinterpret_cast<DataSource*>(data);
+            self->wrote_data(mime_type, fd);
+        },
+        .cancelled =
+            [](auto...)
+        {
+        },
+        .dnd_drop_performed =
+            [](auto...)
+        {
+        },
+        .dnd_finished =
+            [](auto...)
+        {
+        },
+        .action =
+            [](auto...)
+        {
+        },
+    };
+    wl_data_source_add_listener(ds, &listener, this);
+}
 
 void wlcs::DataDeviceListener::data_offer(void* data, struct wl_data_device* wl_data_device, struct wl_data_offer* id)
 {
