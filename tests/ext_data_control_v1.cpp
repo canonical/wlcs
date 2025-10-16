@@ -63,10 +63,8 @@ struct DataControlOfferWrapper
     }
 };
 
-struct SinkClient
+struct SinkClient : Client
 {
-    Client sink_client;
-
     WlHandle<ext_data_control_manager_v1> sink_data_control_manager;
     WlHandle<ext_data_control_device_v1> sink_data_control_device;
 
@@ -75,7 +73,6 @@ struct SinkClient
     // stack. Once the stack is cleaned up at the end of `data_offer`'s end,
     // the listener's pointer would be pointing at garbage.
     std::unique_ptr<DataControlOfferWrapper> current_offer;
-
 
     static void data_control_data_offer(
         void* data, struct ext_data_control_device_v1*, struct ext_data_control_offer_v1* id)
@@ -125,10 +122,9 @@ struct SinkClient
     };
 
     SinkClient(Server& the_server) :
-        sink_client{the_server},
-        sink_data_control_manager{sink_client.bind_if_supported<ext_data_control_manager_v1>(AnyVersion)},
-        sink_data_control_device{
-            ext_data_control_manager_v1_get_data_device(sink_data_control_manager, sink_client.seat())}
+        Client{the_server},
+        sink_data_control_manager{bind_if_supported<ext_data_control_manager_v1>(AnyVersion)},
+        sink_data_control_device{ext_data_control_manager_v1_get_data_device(sink_data_control_manager, seat())}
 
     {
         ext_data_control_device_v1_set_user_data(sink_data_control_device, this);
@@ -147,16 +143,10 @@ struct SinkClient
     {
         return sink_data_control_device;
     }
-
-    void roundtrip()
-    {
-        sink_client.roundtrip();
-    }
 };
 
-struct SourceClient
+struct SourceClient : Client
 {
-    Client source_client;
     WlHandle<ext_data_control_manager_v1> const source_client_data_control_manager;
     WlHandle<ext_data_control_device_v1> const source_client_data_control_device;
     WlHandle<ext_data_control_source_v1> const source_client_data_control_source;
@@ -188,10 +178,10 @@ struct SourceClient
     };
 
     SourceClient(Server& the_server, std::string message) :
-        source_client{the_server},
-        source_client_data_control_manager{source_client.bind_if_supported<ext_data_control_manager_v1>(AnyVersion)},
+        Client{the_server},
+        source_client_data_control_manager{bind_if_supported<ext_data_control_manager_v1>(AnyVersion)},
         source_client_data_control_device{
-            ext_data_control_manager_v1_get_data_device(source_client_data_control_manager, source_client.seat())},
+            ext_data_control_manager_v1_get_data_device(source_client_data_control_manager, seat())},
         source_client_data_control_source{
             ext_data_control_manager_v1_create_data_source(source_client_data_control_manager)},
         message{message}
@@ -207,11 +197,6 @@ struct SourceClient
         // this source client is the active source when they create their
         // devices via the `selection()` event.
         ext_data_control_device_v1_set_selection(source_client_data_control_device, source_client_data_control_source);
-    }
-
-    void roundtrip()
-    {
-        source_client.roundtrip();
     }
 };
 
