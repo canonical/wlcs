@@ -16,6 +16,7 @@
  * Authored by: Tarek Ismail <tarek.ismail@canonical.com>
  */
 
+#include "copy_cut_paste.h"
 #include "expect_protocol_error.h"
 #include "generated/ext-data-control-v1-client.h"
 #include "in_process_server.h"
@@ -313,4 +314,57 @@ TEST_F(ExtDataControlV1Test, offering_mime_type_after_setting_selection_is_a_pro
         { clipboard_client.roundtrip(); },
         &ext_data_control_source_v1_interface,
         EXT_DATA_CONTROL_SOURCE_V1_ERROR_INVALID_OFFER);
+}
+
+TEST_F(ExtDataControlV1Test, copy_from_core_protocol_client_reaches_clipboard)
+{
+    CCnPSource source{the_server()};
+    SinkClient clipboard{the_server()};
+
+    EXPECT_CALL(clipboard, prepared_to_receive());
+    EXPECT_CALL(source.data_source, wrote_data(_, _));
+
+    source.offer(test_mime_type);
+
+    clipboard.roundtrip();
+    source.roundtrip();
+}
+
+TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_core_protocol_client)
+{
+    SourceClient clipboard{the_server(), test_message};
+
+    CCnPSink sink{the_server()};
+
+    // Client should be able to paste once it gets `selection`
+    EXPECT_CALL(sink.listener, selection(_, _));
+
+    auto f = sink.create_surface_with_focus(); // To get focus
+    sink.roundtrip();
+
+    EXPECT_CALL(clipboard, wrote_data());
+
+    MockDataOfferListener mdol;
+    EXPECT_CALL(sink.listener, data_offer(_, _))
+        .WillOnce(Invoke(
+            [&](struct wl_data_device*, struct wl_data_offer* id)
+            {
+                mdol.listen_to(id);
+            }));
+
+    EXPECT_CALL(mdol, offer(_, _))
+        .WillOnce(Invoke(
+            [&](struct wl_data_offer* offer, char const* mime)
+            {
+                wl_data_offer_receive(offer, mime, test_source_fd);
+
+                clipboard.roundtrip();
+                sink.roundtrip();
+            }));
+
+    clipboard.roundtrip();
+    sink.roundtrip();
+
+    clipboard.roundtrip();
+    sink.roundtrip();
 }
