@@ -103,7 +103,7 @@ void wlcs::DataDeviceListener::selection(
     struct wl_data_offer* id)
 {
     if (active_listeners.includes(data))
-        static_cast<DataDeviceListener*>(data)->selection(wl_data_device, wl_data_device, id);
+        static_cast<DataDeviceListener*>(data)->selection(wl_data_device, id);
 }
 
 void wlcs::DataDeviceListener::data_offer(struct wl_data_device* /*wl_data_device*/, struct wl_data_offer* /*id*/)
