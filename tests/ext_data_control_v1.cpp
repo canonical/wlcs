@@ -145,6 +145,12 @@ struct SinkClient : Client
     }
 };
 
+enum SelectionType
+{
+    normal,
+    primary
+};
+
 struct SourceClient : Client
 {
     WlHandle<ext_data_control_manager_v1> const source_client_data_control_manager;
@@ -177,7 +183,7 @@ struct SourceClient : Client
         },
     };
 
-    SourceClient(Server& the_server, std::string message) :
+    SourceClient(Server& the_server, std::string message, SelectionType selection = SelectionType::normal) :
         Client{the_server},
         source_client_data_control_manager{bind_if_supported<ext_data_control_manager_v1>(AnyVersion)},
         source_client_data_control_device{
@@ -192,11 +198,22 @@ struct SourceClient : Client
         // Offer plaintext
         ext_data_control_source_v1_offer(source_client_data_control_source, test_mime_type);
 
-        // Set selection
-        // For all current and future clients, this should notify them that
-        // this source client is the active source when they create their
-        // devices via the `selection()` event.
-        ext_data_control_device_v1_set_selection(source_client_data_control_device, source_client_data_control_source);
+        switch (selection)
+        {
+        case SelectionType::normal:
+
+            // Set selection
+            // For all current and future clients, this should notify them that
+            // this source client is the active source when they create their
+            // devices via the `selection()` event.
+            ext_data_control_device_v1_set_selection(
+                source_client_data_control_device, source_client_data_control_source);
+            break;
+        case SelectionType::primary:
+            ext_data_control_device_v1_set_primary_selection(
+                source_client_data_control_device, source_client_data_control_source);
+            break;
+        }
     }
 };
 
