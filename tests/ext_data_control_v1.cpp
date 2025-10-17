@@ -19,7 +19,9 @@
 #include "copy_cut_paste.h"
 #include "expect_protocol_error.h"
 #include "generated/ext-data-control-v1-client.h"
+#include "generated/primary-selection-unstable-v1-client.h"
 #include "in_process_server.h"
+#include "primary_selection.h"
 #include "version_specifier.h"
 
 #include <gmock/gmock.h>
@@ -114,11 +116,7 @@ struct SinkClient : Client
             [](auto...)
         {
         },
-        .primary_selection =
-            [](auto...)
-        {
-            FAIL() << "Unexpected request  to `primary_selection`";
-        },
+        .primary_selection = data_control_selection,
     };
 
     SinkClient(Server& the_server) :
@@ -369,4 +367,89 @@ TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_core_protocol_client)
 
     clipboard.roundtrip();
     sink.roundtrip();
+}
+
+TEST_F(ExtDataControlV1Test, copy_from_primary_selection_client_reaches_clipboard)
+{
+    auto source_client = Client{the_server()};
+    auto source_device_manager = source_client.bind_if_supported<zwp_primary_selection_device_manager_v1>(AnyVersion);
+    auto source_device = PrimarySelectionDevice{source_device_manager, source_client.seat()};
+    auto source_source = PrimarySelectionSource{source_device_manager};
+    auto source_listener = MockPrimarySelectionSourceListener{source_source};
+
+    auto clipboard = SinkClient{the_server()};
+
+    // make offer
+    zwp_primary_selection_source_v1_offer(source_source, test_mime_type);
+    zwp_primary_selection_device_v1_set_selection(source_device, source_source, 0);
+
+    // Notify the server of the offer and selection
+    source_client.roundtrip();
+
+    InSequence seq;
+    EXPECT_CALL(clipboard, prepared_to_receive())
+        .WillOnce(
+            [&](auto...)
+            {
+                // Let the source client know so it can receive the `send` event
+                source_client.roundtrip();
+            });
+
+    // Listen to `send` on the source
+    EXPECT_CALL(source_listener, send(_, _, _));
+
+    // Receive the selection event and request receive
+    clipboard.roundtrip();
+}
+
+TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_primary_selection_client)
+{
+    auto clipboard = SourceClient{the_server(), test_message, SelectionType::primary};
+
+    auto sink_client = Client{the_server()};
+    auto sink_device_manager = sink_client.bind_if_supported<zwp_primary_selection_device_manager_v1>(AnyVersion);
+    auto sink_device = PrimarySelectionDevice{sink_device_manager, sink_client.seat()};
+    auto sink_source = PrimarySelectionSource{sink_device_manager};
+    auto focused_surface = sink_client.create_visible_surface(42, 42);
+    auto mpsol = MockPrimarySelectionOfferListener{};
+    auto listener = MockPrimarySelectionDeviceListener{sink_device};
+
+    zwp_primary_selection_offer_v1* current_offer = nullptr;
+    char const* current_mime = nullptr;
+    InSequence seq;
+    EXPECT_CALL(listener, data_offer(_, _))
+        .WillOnce(Invoke(
+            [&](struct zwp_primary_selection_device_v1*, struct zwp_primary_selection_offer_v1* id)
+            {
+                mpsol.listen_to(id);
+                current_offer = id;
+            }));
+
+    EXPECT_CALL(mpsol, offer(_, _))
+        .WillOnce(Invoke(
+            [&](struct zwp_primary_selection_offer_v1* offer, char const* mime)
+            {
+                EXPECT_THAT(offer, Eq(current_offer));
+                current_mime = mime;
+            }));
+
+    EXPECT_CALL(listener, selection(_, _))
+        .WillOnce(
+            [&](zwp_primary_selection_device_v1*, zwp_primary_selection_offer_v1* offer)
+            {
+                EXPECT_THAT(offer, Eq(current_offer));
+                zwp_primary_selection_offer_v1_receive(offer, current_mime, test_source_fd);
+
+                clipboard.roundtrip();
+                sink_client.roundtrip();
+            });
+
+    EXPECT_CALL(clipboard, wrote_data());
+
+    // Set clipboard as selection
+    clipboard.roundtrip();
+
+    sink_client.roundtrip();
+    clipboard.roundtrip();
+    sink_client.roundtrip();
 }
