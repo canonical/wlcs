@@ -37,7 +37,7 @@ class DataSource
 public:
     DataSource() = default;
 
-    MOCK_METHOD(void, send_done, (char const* mime_type, int32_t fd));
+    MOCK_METHOD(void, send, (char const* mime_type, int32_t fd));
 
     explicit DataSource(struct wl_data_source* ds);
 
