@@ -119,8 +119,8 @@ struct ExtDataControlClient: public Client
     std::optional<Pipe> receiving_pipe;
     std::optional<std::string> received_message;
 
-    MOCK_METHOD(void, prepared_to_receive, ());
-    MOCK_METHOD(void, wrote_data, ());
+    MOCK_METHOD(void, offer_received, ());
+    MOCK_METHOD(void, selection_set, ());
 
     static void data_control_data_offer(
         void* data, struct ext_data_control_device_v1*, struct ext_data_control_offer_v1* id)
@@ -131,6 +131,7 @@ struct ExtDataControlClient: public Client
             return;
 
         self->current_offer = std::make_unique<DataControlOfferWrapper>(id);
+        self->offer_received();
     }
 
 
@@ -151,7 +152,7 @@ struct ExtDataControlClient: public Client
 
         self->roundtrip(); // Make sure the server is notified of the receive request
 
-        self->prepared_to_receive();
+        self->selection_set();
     }
 
     static constexpr ext_data_control_device_v1_listener sink_device_listener{
@@ -164,6 +165,7 @@ struct ExtDataControlClient: public Client
         .primary_selection = data_control_selection,
     };
 
+    MOCK_METHOD(void, send_done, ());
     static void send(void* data, struct ext_data_control_source_v1*, char const* mime_type, int32_t fd)
     {
         auto* self = static_cast<ExtDataControlClient*>(data);
@@ -173,7 +175,7 @@ struct ExtDataControlClient: public Client
 
         write(fd, message.c_str(), message.size());
 
-        self->wrote_data();
+        self->send_done();
     }
 
     static constexpr ext_data_control_source_v1_listener source_source_listener{
@@ -256,8 +258,9 @@ TEST_F(ExtDataControlV1Test, client_copies_into_clipboard_that_started_after_it)
     auto clipboard_client = ExtDataControlClient{the_server()};
 
     InSequence seq;
-    EXPECT_CALL(clipboard_client, prepared_to_receive());
-    EXPECT_CALL(copying_client, wrote_data())
+    EXPECT_CALL(clipboard_client, offer_received());
+    EXPECT_CALL(clipboard_client, selection_set());
+    EXPECT_CALL(copying_client, send_done())
         .WillOnce(
             [&]
             {
@@ -284,8 +287,9 @@ TEST_F(ExtDataControlV1Test, client_copies_into_clipboard_that_started_before_it
     ExtDataControlClient copying_client{the_server()};
 
     InSequence seq;
-    EXPECT_CALL(clipboard_client, prepared_to_receive());
-    EXPECT_CALL(copying_client, wrote_data())
+    EXPECT_CALL(clipboard_client, offer_received());
+    EXPECT_CALL(clipboard_client, selection_set());
+    EXPECT_CALL(copying_client, send_done())
         .WillOnce(
             [&]
             {
@@ -313,8 +317,10 @@ TEST_F(ExtDataControlV1Test, client_pastes_from_clipboard_that_started_after_it)
     auto paste_client = ExtDataControlClient{the_server()};
     auto clipboard_client = ExtDataControlClient{the_server()};
 
-    EXPECT_CALL(paste_client, prepared_to_receive());
-    EXPECT_CALL(clipboard_client, wrote_data())
+    InSequence seq;
+    EXPECT_CALL(paste_client, offer_received());
+    EXPECT_CALL(paste_client, selection_set());
+    EXPECT_CALL(clipboard_client, send_done())
         .WillOnce(
             [&]
             {
@@ -337,8 +343,10 @@ TEST_F(ExtDataControlV1Test, client_pastes_from_clipboard_that_started_before_it
     auto clipboard = ExtDataControlClient{the_server()};
     auto paste_client = ExtDataControlClient{the_server()};
 
-    EXPECT_CALL(paste_client, prepared_to_receive());
-    EXPECT_CALL(clipboard, wrote_data())
+    InSequence seq;
+    EXPECT_CALL(paste_client, offer_received());
+    EXPECT_CALL(paste_client, selection_set());
+    EXPECT_CALL(clipboard, send_done())
         .WillOnce(
             [&]
             {
@@ -394,8 +402,10 @@ TEST_F(ExtDataControlV1Test, copy_from_core_protocol_client_reaches_clipboard)
     CCnPSource source{the_server()};
     ExtDataControlClient clipboard{the_server()};
 
-    EXPECT_CALL(clipboard, prepared_to_receive());
-    EXPECT_CALL(source.data_source, wrote_data(_, _));
+    InSequence seq;
+    EXPECT_CALL(clipboard, offer_received());
+    EXPECT_CALL(clipboard, selection_set());
+    EXPECT_CALL(source.data_source, send_done(_, _));
 
     source.offer(test_mime_type); // Has a roundtrip built-in
 
@@ -433,7 +443,7 @@ TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_core_protocol_client)
     // Client should be able to paste once it gets `selection`
     EXPECT_CALL(sink.listener, selection(_, _));
 
-    EXPECT_CALL(clipboard, wrote_data());
+    EXPECT_CALL(clipboard, send_done());
 
     clipboard.as_source();
     clipboard.roundtrip();
@@ -462,7 +472,8 @@ TEST_F(ExtDataControlV1Test, copy_from_primary_selection_client_reaches_clipboar
     source_client.roundtrip();
 
     InSequence seq;
-    EXPECT_CALL(clipboard, prepared_to_receive())
+    EXPECT_CALL(clipboard, offer_received());
+    EXPECT_CALL(clipboard, selection_set())
         .WillOnce(
             [&](auto...)
             {
@@ -519,7 +530,7 @@ TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_primary_selection_clie
                 sink_client.roundtrip();
             });
 
-    EXPECT_CALL(clipboard, wrote_data());
+    EXPECT_CALL(clipboard, send_done());
 
     // Set clipboard as selection
     clipboard.as_source(SelectionType::primary);
@@ -539,8 +550,9 @@ TEST_F(ExtDataControlV1Test, data_copied_into_clipboard_is_the_same_as_data_past
     {
         ExtDataControlClient copying_client{the_server()};
 
-        EXPECT_CALL(clipboard, prepared_to_receive());
-        EXPECT_CALL(copying_client, wrote_data())
+        EXPECT_CALL(clipboard, offer_received());
+        EXPECT_CALL(clipboard, selection_set());
+        EXPECT_CALL(copying_client, send_done())
             .WillOnce(
                 [&]
                 {
@@ -561,8 +573,9 @@ TEST_F(ExtDataControlV1Test, data_copied_into_clipboard_is_the_same_as_data_past
     {
         ExtDataControlClient pasting_client{the_server()};
 
-        EXPECT_CALL(pasting_client, prepared_to_receive());
-        EXPECT_CALL(clipboard, wrote_data())
+        EXPECT_CALL(pasting_client, offer_received());
+        EXPECT_CALL(pasting_client, selection_set());
+        EXPECT_CALL(clipboard, send_done())
             .WillOnce(
                 [&]
                 {

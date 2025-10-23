@@ -33,7 +33,7 @@ wlcs::DataSource::DataSource(struct wl_data_source* ds) :
             [](auto* data, auto, auto* mime_type, auto fd)
         {
             auto* self = static_cast<DataSource*>(data);
-            self->wrote_data(mime_type, fd);
+            self->send_done(mime_type, fd);
         },
         .cancelled =
             [](auto...)
