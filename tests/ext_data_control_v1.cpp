@@ -409,15 +409,11 @@ TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_core_protocol_client)
     clipboard.as_source();
 
     CCnPSink sink{the_server()};
-
-    // Client should be able to paste once it gets `selection`
-    EXPECT_CALL(sink.listener, selection(_, _));
-
     auto f = sink.create_surface_with_focus(); // To get focus
     sink.roundtrip();
 
-    EXPECT_CALL(clipboard, wrote_data());
 
+    InSequence seq;
     MockDataOfferListener mdol;
     EXPECT_CALL(sink.listener, data_offer(_, _))
         .WillOnce(Invoke(
@@ -435,6 +431,11 @@ TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_core_protocol_client)
                 clipboard.roundtrip();
                 sink.roundtrip();
             }));
+
+    // Client should be able to paste once it gets `selection`
+    EXPECT_CALL(sink.listener, selection(_, _));
+
+    EXPECT_CALL(clipboard, wrote_data());
 
     clipboard.roundtrip();
     sink.roundtrip();
