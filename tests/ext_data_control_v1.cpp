@@ -84,7 +84,7 @@ struct DataControlOfferWrapper
 
     static void data_offer_offer(void* data, struct ext_data_control_offer_v1*, char const* mime_type)
     {
-        auto* offer = reinterpret_cast<DataControlOfferWrapper*>(data);
+        auto* offer = static_cast<DataControlOfferWrapper*>(data);
         auto const mime_string = std::string{mime_type};
         offer->mime_types.push_back(mime_string);
     }
@@ -125,7 +125,7 @@ struct ExtDataControlClient: public Client
     static void data_control_data_offer(
         void* data, struct ext_data_control_device_v1*, struct ext_data_control_offer_v1* id)
     {
-        auto* self = reinterpret_cast<ExtDataControlClient*>(data);
+        auto* self = static_cast<ExtDataControlClient*>(data);
 
         if (id == nullptr)
             return;
@@ -137,7 +137,7 @@ struct ExtDataControlClient: public Client
     static void data_control_selection(
         void* data, struct ext_data_control_device_v1*, struct ext_data_control_offer_v1* id)
     {
-        auto* self = reinterpret_cast<ExtDataControlClient*>(data);
+        auto* self = static_cast<ExtDataControlClient*>(data);
 
         if (id == nullptr)
             return;
@@ -166,7 +166,7 @@ struct ExtDataControlClient: public Client
 
     static void send(void* data, struct ext_data_control_source_v1*, char const* mime_type, int32_t fd)
     {
-        auto* self = reinterpret_cast<ExtDataControlClient*>(data);
+        auto* self = static_cast<ExtDataControlClient*>(data);
         EXPECT_THAT(mime_type, StrEq(test_mime_type));
 
         auto const message = self->received_message.value_or(std::string(test_message));
