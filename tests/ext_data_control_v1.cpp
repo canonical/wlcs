@@ -114,11 +114,11 @@ struct ExtDataControlClient: public Client
     // userdata pointer, which with a normal object would be allocated on the
     // stack. Once the stack is cleaned up at the end of `data_offer`'s end,
     // the listener's pointer would be pointing at garbage.
-    std::unique_ptr<DataControlOfferWrapper> current_offer;
-    std::function<void()> when_content_sent;
+    std::unique_ptr<DataControlOfferWrapper> current_offer{nullptr};
+    std::function<void()> when_content_sent{[]{}};
 
-    std::optional<Pipe> receiving_pipe;
-    std::optional<std::string> received_message;
+    std::optional<Pipe> receiving_pipe{std::nullopt};
+    std::optional<std::string> received_message{std::nullopt};
 
     MOCK_METHOD(void, offer_received, ());
     MOCK_METHOD(void, selection_set, ());
