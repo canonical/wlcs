@@ -282,6 +282,8 @@ TEST_F(ExtDataControlV1Test, client_copies_into_clipboard_that_started_before_it
     ExtDataControlClient clipboard_client{the_server()};
     clipboard_client.as_sink();
 
+    clipboard_client.roundtrip();
+
     ExtDataControlClient copying_client{the_server()};
     copying_client.as_source();
 
