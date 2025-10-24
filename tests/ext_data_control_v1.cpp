@@ -85,7 +85,7 @@ struct DataControlOfferWrapper
     static void data_offer_offer(void* data, struct ext_data_control_offer_v1*, char const* mime_type)
     {
         auto* offer = static_cast<DataControlOfferWrapper*>(data);
-        auto const mime_string = std::string{mime_type};
+        std::string const mime_string{mime_type};
         offer->mime_types.push_back(mime_string);
     }
 
@@ -263,8 +263,8 @@ struct ExtDataControlV1Test : public wlcs::StartedInProcessServer
 
 TEST_F(ExtDataControlV1Test, client_copies_into_clipboard_that_started_after_it)
 {
-    auto copying_client = ExtDataControlClient{the_server()};
-    auto clipboard_client = ExtDataControlClient{the_server()};
+    ExtDataControlClient copying_client{the_server()};
+    ExtDataControlClient clipboard_client{the_server()};
 
     InSequence seq;
     EXPECT_CALL(clipboard_client, offer_received());
@@ -322,8 +322,8 @@ TEST_F(ExtDataControlV1Test, client_copies_into_clipboard_that_started_before_it
 
 TEST_F(ExtDataControlV1Test, client_pastes_from_clipboard_that_started_after_it)
 {
-    auto paste_client = ExtDataControlClient{the_server()};
-    auto clipboard_client = ExtDataControlClient{the_server()};
+    ExtDataControlClient paste_client{the_server()};
+    ExtDataControlClient clipboard_client{the_server()};
 
     InSequence seq;
     EXPECT_CALL(paste_client, offer_received());
@@ -348,8 +348,8 @@ TEST_F(ExtDataControlV1Test, client_pastes_from_clipboard_that_started_after_it)
 
 TEST_F(ExtDataControlV1Test, client_pastes_from_clipboard_that_started_before_it)
 {
-    auto clipboard = ExtDataControlClient{the_server()};
-    auto paste_client = ExtDataControlClient{the_server()};
+    ExtDataControlClient clipboard{the_server()};
+    ExtDataControlClient paste_client{the_server()};
 
     InSequence seq;
     EXPECT_CALL(paste_client, offer_received());
@@ -380,7 +380,7 @@ TEST_F(ExtDataControlV1Test, client_pastes_from_clipboard_that_started_before_it
 
 TEST_F(ExtDataControlV1Test, setting_the_same_selection_twice_is_a_protocol_error)
 {
-    auto clipboard_client = ExtDataControlClient{the_server()};
+    ExtDataControlClient clipboard_client{the_server()};
     clipboard_client.as_source({}); // Calls `set_selection`
 
     ext_data_control_device_v1_set_selection(
@@ -394,7 +394,7 @@ TEST_F(ExtDataControlV1Test, setting_the_same_selection_twice_is_a_protocol_erro
 
 TEST_F(ExtDataControlV1Test, offering_mime_type_after_setting_selection_is_a_protocol_error)
 {
-    auto clipboard_client = ExtDataControlClient{the_server()};
+    ExtDataControlClient clipboard_client{the_server()};
     clipboard_client.as_source({}); // Calls `offer`
 
     ext_data_control_source_v1_offer(clipboard_client.source_data_control_source, test_mime_type);
@@ -462,13 +462,13 @@ TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_core_protocol_client)
 
 TEST_F(ExtDataControlV1Test, copy_from_primary_selection_client_reaches_clipboard)
 {
-    auto source_client = Client{the_server()};
+    Client source_client{the_server()};
     auto source_device_manager = source_client.bind_if_supported<zwp_primary_selection_device_manager_v1>(AnyVersion);
-    auto source_device = PrimarySelectionDevice{source_device_manager, source_client.seat()};
-    auto source_source = PrimarySelectionSource{source_device_manager};
-    auto source_listener = MockPrimarySelectionSourceListener{source_source};
+    PrimarySelectionDevice source_device{source_device_manager, source_client.seat()};
+    PrimarySelectionSource source_source{source_device_manager};
+    MockPrimarySelectionSourceListener source_listener{source_source};
 
-    auto clipboard = ExtDataControlClient{the_server()};
+    ExtDataControlClient clipboard{the_server()};
 
     // make offer
     zwp_primary_selection_source_v1_offer(source_source, test_mime_type);
@@ -497,15 +497,15 @@ TEST_F(ExtDataControlV1Test, copy_from_primary_selection_client_reaches_clipboar
 
 TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_primary_selection_client)
 {
-    auto clipboard = ExtDataControlClient{the_server()};
-    auto sink_client = Client{the_server()};
+    ExtDataControlClient clipboard{the_server()};
+    Client sink_client{the_server()};
 
     auto sink_device_manager = sink_client.bind_if_supported<zwp_primary_selection_device_manager_v1>(AnyVersion);
-    auto sink_device = PrimarySelectionDevice{sink_device_manager, sink_client.seat()};
+    PrimarySelectionDevice sink_device{sink_device_manager, sink_client.seat()};
     auto focused_surface = sink_client.create_visible_surface(42, 42);
 
-    auto mpsol = MockPrimarySelectionOfferListener{};
-    auto listener = MockPrimarySelectionDeviceListener{sink_device};
+    MockPrimarySelectionOfferListener mpsol{};
+    MockPrimarySelectionDeviceListener listener{sink_device};
     zwp_primary_selection_offer_v1* current_offer = nullptr;
     char const* current_mime = nullptr;
     InSequence seq;
@@ -549,7 +549,7 @@ TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_primary_selection_clie
 
 TEST_F(ExtDataControlV1Test, data_copied_into_clipboard_is_the_same_as_data_pasted_from_clipboard)
 {
-    auto clipboard = ExtDataControlClient{the_server()};
+    ExtDataControlClient clipboard{the_server()};
     auto const message = "Heya!";
     std::string copied_message;
     {
