@@ -108,17 +108,18 @@ struct ExtDataControlClient: public Client
 {
     WlHandle<ext_data_control_manager_v1> const data_control_manager;
     WlHandle<ext_data_control_device_v1> const data_control_device;
+    // Works as the message if source, or as store for received messages if sink.
+    std::optional<std::string> received_message{std::nullopt};
+
     WlHandle<ext_data_control_source_v1> const source_data_control_source;
+    std::function<void()> source_content_sent{[]{}};
 
     // Have to use a pointer since the offer wrapper uses `this` as the
     // userdata pointer, which with a normal object would be allocated on the
     // stack. Once the stack is cleaned up at the end of `data_offer`'s end,
     // the listener's pointer would be pointing at garbage.
-    std::unique_ptr<DataControlOfferWrapper> current_offer{nullptr};
-    std::function<void()> when_content_sent{[]{}};
-
-    std::optional<Pipe> receiving_pipe{std::nullopt};
-    std::optional<std::string> received_message{std::nullopt};
+    std::unique_ptr<DataControlOfferWrapper> sink_current_offer{nullptr};
+    std::optional<Pipe> sink_receiving_pipe{std::nullopt};
 
     MOCK_METHOD(void, offer_received, ());
     MOCK_METHOD(void, selection_set, ());
@@ -131,7 +132,7 @@ struct ExtDataControlClient: public Client
         if (id == nullptr)
             return;
 
-        self->current_offer = std::make_unique<DataControlOfferWrapper>(id);
+        self->sink_current_offer = std::make_unique<DataControlOfferWrapper>(id);
         self->offer_received();
     }
 
@@ -144,12 +145,12 @@ struct ExtDataControlClient: public Client
         if (id == nullptr)
             return;
 
-        EXPECT_THAT(self->current_offer, NotNull());
-        EXPECT_THAT(self->current_offer->offer, Eq(id));
-        EXPECT_THAT(self->current_offer->mime_types.size(), Gt(0));
+        EXPECT_THAT(self->sink_current_offer, NotNull());
+        EXPECT_THAT(self->sink_current_offer->offer, Eq(id));
+        EXPECT_THAT(self->sink_current_offer->mime_types.size(), Gt(0));
 
         ext_data_control_offer_v1_receive(
-            self->current_offer->offer, self->current_offer->mime_types[0].c_str(), self->receiving_pipe->source);
+            self->sink_current_offer->offer, self->sink_current_offer->mime_types[0].c_str(), self->sink_receiving_pipe->source);
 
         self->roundtrip(); // Make sure the server is notified of the receive request
 
@@ -175,7 +176,7 @@ struct ExtDataControlClient: public Client
 
         write(fd, message.c_str(), message.size());
 
-        self->when_content_sent();
+        self->source_content_sent();
     }
 
     static constexpr ext_data_control_source_v1_listener source_source_listener{
@@ -197,7 +198,7 @@ struct ExtDataControlClient: public Client
 
     void as_sink()
     {
-        receiving_pipe.emplace();
+        sink_receiving_pipe.emplace();
 
         ext_data_control_device_v1_set_user_data(data_control_device, this);
         // Set up the control device listener.
@@ -214,7 +215,7 @@ struct ExtDataControlClient: public Client
     auto try_read() -> std::string
     {
         char buf[128];
-        auto const read_chars = read(receiving_pipe->sink, buf, sizeof(buf));
+        auto const read_chars = read(sink_receiving_pipe->sink, buf, sizeof(buf));
         received_message = std::string{buf, static_cast<size_t>(read_chars)};
         return *received_message;
     }
@@ -231,7 +232,7 @@ struct ExtDataControlClient: public Client
         if(options.message)
             received_message = options.message;
 
-        this->when_content_sent = options.when_content_sent;
+        this->source_content_sent = options.when_content_sent;
 
         ext_data_control_source_v1_add_listener(
             source_data_control_source, &source_source_listener, this);
