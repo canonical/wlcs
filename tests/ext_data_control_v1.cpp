@@ -258,32 +258,32 @@ struct ExtDataControlClient: public Client
 
 struct ExtDataControlV1Test : public wlcs::StartedInProcessServer
 {
+    ExtDataControlClient clipboard{the_server()};
 };
 }
 
 TEST_F(ExtDataControlV1Test, client_copies_into_clipboard_that_started_after_it)
 {
     ExtDataControlClient copying_client{the_server()};
-    ExtDataControlClient clipboard_client{the_server()};
 
     InSequence seq;
-    EXPECT_CALL(clipboard_client, offer_received());
-    EXPECT_CALL(clipboard_client, selection_set());
+    EXPECT_CALL(clipboard, offer_received());
+    EXPECT_CALL(clipboard, selection_set());
 
     // Notify the server that the copying client is the paste source
     copying_client.as_source({
         .when_content_sent =
             [&]
         {
-            auto read_string = clipboard_client.try_read();
+            auto read_string = clipboard.try_read();
             EXPECT_THAT(read_string, StrEq(test_message));
         },
     });
     copying_client.roundtrip();
 
     // To receive the offer and send the `send` request
-    clipboard_client.as_sink();
-    clipboard_client.roundtrip();
+    clipboard.as_sink();
+    clipboard.roundtrip();
 
     // To receive the `send` event
     copying_client.roundtrip();
@@ -291,22 +291,21 @@ TEST_F(ExtDataControlV1Test, client_copies_into_clipboard_that_started_after_it)
 
 TEST_F(ExtDataControlV1Test, client_copies_into_clipboard_that_started_before_it)
 {
-    ExtDataControlClient clipboard_client{the_server()};
     ExtDataControlClient copying_client{the_server()};
 
     InSequence seq;
-    EXPECT_CALL(clipboard_client, offer_received());
-    EXPECT_CALL(clipboard_client, selection_set());
+    EXPECT_CALL(clipboard, offer_received());
+    EXPECT_CALL(clipboard, selection_set());
 
-    clipboard_client.as_sink();
-    clipboard_client.roundtrip();
+    clipboard.as_sink();
+    clipboard.roundtrip();
 
     // Set the the copying client as the current paste source
     copying_client.as_source({
         .when_content_sent =
             [&]
         {
-            auto read_string = clipboard_client.try_read();
+            auto read_string = clipboard.try_read();
             EXPECT_THAT(read_string, StrEq(test_message));
         },
     });
@@ -314,7 +313,7 @@ TEST_F(ExtDataControlV1Test, client_copies_into_clipboard_that_started_before_it
 
     // Receive notification of the offer and the selection
     // Will request to receive from the client
-    clipboard_client.roundtrip();
+    clipboard.roundtrip();
 
     // Receive the send `event` and write the data
     copying_client.roundtrip();
@@ -323,7 +322,6 @@ TEST_F(ExtDataControlV1Test, client_copies_into_clipboard_that_started_before_it
 TEST_F(ExtDataControlV1Test, client_pastes_from_clipboard_that_started_after_it)
 {
     ExtDataControlClient paste_client{the_server()};
-    ExtDataControlClient clipboard_client{the_server()};
 
     InSequence seq;
     EXPECT_CALL(paste_client, offer_received());
@@ -332,7 +330,7 @@ TEST_F(ExtDataControlV1Test, client_pastes_from_clipboard_that_started_after_it)
     paste_client.as_sink();
     paste_client.roundtrip();
 
-    clipboard_client.as_source({
+    clipboard.as_source({
         .when_content_sent =
             [&]
         {
@@ -340,10 +338,10 @@ TEST_F(ExtDataControlV1Test, client_pastes_from_clipboard_that_started_after_it)
             EXPECT_THAT(read_string, StrEq(test_message));
         },
     });
-    clipboard_client.roundtrip();
+    clipboard.roundtrip();
 
     paste_client.roundtrip();
-    clipboard_client.roundtrip();
+    clipboard.roundtrip();
 }
 
 TEST_F(ExtDataControlV1Test, client_pastes_from_clipboard_that_started_before_it)
@@ -380,27 +378,25 @@ TEST_F(ExtDataControlV1Test, client_pastes_from_clipboard_that_started_before_it
 
 TEST_F(ExtDataControlV1Test, setting_the_same_selection_twice_is_a_protocol_error)
 {
-    ExtDataControlClient clipboard_client{the_server()};
-    clipboard_client.as_source({}); // Calls `set_selection`
+    clipboard.as_source({}); // Calls `set_selection`
 
     ext_data_control_device_v1_set_selection(
-        clipboard_client.data_control_device, clipboard_client.source_data_control_source);
+        clipboard.data_control_device, clipboard.source_data_control_source);
 
     EXPECT_PROTOCOL_ERROR(
-        { clipboard_client.roundtrip(); },
+        { clipboard.roundtrip(); },
         &ext_data_control_device_v1_interface,
         EXT_DATA_CONTROL_DEVICE_V1_ERROR_USED_SOURCE);
 }
 
 TEST_F(ExtDataControlV1Test, offering_mime_type_after_setting_selection_is_a_protocol_error)
 {
-    ExtDataControlClient clipboard_client{the_server()};
-    clipboard_client.as_source({}); // Calls `offer`
+    clipboard.as_source({}); // Calls `offer`
 
-    ext_data_control_source_v1_offer(clipboard_client.source_data_control_source, test_mime_type);
+    ext_data_control_source_v1_offer(clipboard.source_data_control_source, test_mime_type);
 
     EXPECT_PROTOCOL_ERROR(
-        { clipboard_client.roundtrip(); },
+        { clipboard.roundtrip(); },
         &ext_data_control_source_v1_interface,
         EXT_DATA_CONTROL_SOURCE_V1_ERROR_INVALID_OFFER);
 }
@@ -408,7 +404,6 @@ TEST_F(ExtDataControlV1Test, offering_mime_type_after_setting_selection_is_a_pro
 TEST_F(ExtDataControlV1Test, copy_from_core_protocol_client_reaches_clipboard)
 {
     CCnPSource source{the_server()};
-    ExtDataControlClient clipboard{the_server()};
 
     InSequence seq;
     EXPECT_CALL(clipboard, offer_received());
@@ -425,7 +420,6 @@ TEST_F(ExtDataControlV1Test, copy_from_core_protocol_client_reaches_clipboard)
 
 TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_core_protocol_client)
 {
-    ExtDataControlClient clipboard{the_server()};
     CCnPSink sink{the_server()};
     auto f = sink.create_surface_with_focus(); // To get focus
 
@@ -468,8 +462,6 @@ TEST_F(ExtDataControlV1Test, copy_from_primary_selection_client_reaches_clipboar
     PrimarySelectionSource source_source{source_device_manager};
     MockPrimarySelectionSourceListener source_listener{source_source};
 
-    ExtDataControlClient clipboard{the_server()};
-
     // make offer
     zwp_primary_selection_source_v1_offer(source_source, test_mime_type);
     zwp_primary_selection_device_v1_set_selection(source_device, source_source, 0);
@@ -497,7 +489,6 @@ TEST_F(ExtDataControlV1Test, copy_from_primary_selection_client_reaches_clipboar
 
 TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_primary_selection_client)
 {
-    ExtDataControlClient clipboard{the_server()};
     Client sink_client{the_server()};
 
     auto sink_device_manager = sink_client.bind_if_supported<zwp_primary_selection_device_manager_v1>(AnyVersion);
@@ -549,7 +540,6 @@ TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_primary_selection_clie
 
 TEST_F(ExtDataControlV1Test, data_copied_into_clipboard_is_the_same_as_data_pasted_from_clipboard)
 {
-    ExtDataControlClient clipboard{the_server()};
     auto const message = "Heya!";
     std::string copied_message;
     {
