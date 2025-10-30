@@ -424,33 +424,58 @@ TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_core_protocol_client)
     CCnPSink sink{the_server()};
     auto f = sink.create_surface_with_focus(); // To get focus
 
-    InSequence seq;
     MockDataOfferListener mdol;
+    wl_data_offer* current_offer = nullptr;
+    char const* current_mime = nullptr;
+    InSequence seq;
     EXPECT_CALL(sink.listener, data_offer(_, _))
         .WillOnce(Invoke(
-            [&](struct wl_data_device*, struct wl_data_offer* id)
+            [&](wl_data_device*, wl_data_offer* id)
             {
                 mdol.listen_to(id);
+                current_offer = id;
             }));
 
     EXPECT_CALL(mdol, offer(_, _))
         .WillOnce(Invoke(
-            [&](struct wl_data_offer* offer, char const* mime)
+            [&](wl_data_offer* offer, char const* mime)
             {
-                wl_data_offer_receive(offer, mime, bogus_source_fd);
-
-                clipboard.roundtrip();
-                sink.roundtrip();
+                EXPECT_THAT(offer, Eq(current_offer));
+                current_mime = mime;
             }));
 
     // Client should be able to paste once it gets `selection`
-    EXPECT_CALL(sink.listener, selection(_, _));
+    Pipe pipe;
+    EXPECT_CALL(sink.listener, selection(_, _))
+        .WillOnce(
+            [&](wl_data_device*, wl_data_offer* offer)
+            {
+                EXPECT_THAT(offer, Eq(current_offer));
+                wl_data_offer_receive(offer, current_mime, pipe.source);
+            });
 
-    clipboard.as_source({});
+    auto const message = "message from the normal clipboard";
+    auto mock_when_content_sent = MockFunction<void()>{};
+    EXPECT_CALL(mock_when_content_sent, Call())
+        .WillOnce(
+            [&]
+            {
+                char buffer[128];
+                auto const read_chars = read(pipe.sink, buffer, sizeof(buffer));
+                auto const read_message = std::string{buffer, static_cast<size_t>(read_chars)};
+
+                EXPECT_THAT(read_message, StrEq(message));
+            });
+
+    // Set clipboard as selection
+    clipboard.as_source({
+        .selection = SelectionType::normal,
+        .message = message,
+        .when_content_sent = mock_when_content_sent.AsStdFunction(),
+    });
+
     clipboard.roundtrip();
-
     sink.roundtrip();
-
     clipboard.roundtrip();
     sink.roundtrip();
 }
@@ -517,25 +542,38 @@ TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_primary_selection_clie
                 current_mime = mime;
             }));
 
+    Pipe pipe;
     EXPECT_CALL(listener, selection(_, _))
         .WillOnce(
             [&](zwp_primary_selection_device_v1*, zwp_primary_selection_offer_v1* offer)
             {
                 EXPECT_THAT(offer, Eq(current_offer));
-                zwp_primary_selection_offer_v1_receive(offer, current_mime, bogus_source_fd);
-
-                clipboard.roundtrip();
-                sink_client.roundtrip();
+                zwp_primary_selection_offer_v1_receive(offer, current_mime, pipe.source);
             });
 
+    auto const message = "message from primary clipboard";
+    auto mock_when_content_sent = MockFunction<void()>{};
+    EXPECT_CALL(mock_when_content_sent, Call())
+        .WillOnce(
+            [&]
+            {
+                char buffer[128];
+                auto const read_chars = read(pipe.sink, buffer, sizeof(buffer));
+                auto const read_message = std::string{buffer, static_cast<size_t>(read_chars)};
+
+                EXPECT_THAT(read_message, StrEq(message));
+            });
 
     // Set clipboard as selection
-    clipboard.as_source({.selection = SelectionType::primary});
-    clipboard.roundtrip();
+    clipboard.as_source({
+        .selection = SelectionType::primary,
+        .message = message,
+        .when_content_sent = mock_when_content_sent.AsStdFunction(),
+    });
 
+    clipboard.roundtrip();
     sink_client.roundtrip();
     clipboard.roundtrip();
-
     sink_client.roundtrip();
 }
 
