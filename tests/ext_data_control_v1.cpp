@@ -42,7 +42,6 @@ namespace
 {
 static auto const test_message = "Hello from the other side";
 static auto const test_mime_type = "text/plain";
-static auto const bogus_source_fd = 42;
 
 class Pipe
 {
