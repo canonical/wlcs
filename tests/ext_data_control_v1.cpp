@@ -455,6 +455,7 @@ TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_core_protocol_client)
 
     auto const message = "message from the normal clipboard";
     auto mock_when_content_sent = MockFunction<void()>{};
+    std::atomic<bool> data_read = false;
     EXPECT_CALL(mock_when_content_sent, Call())
         .WillOnce(
             [&]
@@ -464,6 +465,7 @@ TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_core_protocol_client)
                 auto const read_message = std::string{buffer, static_cast<size_t>(read_chars)};
 
                 EXPECT_THAT(read_message, StrEq(message));
+                data_read = true;
             });
 
     // Set clipboard as selection
@@ -475,7 +477,13 @@ TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_core_protocol_client)
 
     clipboard.roundtrip();
     sink.roundtrip();
-    clipboard.roundtrip();
+    clipboard.dispatch_until(
+        [&]
+        {
+            clipboard.roundtrip();
+            sink.roundtrip();
+            return data_read.load();
+        });
     sink.roundtrip();
 }
 
