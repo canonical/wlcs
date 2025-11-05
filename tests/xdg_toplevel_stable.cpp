@@ -597,7 +597,7 @@ TEST_F(XdgToplevelStableConfigurationTest, window_can_unfullscreen_itself)
     EXPECT_THAT(state.activated, Eq(true));
 }
 
-TEST_F(XdgToplevelStableConfigurationTest, DISABLED_window_stays_maximized_after_fullscreen)
+TEST_F(XdgToplevelStableConfigurationTest, window_stays_maximized_after_fullscreen)
 {
     wlcs::Client client{the_server()};
     ConfigurationWindow window{client};
@@ -624,7 +624,7 @@ TEST_F(XdgToplevelStableConfigurationTest, DISABLED_window_stays_maximized_after
     EXPECT_THAT(state.activated, Eq(true));
 }
 
-TEST_F(XdgToplevelStableConfigurationTest, DISABLED_window_can_maximize_itself_while_fullscreen)
+TEST_F(XdgToplevelStableConfigurationTest, window_can_maximize_itself_while_fullscreen)
 {
     wlcs::Client client{the_server()};
     ConfigurationWindow window{client};

@@ -147,7 +147,7 @@ TEST_F(BadBufferTest, client_lies_about_buffer_size)
 
 using SecondBadBufferTest = wlcs::InProcessServer;
 
-TEST_F(SecondBadBufferTest, DISABLED_test_truncated_shm_file)
+TEST_F(SecondBadBufferTest, test_truncated_shm_file)
 {
 	using namespace testing;
 
