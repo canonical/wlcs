@@ -3,3 +3,4 @@
 /build/
 /cmake-build-debug/
 compile_commands.json
+_codeql_build_dir/
