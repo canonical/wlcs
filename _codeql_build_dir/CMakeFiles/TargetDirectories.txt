@@ -1,0 +1,12 @@
+/home/runner/work/wlcs/wlcs/_codeql_build_dir/CMakeFiles/GMock.dir
+/home/runner/work/wlcs/wlcs/_codeql_build_dir/CMakeFiles/test_c_compile.dir
+/home/runner/work/wlcs/wlcs/_codeql_build_dir/CMakeFiles/wlcs.dir
+/home/runner/work/wlcs/wlcs/_codeql_build_dir/CMakeFiles/wlcs.asan.dir
+/home/runner/work/wlcs/wlcs/_codeql_build_dir/CMakeFiles/wlcs.tsan.dir
+/home/runner/work/wlcs/wlcs/_codeql_build_dir/CMakeFiles/wlcs.ubsan.dir
+/home/runner/work/wlcs/wlcs/_codeql_build_dir/CMakeFiles/edit_cache.dir
+/home/runner/work/wlcs/wlcs/_codeql_build_dir/CMakeFiles/rebuild_cache.dir
+/home/runner/work/wlcs/wlcs/_codeql_build_dir/CMakeFiles/list_install_components.dir
+/home/runner/work/wlcs/wlcs/_codeql_build_dir/CMakeFiles/install.dir
+/home/runner/work/wlcs/wlcs/_codeql_build_dir/CMakeFiles/install/local.dir
+/home/runner/work/wlcs/wlcs/_codeql_build_dir/CMakeFiles/install/strip.dir
