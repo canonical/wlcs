@@ -162,6 +162,8 @@ GENERATE_PROTOCOL(ext-data-control-v1)
 GENERATE_PROTOCOL(ext-foreign-toplevel-list-v1)
 GENERATE_PROTOCOL(ext-image-capture-source-v1)
 GENERATE_PROTOCOL(ext-image-copy-capture-v1)
+GENERATE_PROTOCOL(ext-input-trigger-action-v1)
+GENERATE_PROTOCOL(ext-input-trigger-registration-v1)
 
 option(WLCS_BUILD_ASAN "Build a test runner with AddressSanitizer annotations" ON)
 option(WLCS_BUILD_TSAN "Build a test runner with ThreadSanitizer annotations" ON)
@@ -200,6 +202,8 @@ set(WLCS_TESTS
   tests/ext_data_control_v1.cpp
   tests/ext_foreign_toplevel_list_v1.cpp
   tests/ext_image_copy_capture_v1.cpp
+  tests/ext_input_trigger_action_v1.cpp
+  tests/ext_input_trigger_registration_v1.cpp
 )
 
 set(
