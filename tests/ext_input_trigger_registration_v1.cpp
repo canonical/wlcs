@@ -124,9 +124,9 @@ TEST_F(ExtInputTriggerRegistrationV1Test, can_register_keyboard_sym_trigger)
 
     ExtInputTriggerListener listener{trigger};
     
-    // Expect either done or failed
-    EXPECT_CALL(listener, done()).Times(testing::AnyNumber());
-    EXPECT_CALL(listener, failed()).Times(testing::AnyNumber());
+    // Protocol requires either done or failed to be sent
+    EXPECT_CALL(listener, done()).Times(testing::AtMost(1));
+    EXPECT_CALL(listener, failed()).Times(testing::AtMost(1));
     a_client.roundtrip();
 }
 
@@ -140,8 +140,9 @@ TEST_F(ExtInputTriggerRegistrationV1Test, can_register_keyboard_code_trigger)
 
     ExtInputTriggerListener listener{trigger};
     
-    EXPECT_CALL(listener, done()).Times(testing::AnyNumber());
-    EXPECT_CALL(listener, failed()).Times(testing::AnyNumber());
+    // Protocol requires either done or failed to be sent
+    EXPECT_CALL(listener, done()).Times(testing::AtMost(1));
+    EXPECT_CALL(listener, failed()).Times(testing::AtMost(1));
     a_client.roundtrip();
 }
 
@@ -154,8 +155,9 @@ TEST_F(ExtInputTriggerRegistrationV1Test, can_register_modifier_hold_trigger)
 
     ExtInputTriggerListener listener{trigger};
     
-    EXPECT_CALL(listener, done()).Times(testing::AnyNumber());
-    EXPECT_CALL(listener, failed()).Times(testing::AnyNumber());
+    // Protocol requires either done or failed to be sent
+    EXPECT_CALL(listener, done()).Times(testing::AtMost(1));
+    EXPECT_CALL(listener, failed()).Times(testing::AtMost(1));
     a_client.roundtrip();
 }
 
@@ -168,8 +170,9 @@ TEST_F(ExtInputTriggerRegistrationV1Test, can_register_pointer_trigger)
 
     ExtInputTriggerListener listener{trigger};
     
-    EXPECT_CALL(listener, done()).Times(testing::AnyNumber());
-    EXPECT_CALL(listener, failed()).Times(testing::AnyNumber());
+    // Protocol requires either done or failed to be sent
+    EXPECT_CALL(listener, done()).Times(testing::AtMost(1));
+    EXPECT_CALL(listener, failed()).Times(testing::AtMost(1));
     a_client.roundtrip();
 }
 
@@ -183,8 +186,9 @@ TEST_F(ExtInputTriggerRegistrationV1Test, can_register_touch_drag_trigger)
 
     ExtInputTriggerListener listener{trigger};
     
-    EXPECT_CALL(listener, done()).Times(testing::AnyNumber());
-    EXPECT_CALL(listener, failed()).Times(testing::AnyNumber());
+    // Protocol requires either done or failed to be sent
+    EXPECT_CALL(listener, done()).Times(testing::AtMost(1));
+    EXPECT_CALL(listener, failed()).Times(testing::AtMost(1));
     a_client.roundtrip();
 }
 
@@ -198,8 +202,9 @@ TEST_F(ExtInputTriggerRegistrationV1Test, can_register_touch_tap_trigger)
 
     ExtInputTriggerListener listener{trigger};
     
-    EXPECT_CALL(listener, done()).Times(testing::AnyNumber());
-    EXPECT_CALL(listener, failed()).Times(testing::AnyNumber());
+    // Protocol requires either done or failed to be sent
+    EXPECT_CALL(listener, done()).Times(testing::AtMost(1));
+    EXPECT_CALL(listener, failed()).Times(testing::AtMost(1));
     a_client.roundtrip();
 }
 
