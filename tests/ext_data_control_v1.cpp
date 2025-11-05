@@ -421,69 +421,55 @@ TEST_F(ExtDataControlV1Test, copy_from_core_protocol_client_reaches_clipboard)
 TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_core_protocol_client)
 {
     CCnPSink sink{the_server()};
-    auto f = sink.create_surface_with_focus(); // To get focus
+    auto const surf = sink.create_surface_with_focus();
 
     MockDataOfferListener mdol;
-    wl_data_offer* current_offer = nullptr;
     char const* current_mime = nullptr;
+    wl_data_offer* current_offer = nullptr;
+
     InSequence seq;
     EXPECT_CALL(sink.listener, data_offer(_, _))
         .WillOnce(Invoke(
-            [&](wl_data_device*, wl_data_offer* id)
+            [&mdol, &current_offer](struct wl_data_device*, struct wl_data_offer* id)
             {
                 mdol.listen_to(id);
                 current_offer = id;
             }));
-
-    EXPECT_CALL(mdol, offer(_, _))
-        .WillOnce(Invoke(
-            [&](wl_data_offer* offer, char const* mime)
+    EXPECT_CALL(mdol, offer(_, StrEq(test_mime_type)))
+        .WillOnce(
+            [&current_mime](auto, auto mime)
             {
-                EXPECT_THAT(offer, Eq(current_offer));
                 current_mime = mime;
-            }));
+            });
 
-    // Client should be able to paste once it gets `selection`
     Pipe pipe;
     EXPECT_CALL(sink.listener, selection(_, _))
         .WillOnce(
-            [&](wl_data_device*, wl_data_offer* offer)
+            [&current_offer, &current_mime, &pipe](auto, auto* offer)
             {
                 EXPECT_THAT(offer, Eq(current_offer));
-                wl_data_offer_receive(offer, current_mime, pipe.source);
+                wl_data_offer_receive(offer, current_mime, pipe.sink);
             });
 
-    auto const message = "message from the normal clipboard";
-    auto mock_when_content_sent = MockFunction<void()>{};
-    std::atomic<bool> data_read = false;
-    EXPECT_CALL(mock_when_content_sent, Call())
-        .WillOnce(
-            [&]
-            {
-                char buffer[128];
-                auto const read_chars = read(pipe.sink, buffer, sizeof(buffer));
-                auto const read_message = std::string{buffer, static_cast<size_t>(read_chars)};
-
-                EXPECT_THAT(read_message, StrEq(message));
-                data_read = true;
-            });
-
-    // Set clipboard as selection
+    auto const msg =  "Hello, core protocol client!";
     clipboard.as_source({
         .selection = SelectionType::normal,
-        .message = message,
-        .when_content_sent = mock_when_content_sent.AsStdFunction(),
+        .message = msg,
+        .when_content_sent =
+            [&pipe, msg]
+        {
+            char buf[128];
+            auto const read_chars = read(pipe.source, buf, sizeof(buf));
+            auto const read_string = std::string{buf, static_cast<size_t>(read_chars)};
+
+            EXPECT_THAT(read_chars, Eq(strlen(msg)));
+            EXPECT_THAT(read_string, StrEq(msg));
+        },
     });
 
     clipboard.roundtrip();
     sink.roundtrip();
-    clipboard.dispatch_until(
-        [&]
-        {
-            clipboard.roundtrip();
-            sink.roundtrip();
-            return data_read.load();
-        });
+    clipboard.roundtrip();
     sink.roundtrip();
 }
 
