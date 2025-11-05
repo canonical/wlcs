@@ -158,7 +158,7 @@
         This request creates an input trigger and asks the compositor to reserve
         it to the manager.
 
-        This describes a trigger based tapping one a modifier key. The tap_count
+        This describes a trigger based on tapping a modifier key. The tap_count
         may not be zero.
 
         The compositor will send either the ext_input_trigger_v1.done or
@@ -169,7 +169,7 @@
         ext_input_trigger_action_v1.begin event when triggered
         and ext_input_trigger_action_v1.end when the trigger ends.
       </description>
-      <arg name="modifier" type="uint" enum="modifier"/>
+      <arg name="modifier" type="uint" enum="modifiers"/>
       <arg name="tap_count" type="uint" summary="number of consecutive taps before triggering"/>
       <arg name="id" type="new_id" interface="ext_input_trigger_v1"/>
     </request>
@@ -236,7 +236,7 @@
         response to this request.
 
         Input actions triggered by this request will result in an
-        ext_input_trigger_action_v1.begin event when the mult-touch moves in the
+        ext_input_trigger_action_v1.begin event when the multi-touch moves in the
         drag direction, ext_input_trigger_action_v1.update as move continues and
         ext_input_trigger_action_v1.end when touches change.
       </description>
@@ -260,7 +260,7 @@
         response to this request.
 
         Input actions triggered by this request will result in an
-        ext_input_trigger_action_v1.begin and end events when the mult-touch is
+        ext_input_trigger_action_v1.begin and end events when the multi-touch is
         held for at least hold_delay and released without a touch drag.
       </description>
       <arg name="touches" type="uint" summary="number of touches"/>
