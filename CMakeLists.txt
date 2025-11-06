@@ -195,6 +195,7 @@ set(WLCS_TESTS
   tests/fractional_scale_v1.cpp
   tests/linux_dmabuf_v1.cpp
   tests/ext_data_control_v1.cpp
+  tests/ext_foreign_toplevel_list_v1.cpp
 )
 
 set(
