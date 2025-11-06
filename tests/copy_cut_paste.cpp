@@ -27,13 +27,6 @@ namespace
 
 auto static const any_mime_type = "AnyMimeType";
 
-struct MockDataOfferListener : DataOfferListener
-{
-    using DataOfferListener::DataOfferListener;
-
-    MOCK_METHOD(void, offer, (struct wl_data_offer* data_offer, char const* MimeType), (override));
-};
-
 struct CopyCutPaste : StartedInProcessServer
 {
     CCnPSource source{the_server()};

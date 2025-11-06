@@ -75,6 +75,13 @@ struct CCnPSink : Client
         return Surface{create_visible_surface(any_width, any_height)};
     }
 };
+
+struct MockDataOfferListener : DataOfferListener
+{
+    using DataOfferListener::DataOfferListener;
+
+    MOCK_METHOD(void, offer, (struct wl_data_offer* data_offer, char const* MimeType), (override));
+};
 }
 
 #endif
