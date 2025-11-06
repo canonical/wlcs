@@ -424,7 +424,7 @@ TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_core_protocol_client)
     auto const surf = sink.create_surface_with_focus();
 
     MockDataOfferListener mdol;
-    char const* current_mime = nullptr;
+    std::string current_mime;
     wl_data_offer* current_offer = nullptr;
 
     InSequence seq;
@@ -439,7 +439,7 @@ TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_core_protocol_client)
         .WillOnce(
             [&current_mime](auto, auto mime)
             {
-                current_mime = mime;
+                current_mime = std::string{mime};
             });
 
     Pipe pipe;
@@ -448,7 +448,8 @@ TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_core_protocol_client)
             [&current_offer, &current_mime, &pipe](auto, auto* offer)
             {
                 EXPECT_THAT(offer, Eq(current_offer));
-                wl_data_offer_receive(offer, current_mime, pipe.sink);
+                EXPECT_THAT(current_mime, StrEq(test_mime_type));
+                wl_data_offer_receive(offer, current_mime.c_str(), pipe.sink);
             });
 
     auto const msg =  "Hello, core protocol client!";
@@ -517,7 +518,7 @@ TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_primary_selection_clie
     MockPrimarySelectionOfferListener mpsol{};
     MockPrimarySelectionDeviceListener listener{sink_device};
     zwp_primary_selection_offer_v1* current_offer = nullptr;
-    char const* current_mime = nullptr;
+    std::string current_mime;
     InSequence seq;
     EXPECT_CALL(listener, data_offer(_, _))
         .WillOnce(Invoke(
@@ -532,7 +533,7 @@ TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_primary_selection_clie
             [&](struct zwp_primary_selection_offer_v1* offer, char const* mime)
             {
                 EXPECT_THAT(offer, Eq(current_offer));
-                current_mime = mime;
+                current_mime = std::string{mime};
             }));
 
     Pipe pipe;
@@ -541,7 +542,7 @@ TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_primary_selection_clie
             [&](zwp_primary_selection_device_v1*, zwp_primary_selection_offer_v1* offer)
             {
                 EXPECT_THAT(offer, Eq(current_offer));
-                zwp_primary_selection_offer_v1_receive(offer, current_mime, pipe.source);
+                zwp_primary_selection_offer_v1_receive(offer, current_mime.c_str(), pipe.source);
             });
 
     auto const message = "message from primary clipboard";
