@@ -453,19 +453,23 @@ TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_core_protocol_client)
             });
 
     auto const msg =  "Hello, core protocol client!";
+    auto mock_when_content_sent = MockFunction<void()>{};
+    EXPECT_CALL(mock_when_content_sent, Call())
+        .WillOnce(
+            [&]
+            {
+                char buf[128];
+                auto const read_chars = read(pipe.source, buf, sizeof(buf));
+                auto const read_string = std::string{buf, static_cast<size_t>(read_chars)};
+
+                EXPECT_THAT(read_chars, Eq(strlen(msg)));
+                EXPECT_THAT(read_string, StrEq(msg));
+            });
+
     clipboard.as_source({
         .selection = SelectionType::normal,
         .message = msg,
-        .when_content_sent =
-            [&pipe, msg]
-        {
-            char buf[128];
-            auto const read_chars = read(pipe.source, buf, sizeof(buf));
-            auto const read_string = std::string{buf, static_cast<size_t>(read_chars)};
-
-            EXPECT_THAT(read_chars, Eq(strlen(msg)));
-            EXPECT_THAT(read_string, StrEq(msg));
-        },
+        .when_content_sent = mock_when_content_sent.AsStdFunction(),
     });
 
     clipboard.roundtrip();
