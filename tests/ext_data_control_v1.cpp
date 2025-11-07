@@ -67,13 +67,21 @@ public:
 
     }
 
-    ~Pipe()
+    auto source() const -> int
     {
-        close(source);
-        close(sink);
+        return pipe_ends[0];
     }
 
-    int const &source = pipe_ends[0], sink = pipe_ends[1];
+    auto sink() const -> int
+    {
+        return pipe_ends[1];
+    }
+
+    ~Pipe()
+    {
+        close(pipe_ends[0]);
+        close(pipe_ends[1]);
+    }
 };
 
 struct DataControlOfferWrapper
@@ -149,7 +157,9 @@ struct ExtDataControlClient: public Client
         EXPECT_THAT(self->sink_current_offer->mime_types.size(), Gt(0));
 
         ext_data_control_offer_v1_receive(
-            self->sink_current_offer->offer, self->sink_current_offer->mime_types[0].c_str(), self->sink_receiving_pipe->source);
+            self->sink_current_offer->offer,
+            self->sink_current_offer->mime_types[0].c_str(),
+            self->sink_receiving_pipe->source());
 
         self->roundtrip(); // Make sure the server is notified of the receive request
 
@@ -214,7 +224,7 @@ struct ExtDataControlClient: public Client
     auto try_read() -> std::string
     {
         char buf[128];
-        auto const read_chars = read(sink_receiving_pipe->sink, buf, sizeof(buf));
+        auto const read_chars = read(sink_receiving_pipe->sink(), buf, sizeof(buf));
         received_message = std::string{buf, static_cast<size_t>(read_chars)};
         return *received_message;
     }
@@ -449,7 +459,7 @@ TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_core_protocol_client)
             {
                 EXPECT_THAT(offer, Eq(current_offer));
                 EXPECT_THAT(current_mime, StrEq(test_mime_type));
-                wl_data_offer_receive(offer, current_mime.c_str(), pipe.sink);
+                wl_data_offer_receive(offer, current_mime.c_str(), pipe.sink());
             });
 
     auto const msg =  "Hello, core protocol client!";
@@ -459,7 +469,7 @@ TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_core_protocol_client)
             [&]
             {
                 char buf[128];
-                auto const read_chars = read(pipe.source, buf, sizeof(buf));
+                auto const read_chars = read(pipe.source(), buf, sizeof(buf));
                 auto const read_string = std::string{buf, static_cast<size_t>(read_chars)};
 
                 EXPECT_THAT(read_chars, Eq(strlen(msg)));
@@ -546,7 +556,7 @@ TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_primary_selection_clie
             [&](zwp_primary_selection_device_v1*, zwp_primary_selection_offer_v1* offer)
             {
                 EXPECT_THAT(offer, Eq(current_offer));
-                zwp_primary_selection_offer_v1_receive(offer, current_mime.c_str(), pipe.source);
+                zwp_primary_selection_offer_v1_receive(offer, current_mime.c_str(), pipe.source());
             });
 
     auto const message = "message from primary clipboard";
@@ -556,7 +566,7 @@ TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_primary_selection_clie
             [&]
             {
                 char buffer[128];
-                auto const read_chars = read(pipe.sink, buffer, sizeof(buffer));
+                auto const read_chars = read(pipe.sink(), buffer, sizeof(buffer));
                 auto const read_message = std::string{buffer, static_cast<size_t>(read_chars)};
 
                 EXPECT_THAT(read_message, StrEq(message));
