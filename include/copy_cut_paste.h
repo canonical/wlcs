@@ -27,11 +27,8 @@
 
 namespace wlcs
 {
-namespace
-{
-auto static const any_width = 100;
-auto static const any_height = 100;
-}
+static constexpr int any_width = 100;
+static constexpr int any_height = 100;
 struct CCnPSource : Client
 {
     using Client::Client;

@@ -238,7 +238,7 @@ struct ExtDataControlClient: public Client
 
     void as_source(SourceOptions const& options)
     {
-        if(options.message)
+        if (options.message)
             received_message = options.message;
 
         this->source_content_sent = options.when_content_sent;
