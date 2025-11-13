@@ -155,6 +155,8 @@ GENERATE_PROTOCOL(xdg-decoration-unstable-v1)
 GENERATE_PROTOCOL(viewporter)
 GENERATE_PROTOCOL(fractional-scale-v1)
 GENERATE_PROTOCOL(linux-dmabuf-stable-v1)
+GENERATE_PROTOCOL(ext-input-trigger-action-v1)
+GENERATE_PROTOCOL(ext-input-trigger-registration-v1)
 
 option(WLCS_BUILD_ASAN "Build a test runner with AddressSanitizer annotations" ON)
 option(WLCS_BUILD_TSAN "Build a test runner with ThreadSanitizer annotations" ON)
@@ -189,6 +191,7 @@ set(WLCS_TESTS
   tests/wp_viewporter.cpp
   tests/fractional_scale_v1.cpp
   tests/linux_dmabuf_v1.cpp
+  tests/input_trigger_v1.cpp
 )
 
 set(
@@ -338,3 +341,4 @@ install(
   DESTINATION
     ${CMAKE_INSTALL_LIBDIR}/pkgconfig/
 )
+
