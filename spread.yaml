@@ -6,15 +6,15 @@ backends:
     lxd:
         systems:
             - ubuntu-24.04
-            - ubuntu-24.10
             - ubuntu-25.04
             - ubuntu-25.10
             - ubuntu-devel:
                 image: ubuntu-daily:devel/amd64
             - fedora-41
             - fedora-42
+            - fedora-43
             - fedora-rawhide:
-                image: images:fedora/42
+                image: images:fedora/43
             - alpine-3.20
             - alpine-3.21
             - alpine-edge
