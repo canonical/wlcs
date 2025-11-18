@@ -31,6 +31,9 @@ include(GNUInstallDirs)
 find_package(PkgConfig)
 #include (Doxygen.cmake)
 
+# Enable generation of compile_commands.json, for use by the clangd LSP
+set(CMAKE_EXPORT_COMPILE_COMMANDS on)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
