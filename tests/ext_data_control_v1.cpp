@@ -169,10 +169,7 @@ struct ExtDataControlClient: public Client
     static constexpr ext_data_control_device_v1_listener sink_device_listener{
         .data_offer = data_control_data_offer,
         .selection = data_control_selection,
-        .finished =
-            [](auto...)
-        {
-        },
+        .finished = [](auto...) {},
         .primary_selection = data_control_selection,
     };
 
