@@ -467,7 +467,7 @@ TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_core_protocol_client)
             {
                 char buf[128];
                 auto const read_chars = read(pipe.source(), buf, sizeof(buf));
-                auto const read_string = std::string{buf, static_cast<size_t>(read_chars)};
+                std::string const read_string{buf, static_cast<size_t>(read_chars)};
 
                 EXPECT_THAT(read_chars, Eq(strlen(msg)));
                 EXPECT_THAT(read_string, StrEq(msg));
@@ -564,7 +564,7 @@ TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_primary_selection_clie
             {
                 char buffer[128];
                 auto const read_chars = read(pipe.sink(), buffer, sizeof(buffer));
-                auto const read_message = std::string{buffer, static_cast<size_t>(read_chars)};
+                std::string const read_message{buffer, static_cast<size_t>(read_chars)};
 
                 EXPECT_THAT(read_message, StrEq(message));
             });
