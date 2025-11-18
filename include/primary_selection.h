@@ -25,12 +25,12 @@
 #include "wl_interface_descriptor.h"
 #include "wl_handle.h"
 
+#include <gmock/gmock.h>
+
 #include <memory>
 #include <mutex>
 #include <set>
-#include <gmock/gmock.h>
 
-#include <gmock/gmock.h>
 
 namespace wlcs
 {
