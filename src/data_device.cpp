@@ -24,33 +24,17 @@ constexpr wl_data_device_listener wlcs::DataDeviceListener::thunks;
 wlcs::DataSource::DataSource(struct wl_data_source* ds) :
     self{ds, deleter}
 {
+    // clang-format off
     static wl_data_source_listener constexpr listener{
-        .target =
-            [](auto...)
-        {
-        },
-        .send =
-            [](auto* data, auto, auto... args)
-        {
-            static_cast<DataSource*>(data)->send(args...);
-        },
-        .cancelled =
-            [](auto...)
-        {
-        },
-        .dnd_drop_performed =
-            [](auto...)
-        {
-        },
-        .dnd_finished =
-            [](auto...)
-        {
-        },
-        .action =
-            [](auto...)
-        {
-        },
+        .target             = [](auto...) {},
+        .send               = [](auto* data, auto, auto... args) { static_cast<DataSource*>(data)->send(args...); },
+        .cancelled          = [](auto...) {},
+        .dnd_drop_performed = [](auto...) {},
+        .dnd_finished       = [](auto...) {},
+        .action             = [](auto...) {},
     };
+    // clang-format on
+
     wl_data_source_add_listener(ds, &listener, this);
 }
 
