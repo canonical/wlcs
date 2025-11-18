@@ -143,7 +143,6 @@ struct ExtDataControlClient: public Client
         self->offer_received();
     }
 
-
     static void data_control_selection(
         void* data, struct ext_data_control_device_v1*, struct ext_data_control_offer_v1* id)
     {
