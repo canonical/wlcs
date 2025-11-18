@@ -449,7 +449,7 @@ TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_core_protocol_client)
         .WillOnce(
             [&current_mime](auto, auto mime)
             {
-                current_mime = std::string{mime};
+                current_mime = mime;
             });
 
     Pipe pipe;
@@ -547,7 +547,7 @@ TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_primary_selection_clie
             [&](struct zwp_primary_selection_offer_v1* offer, char const* mime)
             {
                 EXPECT_THAT(offer, Eq(current_offer));
-                current_mime = std::string{mime};
+                current_mime = mime;
             }));
 
     Pipe pipe;
