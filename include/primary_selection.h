@@ -25,9 +25,12 @@
 #include "wl_interface_descriptor.h"
 #include "wl_handle.h"
 
+#include <gmock/gmock.h>
+
 #include <memory>
 #include <mutex>
 #include <set>
+
 
 namespace wlcs
 {
@@ -156,6 +159,39 @@ WLCS_CREATE_INTERFACE_DESCRIPTOR(zwp_primary_selection_device_manager_v1)
 
         static ActiveListeners active_listeners;
         constexpr static zwp_primary_selection_source_v1_listener thunks = { &send, &cancelled };
+    };
+
+    struct MockPrimarySelectionSourceListener : PrimarySelectionSourceListener
+    {
+        using PrimarySelectionSourceListener::PrimarySelectionSourceListener;
+
+        MOCK_METHOD(
+            void, send, (zwp_primary_selection_source_v1 * source, char const* mime_type, int32_t fd), (override));
+
+        MOCK_METHOD(void, cancelled, (zwp_primary_selection_source_v1*), (override));
+    };
+
+    struct MockPrimarySelectionDeviceListener : PrimarySelectionDeviceListener
+    {
+        using PrimarySelectionDeviceListener::PrimarySelectionDeviceListener;
+
+        MOCK_METHOD(
+            void,
+            data_offer,
+            (zwp_primary_selection_device_v1 * device, zwp_primary_selection_offer_v1* offer),
+            (override));
+        MOCK_METHOD(
+            void,
+            selection,
+            (zwp_primary_selection_device_v1 * device, zwp_primary_selection_offer_v1* offer),
+            (override));
+    };
+
+    struct MockPrimarySelectionOfferListener : PrimarySelectionOfferListener
+    {
+        using PrimarySelectionOfferListener::PrimarySelectionOfferListener;
+
+        MOCK_METHOD(void, offer, (zwp_primary_selection_offer_v1 * offer, char const* mime_type), (override));
     };
 }
 

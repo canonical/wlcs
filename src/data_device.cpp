@@ -21,6 +21,22 @@
 wlcs::ActiveListeners wlcs::DataDeviceListener::active_listeners;
 constexpr wl_data_device_listener wlcs::DataDeviceListener::thunks;
 
+wlcs::DataSource::DataSource(struct wl_data_source* ds) :
+    self{ds, deleter}
+{
+    // clang-format off
+    static wl_data_source_listener constexpr listener{
+        .target             = [](auto...) {},
+        .send               = [](auto* data, auto, auto... args) { static_cast<DataSource*>(data)->send(args...); },
+        .cancelled          = [](auto...) {},
+        .dnd_drop_performed = [](auto...) {},
+        .dnd_finished       = [](auto...) {},
+        .action             = [](auto...) {},
+    };
+    // clang-format on
+
+    wl_data_source_add_listener(ds, &listener, this);
+}
 
 void wlcs::DataDeviceListener::data_offer(void* data, struct wl_data_device* wl_data_device, struct wl_data_offer* id)
 {
@@ -70,7 +86,7 @@ void wlcs::DataDeviceListener::selection(
     struct wl_data_offer* id)
 {
     if (active_listeners.includes(data))
-        static_cast<DataDeviceListener*>(data)->selection(wl_data_device, wl_data_device, id);
+        static_cast<DataDeviceListener*>(data)->selection(wl_data_device, id);
 }
 
 void wlcs::DataDeviceListener::data_offer(struct wl_data_device* /*wl_data_device*/, struct wl_data_offer* /*id*/)

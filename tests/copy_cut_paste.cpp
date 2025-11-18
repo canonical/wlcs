@@ -16,15 +16,8 @@
  * Authored by: Alan Griffiths <alan@octopull.co.uk>
  */
 
-#include "data_device.h"
-#include "helpers.h"
-#include "in_process_server.h"
-#include "wl_handle.h"
-#include "version_specifier.h"
+#include "copy_cut_paste.h"
 
-#include <gmock/gmock.h>
-
-#include <memory>
 
 using namespace testing;
 using namespace wlcs;
@@ -32,59 +25,7 @@ using namespace wlcs;
 namespace
 {
 
-auto static const any_width = 100;
-auto static const any_height = 100;
 auto static const any_mime_type = "AnyMimeType";
-
-struct CCnPSource : Client
-{
-    using Client::Client;
-
-    Surface const surface{create_visible_surface(any_width, any_height)};
-    WlHandle<wl_data_device_manager> const manager{
-        this->bind_if_supported<wl_data_device_manager>(AnyVersion)};
-    DataDevice data_device{wl_data_device_manager_get_data_device(manager,seat())};
-    DataSource data{wl_data_device_manager_create_data_source(manager)};
-
-    void offer(char const* mime_type)
-    {
-        wl_data_source_offer(data, mime_type);
-        // TODO: collect a serial from the "event that triggered" the selection
-        // (This works while Mir fails to validate the serial)
-        uint32_t const serial = 0;
-        wl_data_device_set_selection(data_device, data, serial);
-        roundtrip();
-    }
-};
-
-struct MockDataDeviceListener : DataDeviceListener
-{
-    using DataDeviceListener::DataDeviceListener;
-
-    MOCK_METHOD(void, data_offer, (struct wl_data_device* wl_data_device, struct wl_data_offer* id), (override));
-};
-
-struct MockDataOfferListener : DataOfferListener
-{
-    using DataOfferListener::DataOfferListener;
-
-    MOCK_METHOD(void, offer, (struct wl_data_offer* data_offer, char const* MimeType), (override));
-};
-
-struct CCnPSink : Client
-{
-    using Client::Client;
-
-    WlHandle<wl_data_device_manager> const manager{
-        this->bind_if_supported<wl_data_device_manager>(AnyVersion)};
-    DataDevice sink_data{wl_data_device_manager_get_data_device(manager, seat())};
-    MockDataDeviceListener listener{sink_data};
-
-    Surface create_surface_with_focus()
-    {
-        return Surface{create_visible_surface(any_width, any_height)};
-    }
-};
 
 struct CopyCutPaste : StartedInProcessServer
 {

@@ -24,6 +24,7 @@
 #include "wl_handle.h"
 
 #include <wayland-client.h>
+#include <gmock/gmock.h>
 
 #include <memory>
 
@@ -36,7 +37,9 @@ class DataSource
 public:
     DataSource() = default;
 
-    explicit DataSource(struct wl_data_source* ds) : self{ds, deleter} {}
+    MOCK_METHOD(void, send, (char const* mime_type, int32_t fd));
+
+    explicit DataSource(struct wl_data_source* ds);
 
     operator struct wl_data_source*() const { return self.get(); }
 

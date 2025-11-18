@@ -158,6 +158,7 @@ GENERATE_PROTOCOL(xdg-decoration-unstable-v1)
 GENERATE_PROTOCOL(viewporter)
 GENERATE_PROTOCOL(fractional-scale-v1)
 GENERATE_PROTOCOL(linux-dmabuf-stable-v1)
+GENERATE_PROTOCOL(ext-data-control-v1)
 
 option(WLCS_BUILD_ASAN "Build a test runner with AddressSanitizer annotations" ON)
 option(WLCS_BUILD_TSAN "Build a test runner with ThreadSanitizer annotations" ON)
@@ -192,6 +193,7 @@ set(WLCS_TESTS
   tests/wp_viewporter.cpp
   tests/fractional_scale_v1.cpp
   tests/linux_dmabuf_v1.cpp
+  tests/ext_data_control_v1.cpp
 )
 
 set(
