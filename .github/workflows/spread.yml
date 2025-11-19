@@ -49,7 +49,7 @@ jobs:
 
     - name: Set up Spread
       run: |
-        set -euo pipefail 
+        set -euo pipefail
         sudo snap install spread-mir-ci
         sudo snap run lxd init --auto
 
@@ -58,3 +58,9 @@ jobs:
 
     - name: Run Spread task
       run: snap run spread-mir-ci.spread -v ${{ matrix.spread-task }}
+
+    - if: ${{ failure() && runner.debug }}
+      name: Setup upterm session
+      uses: mxschmitt/action-tmate@v3
+      with:
+        limit-access-to-actor: true
