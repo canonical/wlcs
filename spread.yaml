@@ -29,6 +29,9 @@ suites:
             CC/clang: clang
             CXX/clang: clang++
 
+            # general
+            CCACHE_DIR: /root/.ccache
+
 path:
     /spread/wlcs
 

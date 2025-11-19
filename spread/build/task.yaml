@@ -9,6 +9,7 @@ execute: |
       apk add \
         ${CC/gcc/g++} \
         boost-dev \
+        ccache \
         cmake \
         coreutils \
         gtest-dev \
@@ -29,6 +30,7 @@ execute: |
         ${CC} \
         base-devel \
         boost \
+        ccache \
         cmake \
         gtest \
         wayland \
@@ -45,6 +47,7 @@ execute: |
       dnf install --assumeyes \
         ${CC/gcc/gcc-c++} \
         boost-devel \
+        ccache \
         cmake \
         gmock-devel \
         gtest-devel \
@@ -60,7 +63,10 @@ execute: |
       add-apt-repository ppa:mir-team/dev
 
       apt-get build-dep --yes "${SPREAD_PATH}"
-      apt-get install --yes mir-wlcs-integration ${CC}
+      apt-get install --yes \
+        ${CC} \
+        ccache \
+        mir-wlcs-integration
 
       CMAKE_FLAGS=(
         -DCMAKE_C_FLAGS="-D_FORTIFY_SOURCE=2"
@@ -77,6 +83,8 @@ execute: |
   # Check that we build…
   cd "$(mktemp --directory)"
   cmake \
+    -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+    -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
     "${CMAKE_FLAGS[@]}" \
     "${SPREAD_PATH}"
   make -j$(nproc)
@@ -89,3 +97,5 @@ execute: |
         test $? -lt 128 -o $? -gt 165
     }
   fi
+
+  ccache --show-stats --zero-stats > ${CCACHE_DIR}/ccache.stats
