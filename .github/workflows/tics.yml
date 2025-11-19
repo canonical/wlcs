@@ -18,6 +18,7 @@ jobs:
     runs-on: [self-hosted, reactive, amd64, tiobe, noble]
 
     env:
+      CCACHE_DIR: "/tmp/ccache"
       NEEDRESTART_SUSPEND: yes
       DEBIAN_FRONTEND: noninteractive
       TICS_CHANGED_LIST: tics_changed.list
@@ -25,12 +26,40 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v5
+      with:
+        # So we can determine the merge base
+        fetch-depth: 0
+
+    - name: Set up CCache
+      id: setup-ccache
+      run: |
+        sudo apt-get --yes install ccache
+        mkdir --parents ${CCACHE_DIR}
+
+        # Find the merge base to avoid populating the cache with short lived cache entries
+        # and evicting those we care for - from `main`
+        echo "merge-base=$( git merge-base origin/main ${{ github.sha }} )" >> $GITHUB_OUTPUT
+
+    - name: CCache
+      uses: actions/cache@v4
+      with:
+        key: ccache-coverage-${{ steps.setup-ccache.outputs.merge-base }}
+        # if exact match isn't found, use the most recent entry for the task
+        restore-keys: |
+          ccache-coverage-
+        path: ${{ env.CCACHE_DIR }}
+
+    - name: Ensure ccache size
+      run: |
+        # a full build yielded 50M cache
+        echo "max_size = 150M" > ${CCACHE_DIR}/ccache.conf
 
     - name: Install dependencies
       run: |
         sudo add-apt-repository --yes ppa:mir-team/dev
         sudo apt install --yes \
           build-essential \
+          ccache \
           cmake \
           google-mock \
           libboost-dev \
@@ -41,7 +70,11 @@ jobs:
 
     - name: Build
       run: |
-        cmake -Bbuild -GNinja .
+        cmake \
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+          -Bbuild \
+          -GNinja
         cmake --build build
 
     - name: Get changed files
@@ -61,6 +94,9 @@ jobs:
         filelist: ${{ github.event_name == 'merge_group' && env.TICS_CHANGED_LIST || '' }}
         # FIXME: workaround for a TICS bug
         additionalFlags: ${{ contains(fromJSON('["pull_request", "merge_group"]'), github.event_name) && '-resultdir build' || '' }}
+
+    - name: CCache stats
+      run: ccache --show-stats --zero-stats
 
     - if: ${{ failure() && runner.debug }}
       name: Setup tmate session
