@@ -229,7 +229,7 @@ TEST_F(ExtForeignToplevelListTest, does_not_detect_toplevels_when_test_creates_n
 
 TEST_F(ExtForeignToplevelListTest, detects_toplevel_from_same_client)
 {
-    auto surface{client.create_visible_surface(w, h)};
+    auto const surface{client.create_visible_surface(w, h)};
 
     ForeignToplevelList list{client};
     client.roundtrip();
@@ -240,7 +240,7 @@ TEST_F(ExtForeignToplevelListTest, detects_toplevel_from_different_client)
 {
     wlcs::Client observer_client{the_server()};
 
-    auto surface{client.create_visible_surface(w, h)};
+    auto const surface{client.create_visible_surface(w, h)};
 
     ForeignToplevelList list{observer_client};
     observer_client.roundtrip();
@@ -253,7 +253,7 @@ TEST_F(ExtForeignToplevelListTest, detects_toplevel_created_after_list)
     client.roundtrip();
     ASSERT_THAT(list.toplevels().size(), Eq(0u));
 
-    auto surface{client.create_visible_surface(w, h)};
+    auto const surface{client.create_visible_surface(w, h)};
 
     client.roundtrip();
     ASSERT_THAT(list.toplevels().size(), Eq(1u));
@@ -263,8 +263,8 @@ TEST_F(ExtForeignToplevelListTest, detects_multiple_toplevels_from_multiple_clie
 {
     wlcs::Client observer_client{the_server()};
 
-    auto surface{client.create_visible_surface(w, h)};
-    auto observer_surface{observer_client.create_visible_surface(w, h)};
+    auto const surface{client.create_visible_surface(w, h)};
+    auto const observer_surface{observer_client.create_visible_surface(w, h)};
 
     ForeignToplevelList list{observer_client};
     observer_client.roundtrip();
@@ -273,7 +273,7 @@ TEST_F(ExtForeignToplevelListTest, detects_multiple_toplevels_from_multiple_clie
 
 TEST_F(ExtForeignToplevelListTest, handle_gets_title)
 {
-    std::string title = "Test Title @!\\-";
+    std::string const title = "Test Title @!\\-";
 
     ForeignToplevelList list{client};
     Window win{client};
@@ -287,8 +287,8 @@ TEST_F(ExtForeignToplevelListTest, handle_gets_title)
 
 TEST_F(ExtForeignToplevelListTest, title_gets_updated)
 {
-    std::string title_a = "Test Title @!\\-";
-    std::string title_b = "Title 2";
+    std::string const title_a = "Test Title @!\\-";
+    std::string const title_b = "Title 2";
 
     ForeignToplevelList list{client};
     Window win{client};
@@ -309,7 +309,7 @@ TEST_F(ExtForeignToplevelListTest, title_gets_updated)
 
 TEST_F(ExtForeignToplevelListTest, handle_gets_app_id)
 {
-    std::string app_id = "fake.wlcs.app.id";
+    std::string const app_id = "fake.wlcs.app.id";
 
     ForeignToplevelList list{client};
     Window win{client};
@@ -346,14 +346,14 @@ TEST_F(ExtForeignToplevelListTest, identifiers_stable_across_lists)
         client.roundtrip();
     }
 
-    std::string app_id = "fake.wlcs.app.id";
+    std::string const app_id = "fake.wlcs.app.id";
     Window win{client};
     xdg_toplevel_set_app_id(win.xdg_toplevel, app_id.c_str());
     win.surface.attach_visible_buffer(w, h);
     client.roundtrip();
 
     ASSERT_THAT((bool)list.toplevel(app_id).identifier(), Eq(true));
-    auto identifier = list.toplevel(app_id).identifier().value();
+    auto const identifier = list.toplevel(app_id).identifier().value();
 
     ForeignToplevelList list2{client};
     client.roundtrip();
@@ -375,14 +375,14 @@ TEST_F(ExtForeignToplevelListTest, identifiers_stable_across_clients)
         client.roundtrip();
     }
 
-    std::string app_id = "fake.wlcs.app.id";
+    std::string const app_id = "fake.wlcs.app.id";
     Window win{client};
     xdg_toplevel_set_app_id(win.xdg_toplevel, app_id.c_str());
     win.surface.attach_visible_buffer(w, h);
     client.roundtrip();
 
     ASSERT_THAT((bool)list.toplevel(app_id).identifier(), Eq(true));
-    auto identifier = list.toplevel(app_id).identifier().value();
+    auto const identifier = list.toplevel(app_id).identifier().value();
 
     wlcs::Client client2{the_server()};
     ForeignToplevelList list2{client2};
