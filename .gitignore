@@ -3,3 +3,5 @@
 /build/
 /cmake-build-debug/
 compile_commands.json
+*.sarif
+codeql-db/
