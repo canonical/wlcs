@@ -59,7 +59,7 @@ execute: |
     ubuntu-*)
       add-apt-repository ppa:mir-team/dev
 
-      apt-get build-dep --yes ${SPREAD_PATH}
+      apt-get build-dep --yes "${SPREAD_PATH}"
       apt-get install --yes mir-wlcs-integration ${CC}
 
       CMAKE_FLAGS=(
@@ -79,7 +79,7 @@ execute: |
   cmake \
     "${CMAKE_FLAGS[@]}" \
     "${SPREAD_PATH}"
-  make -j
+  make -j$(nproc)
 
   if [[ "${SPREAD_SYSTEM}" == ubuntu-* ]]; then
     # …and run the Mir tests, but don't fail on them, unless we fail with a signal
