@@ -50,14 +50,9 @@ public:
     auto identifier() const { return identifier_; }
 
     operator ext_foreign_toplevel_handle_v1*() const { return handle; }
-    wlcs::WlHandle<ext_foreign_toplevel_handle_v1> const handle;
 
 private:
-    static auto get_self(void* data) -> ForeignToplevelHandle*
-    {
-        return static_cast<ForeignToplevelHandle*>(data);
-    }
-
+    wlcs::WlHandle<ext_foreign_toplevel_handle_v1> const handle;
     bool dirty_{false};
     bool closed_{false};
     std::optional<std::string> title_;
@@ -69,45 +64,45 @@ ForeignToplevelHandle::ForeignToplevelHandle(ext_foreign_toplevel_handle_v1* han
     : handle{handle}
 {
     static ext_foreign_toplevel_handle_v1_listener const listener = {
-        [] /* closed */ (
+        .closed = [](
             void* data,
             ext_foreign_toplevel_handle_v1*)
             {
-                auto self = get_self(data);
+                auto self = static_cast<ForeignToplevelHandle*>(data);
                 self->closed_ = true;
                 self->dirty_ = false;
             },
-        [] /* done */ (
+        .done = [](
             void* data,
             ext_foreign_toplevel_handle_v1*)
             {
-                auto self = get_self(data);
+                auto self = static_cast<ForeignToplevelHandle*>(data);
                 self->dirty_ = false;
             },
-        [] /* title */ (
+        .title = [](
             void* data,
             ext_foreign_toplevel_handle_v1*,
             char const* title)
             {
-                auto self = get_self(data);
+                auto self = static_cast<ForeignToplevelHandle*>(data);
                 self->title_ = title;
                 self->dirty_ = true;
             },
-        [] /* app_id */ (
+        .app_id = [](
             void* data,
             ext_foreign_toplevel_handle_v1*,
             char const* app_id)
             {
-                auto self = get_self(data);
+                auto self = static_cast<ForeignToplevelHandle*>(data);
                 self->app_id_ = app_id;
                 self->dirty_ = true;
             },
-        [] /* identifier */ (
+        .identifier = [](
             void* data,
             ext_foreign_toplevel_handle_v1*,
             char const* identifier)
             {
-                auto self = get_self(data);
+                auto self = static_cast<ForeignToplevelHandle*>(data);
                 self->identifier_ = identifier;
                 self->dirty_ = true;
             },
@@ -129,9 +124,8 @@ public:
     auto toplevel(std::string const& app_id) const -> ForeignToplevelHandle const&;
     void remove(ForeignToplevelHandle const& toplevel);
 
-    wlcs::WlHandle<ext_foreign_toplevel_list_v1> const list;
-
 private:
+    wlcs::WlHandle<ext_foreign_toplevel_list_v1> const list;
     std::vector<std::unique_ptr<ForeignToplevelHandle>> toplevels_;
 };
 
@@ -139,7 +133,7 @@ ForeignToplevelList::ForeignToplevelList(wlcs::Client& client)
     : list{client.bind_if_supported<ext_foreign_toplevel_list_v1>(wlcs::AnyVersion)}
 {
     static ext_foreign_toplevel_list_v1_listener const listener = {
-        [] /* toplevel */ (
+        .toplevel = [](
             void* data,
             ext_foreign_toplevel_list_v1*,
             ext_foreign_toplevel_handle_v1* toplevel)
@@ -148,7 +142,7 @@ ForeignToplevelList::ForeignToplevelList(wlcs::Client& client)
                 auto handle = std::make_unique<ForeignToplevelHandle>(toplevel);
                 self->toplevels_.push_back(std::move(handle));
             },
-        [] /* finished */ (
+        .finished = [](
             void* /*data*/,
             ext_foreign_toplevel_list_v1 *)
             {
@@ -361,7 +355,7 @@ TEST_F(ExtForeignToplevelListTest, identifiers_stable_across_lists)
     ASSERT_THAT((bool)list.toplevel(app_id).identifier(), Eq(true));
     auto identifier = list.toplevel(app_id).identifier().value();
 
-    auto list2 = ForeignToplevelList{client};
+    ForeignToplevelList list2{client};
     client.roundtrip();
     ASSERT_THAT(list2.toplevels().size(), Eq(1u));
     EXPECT_THAT(list2.toplevels()[0]->identifier(), Eq(identifier));
@@ -390,8 +384,8 @@ TEST_F(ExtForeignToplevelListTest, identifiers_stable_across_clients)
     ASSERT_THAT((bool)list.toplevel(app_id).identifier(), Eq(true));
     auto identifier = list.toplevel(app_id).identifier().value();
 
-    auto client2 = wlcs::Client{the_server()};
-    auto list2 = ForeignToplevelList{client2};
+    wlcs::Client client2{the_server()};
+    ForeignToplevelList list2{client2};
     client2.roundtrip();
     ASSERT_THAT(list2.toplevels().size(), Eq(1u));
     EXPECT_THAT(list2.toplevels()[0]->identifier(), Eq(identifier));
