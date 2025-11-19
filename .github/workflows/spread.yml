@@ -36,6 +36,14 @@ jobs:
         - lxd:ubuntu-devel:...:clang
         - lxd:alpine-edge:...:gcc
         - lxd:archlinux-cloud:...:gcc
+        - lxd:...:spread/sbuild:ubuntu
+        - lxd:...:spread/sbuild:ubuntu_proposed
+        - lxd:...:spread/sbuild:ubuntu_questing
+        - lxd:...:spread/sbuild:ubuntu_plucky
+        - lxd:...:spread/sbuild:ubuntu_devel
+        - lxd:...:spread/sbuild:ubuntu_arm64
+        - lxd:...:spread/sbuild:ubuntu_armhf
+        - lxd:...:spread/sbuild:debian_sid
 
     runs-on: ubuntu-latest
 
@@ -49,9 +57,10 @@ jobs:
 
     - name: Set up Spread
       run: |
-        set -euo pipefail 
         sudo snap install spread-mir-ci
-        sudo snap run lxd init --auto
+        lxc profile set default \
+          security.nesting=true \
+          security.syscalls.intercept.mknod=true
 
     - name: Check out code
       uses: actions/checkout@v5

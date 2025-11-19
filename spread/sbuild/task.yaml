@@ -1,0 +1,85 @@
+systems: [ubuntu-24.04]
+variants:
+- ubuntu*
+- debian*
+
+summary: Build Deb packages
+kill-timeout: 90m
+
+execute: |
+    cd $SPREAD_PATH
+
+    add-apt-repository universe
+    apt-get update
+    apt-get install \
+        --yes \
+        --no-install-recommends \
+        debootstrap \
+        fakeroot \
+        nullmailer \
+        sbuild \
+        schroot \
+        ubuntu-dev-tools
+
+    cat <<'EOF' > ~/.sbuildrc
+    $mailto = 'null@example.com';
+    1;
+    EOF
+
+    # work around sbuild apparmor issues
+    cat <<EOF > /etc/apparmor.d/local/sbuild
+    network inet dgram,
+    network inet stream,
+    network inet6 dgram,
+    network inet6 stream,
+    EOF
+    apparmor_parser -r /etc/apparmor.d/sbuild
+
+    adduser $USER sbuild
+    # set host and build environment up
+    source <( dpkg-architecture --print-set --host-arch ${ARCH} )
+
+    DEBOOTSTRAP_SCRIPTS="/usr/share/debootstrap/scripts"
+
+    MKSBUILD_OPTS=(
+      mk-sbuild
+      --distro ${DISTRO}
+      ${RELEASE}
+    )
+
+    SBUILD_OPTS=(
+      --no-clean-source
+      --jobs=$(nproc)
+      --verbose
+      --dist=${RELEASE}
+      --host=${DEB_HOST_ARCH}
+      --purge=never
+    )
+
+    SCHROOT_NAME="${RELEASE}-${DEB_BUILD_ARCH}"
+
+    [ "${PROPOSED}" == "true" ] || MKSBUILD_OPTS+=("--skip-proposed")
+
+    if [[ "${SPREAD_VARIANT}" == *"ubuntu"* ]]; then
+      SBUILD_OPTS+=(
+        --extra-repository="deb http://ppa.launchpad.net/mir-team/dev/ubuntu ${RELEASE} main"
+        --extra-repository-key=${SPREAD_PATH}/${SPREAD_TASK}/mir-team.asc
+      )
+    fi
+
+    # Cross building
+    if [ "${DEB_BUILD_ARCH}" != "${DEB_HOST_ARCH}" ]; then
+      MKSBUILD_OPTS+=("--arch=${DEB_BUILD_ARCH}" "--target=${DEB_HOST_ARCH}")
+
+      SCHROOT_NAME="${SCHROOT_NAME}-${DEB_HOST_ARCH}"
+    fi
+
+    # If release not in yet
+    if [ ! -e "${DEBOOTSTRAP_SCRIPTS}/${RELEASE}" ] && [[ "${SPREAD_VARIANT}" == *"ubuntu"* ]]; then
+      ln -vs "${DEBOOTSTRAP_SCRIPTS}/gutsy" "${DEBOOTSTRAP_SCRIPTS}/${RELEASE}"
+    fi
+
+    # Build the schroot, if it doesn't already exist
+    [ -f /etc/schroot/chroot.d/sbuild-${SCHROOT_NAME} ] || sg sbuild -c "${MKSBUILD_OPTS[*]}"
+
+    sbuild "${SBUILD_OPTS[@]}"
