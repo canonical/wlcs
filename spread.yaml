@@ -21,7 +21,7 @@ backends:
             - archlinux-cloud
 
 suites:
-    spread/build/:
+    spread/:
         summary: Build wlcs
         environment:
             CC/gcc: gcc

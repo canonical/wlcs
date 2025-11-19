@@ -1,0 +1,94 @@
+summary: Build
+variants: [gcc, clang]
+
+execute: |
+  set -xeuo pipefail
+
+  case "${SPREAD_SYSTEM}" in
+    alpine-*)
+      apk add \
+        ${CC/gcc/g++} \
+        boost-dev \
+        cmake \
+        coreutils \
+        gtest-dev \
+        make \
+        wayland-dev
+
+      # Alpine doesn't build gcc's libsanitizer
+      CMAKE_FLAGS=(
+        -DWLCS_BUILD_ASAN=False
+        -DWLCS_BUILD_TSAN=False
+        -DWLCS_BUILD_UBSAN=False
+      )
+      ;;
+
+    archlinux-*)
+      pacman --sync --refresh
+      pacman --noconfirm --sync \
+        ${CC} \
+        base-devel \
+        boost \
+        cmake \
+        gtest \
+        wayland \
+        wayland-protocols
+      ;;
+
+    fedora-*)
+      if [[ "${SPREAD_SYSTEM}" == "fedora-rawhide"  ]]; then
+        dnf --refresh --assumeyes upgrade
+        dnf --assumeyes install fedora-repos-rawhide
+        dnf --refresh --assumeyes --enablerepo=rawhide distro-sync
+      fi
+
+      dnf install --assumeyes \
+        ${CC/gcc/gcc-c++} \
+        boost-devel \
+        cmake \
+        gmock-devel \
+        gtest-devel \
+        libasan.x86_64 \
+        libtsan.x86_64 \
+        libubsan.x86_64 \
+        make \
+        pkg-config \
+        wayland-devel
+      ;;
+
+    ubuntu-*)
+      add-apt-repository ppa:mir-team/dev
+
+      apt-get build-dep --yes "${SPREAD_PATH}"
+      apt-get install --yes \
+        ${CC} \
+        mir-graphics-drivers-desktop \
+        mir-wlcs-integration
+
+      CMAKE_FLAGS=(
+        -DCMAKE_C_FLAGS="-D_FORTIFY_SOURCE=2"
+        -DCMAKE_CXX_FLAGS="-D_FORTIFY_SOURCE=2"
+      )
+      ;;
+
+    *)
+      echo "Unsupported system: ${SPREAD_SYSTEM}" >&2
+      exit 1
+      ;;
+  esac
+
+  # Check that we build…
+  cd "$(mktemp --directory)"
+  cmake \
+    "${CMAKE_FLAGS[@]}" \
+    "${SPREAD_PATH}"
+  make -j$(nproc)
+
+  if [[ "${SPREAD_SYSTEM}" == ubuntu-* ]]; then
+    # …and run the Mir tests, but don't fail on them, unless we fail with a signal
+    # TODO: Store the set of passing tests in CI cache, and fail if a test which
+    #       previously passed now fails.
+    ./wlcs /usr/lib/$(dpkg-architecture -qDEB_HOST_MULTIARCH)/mir/miral_wlcs_integration.so || {
+        test $? -lt 128 -o $? -gt 165
+    }
+  fi
