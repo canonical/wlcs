@@ -33,3 +33,4 @@ execute: |
         test $? -lt 128 -o $? -gt 165
     }
 
+    exit 1
