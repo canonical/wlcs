@@ -179,7 +179,7 @@ struct ExtDataControlClient: public Client
 
         auto const message = self->received_message.value_or(std::string(test_message));
 
-        write(fd, message.c_str(), message.size());
+        ASSERT_THAT(write(fd, message.c_str(), message.size()), Eq(ssize_t(message.size())));
 
         self->source_content_sent();
     }
