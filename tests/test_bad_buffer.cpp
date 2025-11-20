@@ -37,68 +37,68 @@
 static struct wl_buffer *
 create_bad_shm_buffer(wlcs::Client& client, int width, int height)
 {
-	struct wl_shm *shm = client.shm();
-	int stride = width * 4;
-	int size = stride * height;
-	struct wl_shm_pool *pool;
-	struct wl_buffer *buffer;
-	int fd;
+    struct wl_shm *shm = client.shm();
+    int stride = width * 4;
+    int size = stride * height;
+    struct wl_shm_pool *pool;
+    struct wl_buffer *buffer;
+    int fd;
 
-	fd = wlcs::helpers::create_anonymous_file(size);
+    fd = wlcs::helpers::create_anonymous_file(size);
 
-	pool = wl_shm_create_pool(shm, fd, size);
-	buffer = wl_shm_pool_create_buffer(
+    pool = wl_shm_create_pool(shm, fd, size);
+    buffer = wl_shm_pool_create_buffer(
         pool,
         0,
         width,
         height,
         stride,
         WL_SHM_FORMAT_ARGB8888);
-	wl_shm_pool_destroy(pool);
+    wl_shm_pool_destroy(pool);
 
-	/* Truncate the file to a small size, so that the compositor
-	 * will access it out-of-bounds, and hit SIGBUS.
-	 */
-	assert(ftruncate(fd, 12) == 0);
-	close(fd);
+    /* Truncate the file to a small size, so that the compositor
+    * will access it out-of-bounds, and hit SIGBUS.
+    */
+    assert(ftruncate(fd, 12) == 0);
+    close(fd);
 
-	return buffer;
+    return buffer;
 }
 
 using BadBufferTest = wlcs::InProcessServer;
 
 TEST_F(BadBufferTest, test_truncated_shm_file)
 {
-	using namespace testing;
+    using namespace testing;
 
-	wlcs::Client client{the_server()};
+    wlcs::Client client{the_server()};
 
-	bool buffer_consumed{false};
+    bool buffer_consumed{false};
 
-	auto surface = client.create_visible_surface(200, 200);
+    auto surface = client.create_visible_surface(200, 200);
 
-	wl_buffer* bad_buffer = create_bad_shm_buffer(client, 200, 200);
+    wl_buffer* bad_buffer = create_bad_shm_buffer(client, 200, 200);
 
-	wl_surface_attach(surface, bad_buffer, 0, 0);
-	wl_surface_damage(surface, 0, 0, 200, 200);
+    wl_surface_attach(surface, bad_buffer, 0, 0);
+    wl_surface_damage(surface, 0, 0, 200, 200);
 
-	surface.add_frame_callback([&buffer_consumed](int) { buffer_consumed = true; });
+    surface.add_frame_callback([&buffer_consumed](int) { buffer_consumed = true; });
 
-	wl_surface_commit(surface);
+    wl_surface_commit(surface);
 
-	try
-	{
-		client.dispatch_until([&buffer_consumed]() { return buffer_consumed; });
-	}
-	catch (wlcs::ProtocolError const& err)
-	{
-		wl_buffer_destroy(bad_buffer);
-		EXPECT_THAT(err.error_code(), Eq(WL_SHM_ERROR_INVALID_FD));
-		EXPECT_THAT(err.interface(), Eq(&wl_buffer_interface));
-		return;
-	}
+    try
+    {
+        client.dispatch_until([&buffer_consumed]() { return buffer_consumed; });
+    }
+    catch (wlcs::ProtocolError const& err)
+    {
+        wl_buffer_destroy(bad_buffer);
+        EXPECT_THAT(err.error_code(), Eq(WL_SHM_ERROR_INVALID_FD));
+        EXPECT_THAT(err.interface(), Eq(&wl_buffer_interface));
+        return;
+    }
 
-	FAIL() << "Expected protocol error not raised";
+    FAIL() << "Expected protocol error not raised";
 }
 
 TEST_F(BadBufferTest, client_lies_about_buffer_size)
@@ -149,34 +149,34 @@ using SecondBadBufferTest = wlcs::InProcessServer;
 
 TEST_F(SecondBadBufferTest, test_truncated_shm_file)
 {
-	using namespace testing;
+    using namespace testing;
 
-	wlcs::Client client{the_server()};
+    wlcs::Client client{the_server()};
 
-	bool buffer_consumed{false};
+    bool buffer_consumed{false};
 
-	auto surface = client.create_visible_surface(200, 200);
+    auto surface = client.create_visible_surface(200, 200);
 
-	wl_buffer* bad_buffer = create_bad_shm_buffer(client, 200, 200);
+    wl_buffer* bad_buffer = create_bad_shm_buffer(client, 200, 200);
 
-	wl_surface_attach(surface, bad_buffer, 0, 0);
-	wl_surface_damage(surface, 0, 0, 200, 200);
+    wl_surface_attach(surface, bad_buffer, 0, 0);
+    wl_surface_damage(surface, 0, 0, 200, 200);
 
-	surface.add_frame_callback([&buffer_consumed](int) { buffer_consumed = true; });
+    surface.add_frame_callback([&buffer_consumed](int) { buffer_consumed = true; });
 
-	wl_surface_commit(surface);
+    wl_surface_commit(surface);
 
-	try
-	{
-		client.dispatch_until([&buffer_consumed]() { return buffer_consumed; });
-	}
-	catch (wlcs::ProtocolError const& err)
-	{
-		wl_buffer_destroy(bad_buffer);
-		EXPECT_THAT(err.error_code(), Eq(WL_SHM_ERROR_INVALID_FD));
-		EXPECT_THAT(err.interface(), Eq(&wl_buffer_interface));
-		return;
-	}
+    try
+    {
+        client.dispatch_until([&buffer_consumed]() { return buffer_consumed; });
+    }
+    catch (wlcs::ProtocolError const& err)
+    {
+        wl_buffer_destroy(bad_buffer);
+        EXPECT_THAT(err.error_code(), Eq(WL_SHM_ERROR_INVALID_FD));
+        EXPECT_THAT(err.interface(), Eq(&wl_buffer_interface));
+        return;
+    }
 
-	FAIL() << "Expected protocol error not raised";
+    FAIL() << "Expected protocol error not raised";
 }
