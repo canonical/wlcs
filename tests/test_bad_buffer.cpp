@@ -73,8 +73,6 @@ TEST_F(BadBufferTest, test_truncated_shm_file)
 
     wlcs::Client client{the_server()};
 
-    bool buffer_consumed{false};
-
     auto surface = client.create_visible_surface(200, 200);
 
     wl_buffer* bad_buffer = create_bad_shm_buffer(client, 200, 200);
@@ -82,13 +80,12 @@ TEST_F(BadBufferTest, test_truncated_shm_file)
     wl_surface_attach(surface, bad_buffer, 0, 0);
     wl_surface_damage(surface, 0, 0, 200, 200);
 
-    surface.add_frame_callback([&buffer_consumed](int) { buffer_consumed = true; });
-
     wl_surface_commit(surface);
 
     try
     {
-        client.dispatch_until([&buffer_consumed]() { return buffer_consumed; });
+        // We dispatch until we receive the protocol error, or hit the timeout.
+        client.dispatch_until([]() { return false; });
     }
     catch (wlcs::ProtocolError const& err)
     {
@@ -153,8 +150,6 @@ TEST_F(SecondBadBufferTest, test_truncated_shm_file)
 
     wlcs::Client client{the_server()};
 
-    bool buffer_consumed{false};
-
     auto surface = client.create_visible_surface(200, 200);
 
     wl_buffer* bad_buffer = create_bad_shm_buffer(client, 200, 200);
@@ -162,13 +157,12 @@ TEST_F(SecondBadBufferTest, test_truncated_shm_file)
     wl_surface_attach(surface, bad_buffer, 0, 0);
     wl_surface_damage(surface, 0, 0, 200, 200);
 
-    surface.add_frame_callback([&buffer_consumed](int) { buffer_consumed = true; });
-
     wl_surface_commit(surface);
 
     try
     {
-        client.dispatch_until([&buffer_consumed]() { return buffer_consumed; });
+        // We dispatch until we receive the protocol error, or hit the timeout.
+        client.dispatch_until([]() { return false; });
     }
     catch (wlcs::ProtocolError const& err)
     {
