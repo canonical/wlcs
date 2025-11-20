@@ -2,4 +2,6 @@
 .idea/
 /build/
 /cmake-build-debug/
+/_codeql_build_dir/
+/_codeql_detected_source_root
 compile_commands.json
