@@ -49,18 +49,6 @@ touch.up();
 - Creates `compile_commands.json` for clangd LSP
 - Strict warnings: `-Werror` enabled by default (toggle with `WLCS_FATAL_COMPILE_WARNINGS`)
 
-**Building**:
-```bash
-mkdir build && cd build
-cmake ..
-make -j$(nproc)
-```
-
-**Running Tests**:
-```bash
-./wlcs path/to/compositor_integration.so [--gtest_filter=TestName*]
-```
-
 **Continuous Integration**: Uses Spread for multi-distro testing (Ubuntu, Fedora, Alpine, Arch). See `.github/workflows/spread.yml` and `spread.yaml`.
 
 ## Code Style
@@ -87,12 +75,6 @@ EXPECT_PROTOCOL_ERROR(client, &interface_name, error_code, {
 2. Create wrapper class in `include/` (follow pattern from `layer_shell_v1.h`)
 3. Implement wrapper in `src/` (generate protocol bindings in CMake)
 4. Write tests in `tests/` inheriting from `StartedInProcessServer`
-
-**Debugging Tests**:
-- Tests run in-process with compositor, so GDB can follow control flow across both
-- Use `client.roundtrip()` to ensure server has processed requests before assertions
-- Check `client.dispatch_until(predicate, timeout)` for async events
-- Protocol errors throw `wlcs::ProtocolError` - catch to inspect details
 
 **Protocol Version Handling**: Use `VersionSpecifier` (see `version_specifier.h`) to bind interfaces:
 ```cpp
