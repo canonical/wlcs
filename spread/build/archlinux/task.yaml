@@ -14,4 +14,3 @@ execute: |
     cd $(mktemp --directory)
     cmake $SPREAD_PATH
     make -j$(nproc)
-
