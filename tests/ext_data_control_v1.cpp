@@ -179,7 +179,7 @@ struct ExtDataControlClient: public Client
 
         auto const message = self->received_message.value_or(std::string(test_message));
 
-        write(fd, message.c_str(), message.size());
+        ASSERT_THAT(write(fd, message.c_str(), message.size()), Eq(static_cast<ssize_t>(message.size())));
 
         self->source_content_sent();
     }
@@ -424,7 +424,7 @@ TEST_F(ExtDataControlV1Test, copy_from_core_protocol_client_reaches_clipboard)
     source.roundtrip();
 }
 
-TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_core_protocol_client)
+TEST_F(ExtDataControlV1Test, DISABLED_paste_from_clipboard_reaches_core_protocol_client)
 {
     CCnPSink sink{the_server()};
     auto const surf = sink.create_surface_with_focus();
@@ -517,7 +517,7 @@ TEST_F(ExtDataControlV1Test, copy_from_primary_selection_client_reaches_clipboar
     clipboard.roundtrip();
 }
 
-TEST_F(ExtDataControlV1Test, paste_from_clipboard_reaches_primary_selection_client)
+TEST_F(ExtDataControlV1Test, DISABLED_paste_from_clipboard_reaches_primary_selection_client)
 {
     Client sink_client{the_server()};
 

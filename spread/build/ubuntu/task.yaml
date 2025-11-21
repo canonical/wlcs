@@ -15,7 +15,9 @@ execute: |
         libgtest-dev \
         google-mock \
         libboost-dev \
-        mir-test-tools
+        mir-graphics-drivers-desktop \
+        mir-test-tools \
+        mir-wlcs-integration
 
     # Check that we build…
     cd $SPREAD_PATH
