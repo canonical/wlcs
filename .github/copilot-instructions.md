@@ -21,8 +21,8 @@
 **Creating Test Clients**:
 ```cpp
 wlcs::Client client{the_server()};   // Creates Wayland client connection
-wlcs::Surface surface{client};        // Creates wl_surface
-client.roundtrip();                   // Block until server processes requests
+wlcs::Surface surface{client};       // Creates wl_surface
+client.roundtrip();                  // Block until server processes requests
 ```
 
 **Simulating Input** (see `include/wlcs/pointer.h`, `include/wlcs/touch.h`):
