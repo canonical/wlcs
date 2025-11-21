@@ -41,19 +41,14 @@ touch.up();
 
 **Parameterized Tests**: Many tests use `TEST_P` to run across multiple shell types or input devices. See `tests/subsurfaces.cpp` for the pattern using `AbstractInputDevice` abstraction.
 
-## Build System
-
-**CMake Configuration**:
-- C++20 required (`CMAKE_CXX_STANDARD 20`)
-- Generates protocol bindings from `src/protocol/*.xml` using wayland-scanner
-- Creates `compile_commands.json` for clangd LSP
-- Strict warnings: `-Werror` enabled by default (toggle with `WLCS_FATAL_COMPILE_WARNINGS`)
-
-**Continuous Integration**: Uses Spread for multi-distro testing (Ubuntu, Fedora, Alpine, Arch). See `.github/workflows/spread.yml` and `spread.yaml`.
-
 ## Code Style
 
 Follow the [Canonical Mir C++ Guide](https://canonical-mir.readthedocs-hosted.com/stable/contributing/reference/cppguide/).
+
+**Requirements**:
+- C++20 required (`CMAKE_CXX_STANDARD 20`)
+- Strict warnings: `-Werror` enabled by default (toggle with `WLCS_FATAL_COMPILE_WARNINGS`)
+- Protocol bindings generated from `src/protocol/*.xml` using wayland-scanner
 
 **Key Conventions**:
 - Headers use include guards (`#ifndef WLCS_*_H_`)
@@ -93,15 +88,3 @@ compile_commands.json
 *.sarif
 codeql-db/
 ```
-
-## Integration Points
-
-**Compositor Integration**: Implement `WlcsServerIntegration` with:
-- `create_server()`: Return compositor instance
-- Descriptor listing supported protocols/versions
-
-**Input Simulation**: `WlcsPointer` and `WlcsTouch` interfaces let WLCS inject input events. See `example/mir_integration.cpp` lines 200-400 for Mir's implementation using fake input devices.
-
-**Surface Positioning**: `position_window_absolute()` hook moves surfaces to specific coordinates for testing input targeting.
-
-**Extension Discovery**: `supported_extensions` array tells WLCS which protocols to test. Tests skip gracefully if extension unavailable.
