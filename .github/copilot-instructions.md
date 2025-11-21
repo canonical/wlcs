@@ -48,7 +48,6 @@ Follow the [Canonical Mir C++ Guide](https://canonical-mir.readthedocs-hosted.co
 **Requirements**:
 - C++20 required (`CMAKE_CXX_STANDARD 20`)
 - Strict warnings: `-Werror` enabled by default (toggle with `WLCS_FATAL_COMPILE_WARNINGS`)
-- Protocol bindings generated from `src/protocol/*.xml` using wayland-scanner
 
 **Key Conventions**:
 - Headers use include guards (`#ifndef WLCS_*_H_`)
