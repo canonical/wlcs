@@ -34,4 +34,3 @@ execute: |
     ./wlcs /usr/lib/$(dpkg-architecture -qDEB_HOST_MULTIARCH)/mir/miral_wlcs_integration.so || {
         test $? -lt 128 -o $? -gt 165
     }
-
