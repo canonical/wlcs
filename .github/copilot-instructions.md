@@ -20,9 +20,9 @@
 
 **Creating Test Clients**:
 ```cpp
-wlcs::Client client{the_server()};  // Creates Wayland client connection
-wlcs::Surface surface{client};       // Creates wl_surface
-client.roundtrip();                  // Block until server processes requests
+wlcs::Client client{the_server()};   // Creates Wayland client connection
+wlcs::Surface surface{client};        // Creates wl_surface
+client.roundtrip();                   // Block until server processes requests
 ```
 
 **Simulating Input** (see `include/wlcs/pointer.h`, `include/wlcs/touch.h`):
@@ -73,17 +73,4 @@ EXPECT_PROTOCOL_ERROR(client, &interface_name, error_code, {
 **Protocol Version Handling**: Use `VersionSpecifier` (see `version_specifier.h`) to bind interfaces:
 ```cpp
 auto shell = client.bind_if_supported<xdg_wm_base>(wlcs::AtLeast(2));
-```
-
-## Security & CodeQL
-
-**Do NOT check in CodeQL artifacts** - they bloat the repository and are regenerated in CI.
-
-Add CodeQL database paths to `.gitignore`:
-```
-.cache
-/build/
-compile_commands.json
-*.sarif
-codeql-db/
 ```
