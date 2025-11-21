@@ -5,3 +5,5 @@
 /_codeql_build_dir/
 /_codeql_detected_source_root
 compile_commands.json
+*.sarif
+codeql-db/
