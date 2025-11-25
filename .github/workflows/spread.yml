@@ -22,20 +22,7 @@ jobs:
       fail-fast: false
       matrix:
         spread-task:
-        - lxd:ubuntu-24.04:...:gcc
-        - lxd:ubuntu-25.04:...:gcc
-        - lxd:ubuntu-25.10:...:gcc
-        - lxd:ubuntu-25.10:...:clang
-        - lxd:fedora-41:...:gcc
-        - lxd:fedora-42:...:gcc
-        - lxd:fedora-43:...:gcc
-        - lxd:fedora-rawhide:...:gcc
-        - lxd:alpine-3.20:...:gcc
-        - lxd:alpine-3.21:...:gcc
-        - lxd:ubuntu-devel:...:gcc
-        - lxd:ubuntu-devel:...:clang
-        - lxd:alpine-edge:...:gcc
-        - lxd:archlinux-cloud:...:gcc
+        - lxd:...:spread/sbuild:ubuntu
 
     runs-on: ubuntu-latest
 
@@ -49,9 +36,10 @@ jobs:
 
     - name: Set up Spread
       run: |
-        set -euo pipefail 
         sudo snap install spread-mir-ci
-        sudo snap run lxd init --auto
+        lxc profile set default \
+          security.nesting=true \
+          security.syscalls.intercept.mknod=true
 
     - name: Check out code
       uses: actions/checkout@v5
@@ -59,8 +47,8 @@ jobs:
     - name: Run Spread task
       run: snap run spread-mir-ci.spread -reuse -v ${{ matrix.spread-task }}
 
-    - if: ${{ failure() && runner.debug }}
+    - if: ${{ always() }}
       name: Setup tmate session
       uses: mxschmitt/action-tmate@v3
       with:
-        limit-access-to-actor: true
+        limit-access-to-actor: false
