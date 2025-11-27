@@ -137,6 +137,8 @@ std::shared_ptr<WlcsServerIntegration const> wlcs::helpers::get_test_hooks()
     return ::entry_point;
 }
 
+static_assert(TEST_TIMEOUT_MULTIPLIER > 0);
+
 auto wlcs::helpers::a_short_time() -> std::chrono::seconds
 {
     return std::chrono::seconds{1 * TEST_TIMEOUT_MULTIPLIER};

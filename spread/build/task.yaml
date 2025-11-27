@@ -88,7 +88,20 @@ execute: |
     # …and run the Mir tests, but don't fail on them, unless we fail with a signal
     # TODO: Store the set of passing tests in CI cache, and fail if a test which
     #       previously passed now fails.
-    ./wlcs /usr/lib/$(dpkg-architecture -qDEB_HOST_MULTIARCH)/mir/miral_wlcs_integration.so || {
-        test $? -lt 128 -o $? -gt 165
-    }
+    case "${SPREAD_VARIANT}" in
+      *clang*)
+        # On clang, only run plain wlcs
+          ./wlcs /usr/lib/$(dpkg-architecture -qDEB_HOST_MULTIARCH)/mir/miral_wlcs_integration.so || {
+            test $? -lt 128 -o $? -gt 165
+          }
+        ;;
+      *gcc*)
+        # On gcc, run all sanitizer variants
+        for wlcs in wlcs{,.asan,.ubsan,.tsan}; do
+          ./${wlcs} /usr/lib/$(dpkg-architecture -qDEB_HOST_MULTIARCH)/mir/miral_wlcs_integration.so || {
+            test $? -lt 128 -o $? -gt 165
+          }
+        done
+        ;;
+    esac
   fi

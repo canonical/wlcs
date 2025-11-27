@@ -24,6 +24,9 @@ suites:
     spread/:
         summary: Build wlcs
         environment:
+            ASAN_OPTIONS: halt_on_error=1
+            UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+            TSAN_OPTIONS: halt_on_error=1
             CC/gcc: gcc
             CXX/gcc: g++
             CC/clang: clang
