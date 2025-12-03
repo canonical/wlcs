@@ -177,8 +177,7 @@ TEST_P(SubsurfaceTest, subsurface_gets_pointer_input)
     input_device->to_screen_position(pointer_x, pointer_y);
     client.roundtrip();
 
-    EXPECT_THAT(input_device->focused_window(), Ne((wl_surface*)main_surface)) << "input fell through to main surface";
-    EXPECT_THAT(input_device->focused_window(), Eq((wl_surface*)subsurface));
+    EXPECT_THAT(input_device->focused_window(), Eq((wl_surface*)main_surface)) << "main surface should get focus, not subsurface";
     EXPECT_THAT(input_device->position_on_window(),
                 Eq(std::make_pair(
                     wl_fixed_from_int(pointer_x - surface_x),
@@ -195,12 +194,11 @@ TEST_P(SubsurfaceTest, pointer_input_correctly_offset_for_subsurface)
     input_device->to_screen_position(pointer_x, pointer_y);
     client.roundtrip();
 
-    EXPECT_THAT(input_device->focused_window(), Ne((wl_surface*)main_surface)) << "input fell through to main surface";
-    EXPECT_THAT(input_device->focused_window(), Eq((wl_surface*)subsurface));
+    EXPECT_THAT(input_device->focused_window(), Eq((wl_surface*)main_surface)) << "main surface should get focus, not subsurface";
     EXPECT_THAT(input_device->position_on_window(),
                 Eq(std::make_pair(
-                    wl_fixed_from_int(pointer_x - surface_x - subsurface_x),
-                    wl_fixed_from_int(pointer_y - surface_y - subsurface_y))));
+                    wl_fixed_from_int(pointer_x - surface_x),
+                    wl_fixed_from_int(pointer_y - surface_y))));
 }
 
 TEST_P(SubsurfaceTest, sync_subsurface_moves_when_only_parent_committed)
@@ -216,16 +214,11 @@ TEST_P(SubsurfaceTest, sync_subsurface_moves_when_only_parent_committed)
     input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
     client.roundtrip();
 
+    EXPECT_THAT(input_device->focused_window(), Eq((wl_surface*)main_surface)) << "main surface should have focus";
     EXPECT_THAT(input_device->position_on_window(),
                 Eq(std::make_pair(
-                    wl_fixed_from_int(pointer_x - subsurface_x),
-                    wl_fixed_from_int(pointer_y - subsurface_y))));
-
-    EXPECT_THAT(input_device->position_on_window(),
-                Ne(std::make_pair(
                     wl_fixed_from_int(pointer_x),
-                    wl_fixed_from_int(pointer_y))))
-        << "Subsurface did not move after parent commit";
+                    wl_fixed_from_int(pointer_y)))) << "coordinates should be relative to main surface";
 }
 
 TEST_P(SubsurfaceTest, desync_subsurface_moves_when_only_parent_committed)
@@ -243,16 +236,11 @@ TEST_P(SubsurfaceTest, desync_subsurface_moves_when_only_parent_committed)
     input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
     client.roundtrip();
 
+    EXPECT_THAT(input_device->focused_window(), Eq((wl_surface*)main_surface)) << "main surface should have focus";
     EXPECT_THAT(input_device->position_on_window(),
                 Eq(std::make_pair(
-                    wl_fixed_from_int(pointer_x - subsurface_x),
-                    wl_fixed_from_int(pointer_y - subsurface_y))));
-
-    EXPECT_THAT(input_device->position_on_window(),
-                Ne(std::make_pair(
                     wl_fixed_from_int(pointer_x),
-                    wl_fixed_from_int(pointer_y))))
-        << "Subsurface did not move after parent commit";
+                    wl_fixed_from_int(pointer_y)))) << "coordinates should be relative to main surface";
 }
 
 TEST_P(SubsurfaceTest, subsurface_does_not_move_when_parent_not_committed)
@@ -270,16 +258,11 @@ TEST_P(SubsurfaceTest, subsurface_does_not_move_when_parent_not_committed)
     input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
     client.roundtrip();
 
+    EXPECT_THAT(input_device->focused_window(), Eq((wl_surface*)main_surface)) << "main surface should have focus";
     EXPECT_THAT(input_device->position_on_window(),
                 Eq(std::make_pair(
                     wl_fixed_from_int(pointer_x),
                     wl_fixed_from_int(pointer_y))));
-
-    EXPECT_THAT(input_device->position_on_window(),
-                Ne(std::make_pair(
-                    wl_fixed_from_int(pointer_x - subsurface_x),
-                    wl_fixed_from_int(pointer_y - subsurface_y))))
-        << "Subsurface moved to new location without parent being committed";
 }
 
 TEST_P(SubsurfaceTest, subsurface_extends_parent_input_region)
@@ -292,12 +275,11 @@ TEST_P(SubsurfaceTest, subsurface_extends_parent_input_region)
     input_device->to_screen_position(pointer_x, pointer_y);
     client.roundtrip();
 
-    EXPECT_THAT(input_device->focused_window(), Ne((wl_surface*)main_surface)) << "input fell through to main surface";
-    EXPECT_THAT(input_device->focused_window(), Eq((wl_surface*)subsurface));
+    EXPECT_THAT(input_device->focused_window(), Eq((wl_surface*)main_surface)) << "main surface should get focus, not subsurface";
     EXPECT_THAT(input_device->position_on_window(),
                 Eq(std::make_pair(
-                    wl_fixed_from_int(pointer_x - surface_x - subsurface_x),
-                    wl_fixed_from_int(pointer_y - surface_y - subsurface_y))));
+                    wl_fixed_from_int(pointer_x - surface_x),
+                    wl_fixed_from_int(pointer_y - surface_y))));
 }
 
 TEST_P(SubsurfaceTest, input_falls_through_empty_subsurface_input_region)
@@ -335,8 +317,7 @@ TEST_P(SubsurfaceTest, gets_input_over_surface_with_empty_region)
     input_device->to_screen_position(pointer_x, pointer_y);
     client.roundtrip();
 
-    EXPECT_THAT(input_device->focused_window(), Ne((wl_surface*)main_surface)) << "input fell through to main surface";
-    EXPECT_THAT(input_device->focused_window(), Eq((wl_surface*)subsurface));
+    EXPECT_THAT(input_device->focused_window(), Eq((wl_surface*)main_surface)) << "main surface should get focus";
     EXPECT_THAT(input_device->position_on_window(),
                 Eq(std::make_pair(
                     wl_fixed_from_int(pointer_x - surface_x),
@@ -365,20 +346,20 @@ TEST_P(SubsurfaceTest, one_subsurface_to_another_fallthrough)
     input_device->to_screen_position(pointer_x_1 + surface_x, pointer_y_1 + surface_y);
     client.roundtrip();
 
-    ASSERT_THAT(input_device->focused_window(), Eq((wl_surface*)subsurface)) << "lower subsurface not focused";
+    ASSERT_THAT(input_device->focused_window(), Eq((wl_surface*)main_surface)) << "main surface not focused";
     EXPECT_THAT(input_device->position_on_window(),
                 Eq(std::make_pair(
-                    wl_fixed_from_int(pointer_x_1 - subsurface_x),
-                    wl_fixed_from_int(pointer_y_1 - subsurface_y))));
+                    wl_fixed_from_int(pointer_x_1),
+                    wl_fixed_from_int(pointer_y_1))));
 
     input_device->to_screen_position(pointer_x_2 + surface_x, pointer_y_2 + surface_y);
     client.roundtrip();
 
-    ASSERT_THAT(input_device->focused_window(), Eq((wl_surface*)subsurface_top)) << "upper subsurface not focused";
+    ASSERT_THAT(input_device->focused_window(), Eq((wl_surface*)main_surface)) << "main surface not focused";
     EXPECT_THAT(input_device->position_on_window(),
                 Eq(std::make_pair(
-                    wl_fixed_from_int(pointer_x_2 - subsurface_top_x),
-                    wl_fixed_from_int(pointer_y_2 - subsurface_top_y))));
+                    wl_fixed_from_int(pointer_x_2),
+                    wl_fixed_from_int(pointer_y_2))));
 }
 
 TEST_P(SubsurfaceTest, place_below_simple)
@@ -392,11 +373,8 @@ TEST_P(SubsurfaceTest, place_below_simple)
     input_device->to_screen_position(5 + surface_x, 5 + surface_y);
     client.roundtrip();
 
-    ASSERT_THAT(input_device->focused_window(), Ne((wl_surface*)subsurface_moving_down))
-        << "subsurface.place_below() did not have an effect";
-
-    ASSERT_THAT(input_device->focused_window(), Ne((wl_surface*)subsurface))
-        << "wrong surface/subsurface on top";
+    ASSERT_THAT(input_device->focused_window(), Eq((wl_surface*)main_surface))
+        << "main surface should get focus, not any subsurface";
 }
 
 TEST_P(SubsurfaceTest, place_above_simple)
@@ -410,11 +388,8 @@ TEST_P(SubsurfaceTest, place_above_simple)
     input_device->to_screen_position(5 + surface_x, 5 + surface_y);
     client.roundtrip();
 
-    ASSERT_THAT(input_device->focused_window(), Ne((wl_surface*)subsurface_being_covered))
-        << "subsurface.place_above() did not have an effect";
-
-    ASSERT_THAT(input_device->focused_window(), Ne((wl_surface*)subsurface))
-        << "wrong surface/subsurface on top";
+    ASSERT_THAT(input_device->focused_window(), Eq((wl_surface*)main_surface))
+        << "main surface should get focus, not any subsurface";
 }
 
 TEST_P(SubsurfaceTest, subsurface_of_a_subsurface_handled)
@@ -439,20 +414,20 @@ TEST_P(SubsurfaceTest, subsurface_of_a_subsurface_handled)
     input_device->to_screen_position(pointer_x_1 + surface_x, pointer_y_1 + surface_y);
     client.roundtrip();
 
-    ASSERT_THAT(input_device->focused_window(), Eq((wl_surface*)subsurface)) << "lower subsurface not focused";
+    ASSERT_THAT(input_device->focused_window(), Eq((wl_surface*)main_surface)) << "main surface not focused";
     EXPECT_THAT(input_device->position_on_window(),
                 Eq(std::make_pair(
-                    wl_fixed_from_int(pointer_x_1 - subsurface_x),
-                    wl_fixed_from_int(pointer_y_1 - subsurface_y))));
+                    wl_fixed_from_int(pointer_x_1),
+                    wl_fixed_from_int(pointer_y_1))));
 
     input_device->to_screen_position(pointer_x_2 + surface_x, pointer_y_2 + surface_y);
     client.roundtrip();
 
-    ASSERT_THAT(input_device->focused_window(), Eq((wl_surface*)subsurface_top)) << "subsurface of subsurface not focused";
+    ASSERT_THAT(input_device->focused_window(), Eq((wl_surface*)main_surface)) << "main surface not focused";
     EXPECT_THAT(input_device->position_on_window(),
                 Eq(std::make_pair(
-                    wl_fixed_from_int(pointer_x_2 - subsurface_top_x - subsurface_x),
-                    wl_fixed_from_int(pointer_y_2 - subsurface_top_y - subsurface_y))));
+                    wl_fixed_from_int(pointer_x_2),
+                    wl_fixed_from_int(pointer_y_2))));
 }
 
 TEST_P(SubsurfaceTest, subsurface_moves_under_input_device_once)
@@ -463,7 +438,7 @@ TEST_P(SubsurfaceTest, subsurface_moves_under_input_device_once)
     input_device->to_screen_position(input_x, input_y);
     client.roundtrip();
 
-    ASSERT_THAT(input_device->focused_window(), Eq((wl_surface*)subsurface)) << "precondition failed";
+    ASSERT_THAT(input_device->focused_window(), Eq((wl_surface*)main_surface)) << "precondition failed";
     ASSERT_THAT(input_device->position_on_window(),
                 Eq(std::make_pair(
                     wl_fixed_from_int(input_x - surface_x),
@@ -474,15 +449,11 @@ TEST_P(SubsurfaceTest, subsurface_moves_under_input_device_once)
     wl_surface_commit(main_surface);
     client.roundtrip();
 
-    EXPECT_THAT(input_device->focused_window(), Eq((wl_surface*)subsurface)) << "subsurface not focuesed";
-    EXPECT_THAT(input_device->position_on_window(),
-                Ne(std::make_pair(
-                    wl_fixed_from_int(input_x - surface_x),
-                    wl_fixed_from_int(input_y - surface_y)))) << "input device did not get new location";
+    EXPECT_THAT(input_device->focused_window(), Eq((wl_surface*)main_surface)) << "main surface should remain focused";
     EXPECT_THAT(input_device->position_on_window(),
                 Eq(std::make_pair(
-                    wl_fixed_from_int(input_x - surface_x - subsurface_x),
-                    wl_fixed_from_int(input_y - surface_y - subsurface_y)))) << "input device in wrong location";
+                    wl_fixed_from_int(input_x - surface_x),
+                    wl_fixed_from_int(input_y - surface_y)))) << "coordinates relative to main surface should not change";
 }
 
 TEST_P(SubsurfaceTest, subsurface_moves_under_input_device_twice)
@@ -497,26 +468,22 @@ TEST_P(SubsurfaceTest, subsurface_moves_under_input_device_twice)
     wl_surface_commit(main_surface);
     client.roundtrip();
 
-    ASSERT_THAT(input_device->focused_window(), Eq((wl_surface*)subsurface)) << "precondition failed";
+    ASSERT_THAT(input_device->focused_window(), Eq((wl_surface*)main_surface)) << "precondition failed";
     ASSERT_THAT(input_device->position_on_window(),
                 Eq(std::make_pair(
-                    wl_fixed_from_int(input_x - surface_x - subsurface_x_0),
-                    wl_fixed_from_int(input_y - surface_y - subsurface_y_0)))) << "precondition failed";
+                    wl_fixed_from_int(input_x - surface_x),
+                    wl_fixed_from_int(input_y - surface_y)))) << "precondition failed";
 
     wl_subsurface_set_position(subsurface, subsurface_x_1, subsurface_y_1);
     wl_surface_commit(subsurface);
     wl_surface_commit(main_surface);
     client.roundtrip();
 
-    EXPECT_THAT(input_device->focused_window(), Eq((wl_surface*)subsurface)) << "subsurface not focuesed";
-    EXPECT_THAT(input_device->position_on_window(),
-                Ne(std::make_pair(
-                    wl_fixed_from_int(input_x - surface_x - subsurface_x_0),
-                    wl_fixed_from_int(input_y - surface_y - subsurface_y_0)))) << "input device did not get new location";
+    EXPECT_THAT(input_device->focused_window(), Eq((wl_surface*)main_surface)) << "main surface should remain focused";
     EXPECT_THAT(input_device->position_on_window(),
                 Eq(std::make_pair(
-                    wl_fixed_from_int(input_x - surface_x - subsurface_x_1),
-                    wl_fixed_from_int(input_y - surface_y - subsurface_y_1)))) << "input device in wrong location";
+                    wl_fixed_from_int(input_x - surface_x),
+                    wl_fixed_from_int(input_y - surface_y)))) << "coordinates relative to main surface should not change";
 }
 
 TEST_P(SubsurfaceTest, subsurface_moves_out_from_under_input_device)
@@ -527,7 +494,7 @@ TEST_P(SubsurfaceTest, subsurface_moves_out_from_under_input_device)
     input_device->to_screen_position(input_x, input_y);
     client.roundtrip();
 
-    ASSERT_THAT(input_device->focused_window(), Eq((wl_surface*)subsurface)) << "precondition failed";
+    ASSERT_THAT(input_device->focused_window(), Eq((wl_surface*)main_surface)) << "precondition failed";
     ASSERT_THAT(input_device->position_on_window(),
                 Eq(std::make_pair(
                     wl_fixed_from_int(input_x - surface_x),
@@ -538,11 +505,11 @@ TEST_P(SubsurfaceTest, subsurface_moves_out_from_under_input_device)
     wl_surface_commit(main_surface);
     client.roundtrip();
 
-    EXPECT_THAT(input_device->focused_window(), Eq((wl_surface*)main_surface)) << "main surface not focuesed";
+    EXPECT_THAT(input_device->focused_window(), Eq((wl_surface*)main_surface)) << "main surface should remain focused";
     EXPECT_THAT(input_device->position_on_window(),
                 Eq(std::make_pair(
                     wl_fixed_from_int(input_x - surface_x),
-                    wl_fixed_from_int(input_y - surface_y)))) << "input device in wrong location";
+                    wl_fixed_from_int(input_y - surface_y)))) << "coordinates relative to main surface should not change";
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -646,16 +613,11 @@ TEST_P(SubsurfaceMultilevelTest, subsurface_with_sync_parent_does_not_move_when_
     input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
     client.roundtrip();
 
+    EXPECT_THAT(input_device->focused_window(), Eq((wl_surface*)main_surface)) << "main surface should have focus";
     EXPECT_THAT(input_device->position_on_window(),
                 Eq(std::make_pair(
                     wl_fixed_from_int(pointer_x),
                     wl_fixed_from_int(pointer_y))));
-
-    EXPECT_THAT(input_device->position_on_window(),
-                Ne(std::make_pair(
-                    wl_fixed_from_int(pointer_x - subsurface_x),
-                    wl_fixed_from_int(pointer_y - subsurface_y))))
-        << "Subsurface moved without parent being committed";
 }
 
 TEST_P(SubsurfaceMultilevelTest, subsurface_with_desync_parent_does_not_move_when_only_grandparent_committed)
@@ -673,16 +635,11 @@ TEST_P(SubsurfaceMultilevelTest, subsurface_with_desync_parent_does_not_move_whe
     input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
     client.roundtrip();
 
+    EXPECT_THAT(input_device->focused_window(), Eq((wl_surface*)main_surface)) << "main surface should have focus";
     EXPECT_THAT(input_device->position_on_window(),
                 Eq(std::make_pair(
                     wl_fixed_from_int(pointer_x),
                     wl_fixed_from_int(pointer_y))));
-
-    EXPECT_THAT(input_device->position_on_window(),
-                Ne(std::make_pair(
-                    wl_fixed_from_int(pointer_x - subsurface_x),
-                    wl_fixed_from_int(pointer_y - subsurface_y))))
-        << "Subsurface moved without parent being committed";
 }
 
 TEST_P(SubsurfaceMultilevelTest, subsurface_with_sync_parent_does_not_move_when_only_parent_committed)
@@ -699,16 +656,11 @@ TEST_P(SubsurfaceMultilevelTest, subsurface_with_sync_parent_does_not_move_when_
     input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
     client.roundtrip();
 
+    EXPECT_THAT(input_device->focused_window(), Eq((wl_surface*)main_surface)) << "main surface should have focus";
     EXPECT_THAT(input_device->position_on_window(),
                 Eq(std::make_pair(
                     wl_fixed_from_int(pointer_x),
                     wl_fixed_from_int(pointer_y))));
-
-    EXPECT_THAT(input_device->position_on_window(),
-                Ne(std::make_pair(
-                    wl_fixed_from_int(pointer_x - subsurface_x),
-                    wl_fixed_from_int(pointer_y - subsurface_y))))
-        << "Subsurface of sync parent moved without grandparent being committed";
 }
 
 TEST_P(SubsurfaceMultilevelTest, subsurface_with_desync_parent_moves_when_only_parent_committed)
@@ -727,16 +679,11 @@ TEST_P(SubsurfaceMultilevelTest, subsurface_with_desync_parent_moves_when_only_p
     input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
     client.roundtrip();
 
+    EXPECT_THAT(input_device->focused_window(), Eq((wl_surface*)main_surface)) << "main surface should have focus";
     EXPECT_THAT(input_device->position_on_window(),
                 Eq(std::make_pair(
-                    wl_fixed_from_int(pointer_x - subsurface_x),
-                    wl_fixed_from_int(pointer_y - subsurface_y))));
-
-    EXPECT_THAT(input_device->position_on_window(),
-                Ne(std::make_pair(
                     wl_fixed_from_int(pointer_x),
-                    wl_fixed_from_int(pointer_y))))
-        << "Did not move on desync parent commit";
+                    wl_fixed_from_int(pointer_y))));
 }
 
 TEST_P(SubsurfaceMultilevelTest, subsurface_does_not_move_when_grandparent_commit_is_before_sync_parent_commit)
@@ -753,16 +700,11 @@ TEST_P(SubsurfaceMultilevelTest, subsurface_does_not_move_when_grandparent_commi
     input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
     client.roundtrip();
 
+    EXPECT_THAT(input_device->focused_window(), Eq((wl_surface*)main_surface)) << "main surface should have focus";
     EXPECT_THAT(input_device->position_on_window(),
                 Eq(std::make_pair(
                     wl_fixed_from_int(pointer_x),
                     wl_fixed_from_int(pointer_y))));
-
-    EXPECT_THAT(input_device->position_on_window(),
-                Ne(std::make_pair(
-                    wl_fixed_from_int(pointer_x - subsurface_x),
-                    wl_fixed_from_int(pointer_y - subsurface_y))))
-        << "Subsurface moved when hierarchy commits were in the wrong order";
 }
 
 TEST_P(SubsurfaceMultilevelTest, subsurface_moves_after_both_sync_parent_and_grandparent_commit)
@@ -778,16 +720,11 @@ TEST_P(SubsurfaceMultilevelTest, subsurface_moves_after_both_sync_parent_and_gra
     input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
     client.roundtrip();
 
+    EXPECT_THAT(input_device->focused_window(), Eq((wl_surface*)main_surface)) << "main surface should have focus";
     EXPECT_THAT(input_device->position_on_window(),
                 Eq(std::make_pair(
-                    wl_fixed_from_int(pointer_x - subsurface_x),
-                    wl_fixed_from_int(pointer_y - subsurface_y))));
-
-    EXPECT_THAT(input_device->position_on_window(),
-                Ne(std::make_pair(
                     wl_fixed_from_int(pointer_x),
-                    wl_fixed_from_int(pointer_y))))
-        << "Did not move after parent and grandparent both comitted";
+                    wl_fixed_from_int(pointer_y))));
 }
 
 TEST_P(SubsurfaceMultilevelTest, by_default_subsurface_is_sync)
@@ -803,16 +740,11 @@ TEST_P(SubsurfaceMultilevelTest, by_default_subsurface_is_sync)
     input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
     client.roundtrip();
 
+    EXPECT_THAT(input_device->focused_window(), Eq((wl_surface*)main_surface)) << "main surface should have focus";
     EXPECT_THAT(input_device->position_on_window(),
                 Eq(std::make_pair(
                     wl_fixed_from_int(pointer_x),
                     wl_fixed_from_int(pointer_y))));
-
-    EXPECT_THAT(input_device->position_on_window(),
-                Ne(std::make_pair(
-                    wl_fixed_from_int(pointer_x - subsurface_x),
-                    wl_fixed_from_int(pointer_y - subsurface_y))))
-        << "Subsurface moved without parent commit (it should have been 'sync' by default, but is acting as desync)";
 }
 
 TEST_P(SubsurfaceMultilevelTest, subsurface_can_be_set_to_sync)
@@ -831,16 +763,11 @@ TEST_P(SubsurfaceMultilevelTest, subsurface_can_be_set_to_sync)
     input_device->to_screen_position(pointer_x + surface_x, pointer_y + surface_y);
     client.roundtrip();
 
+    EXPECT_THAT(input_device->focused_window(), Eq((wl_surface*)main_surface)) << "main surface should have focus";
     EXPECT_THAT(input_device->position_on_window(),
                 Eq(std::make_pair(
                     wl_fixed_from_int(pointer_x),
                     wl_fixed_from_int(pointer_y))));
-
-    EXPECT_THAT(input_device->position_on_window(),
-                Ne(std::make_pair(
-                    wl_fixed_from_int(pointer_x - subsurface_x),
-                    wl_fixed_from_int(pointer_y - subsurface_y))))
-        << "Subsurface moved without parent commit (it should have been 'sync' by default, but is acting as desync)";
 }
 
 INSTANTIATE_TEST_SUITE_P(
