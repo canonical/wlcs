@@ -10,7 +10,6 @@ backends:
             - ubuntu-25.10
             - ubuntu-devel:
                 image: ubuntu-daily:devel/amd64
-            - fedora-41
             - fedora-42
             - fedora-43
             - fedora-rawhide:
