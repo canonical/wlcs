@@ -10,3 +10,11 @@ Description: Wayland Conformance Suite test harness
 Version: @PROJECT_VERSION@
 Requires.private: wayland-client
 Cflags: -I${includedir}
+
+# Test revisions
+#
+# When existing tests are fixed to more-correctly expect protocol-compliant
+# behaviours the revision of the test is incremented here, to allow downstreams
+# to detect when the WLCS test will incorrectly fail.
+
+BadBuffer_test_truncated_shm_file_revision=1
