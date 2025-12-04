@@ -202,6 +202,14 @@ public:
 
     void map_popup(PositionerParams const& params)
     {
+        // TODO: This hack is to ensure that the cursor is not positioned at (0,0)
+        // If the cursor *is* at (0,0), then the cursor image may entirely occlude
+        // a surface placed almost off the display, which results in frame events
+        // never being generated and the final `dispatch_until` timing out.
+
+        auto pointer = the_server.create_pointer();
+        pointer.move_to(300, 300);
+
         popup_surface.emplace(*client);
         setup_popup(params);
         wl_surface_commit(popup_surface.value());

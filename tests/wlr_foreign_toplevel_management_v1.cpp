@@ -36,7 +36,7 @@ WLCS_CREATE_INTERFACE_DESCRIPTOR(zwlr_foreign_toplevel_handle_v1)
 
 namespace
 {
-int const w = 10, h = 15;
+int const w = 100, h = 150;
 
 class ForeignToplevelHandle
 {
