@@ -17,4 +17,4 @@ Cflags: -I${includedir}
 # behaviours the revision of the test is incremented here, to allow downstreams
 # to detect when the WLCS test will incorrectly fail.
 
-BadBuffer_test_truncated_shm_file_revision=1
+BadBufferTest_test_truncated_shm_file_revision=1
