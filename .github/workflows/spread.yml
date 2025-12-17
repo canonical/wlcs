@@ -48,7 +48,7 @@ jobs:
 
     - name: Set up Spread
       run: |
-        set -euo pipefail 
+        set -euo pipefail
         sudo snap install spread-mir-ci
         sudo snap run lxd init --auto
 
