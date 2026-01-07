@@ -23,13 +23,29 @@ suites:
     spread/:
         summary: Build wlcs
         environment:
+            ARCH: amd64
+
             ASAN_OPTIONS: halt_on_error=1
             UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
             TSAN_OPTIONS: halt_on_error=1
-            CC/gcc: gcc
-            CXX/gcc: g++
+
+            # build tasks
             CC/clang: clang
             CXX/clang: clang++
+
+            # sbuild tasks
+            ARCH/ubuntu_arm64: arm64
+            ARCH/ubuntu_armhf: armhf
+            DISTRO: ubuntu
+            DISTRO/debian_sid: debian
+            RELEASE: noble
+            RELEASE/ubuntu: noble
+            RELEASE/ubuntu_plucky: plucky
+            RELEASE/ubuntu_questing: questing
+            RELEASE/ubuntu_devel: resolute
+            RELEASE/debian_sid: sid
+            PROPOSED: false
+            PROPOSED/ubuntu_proposed: true
 
 path:
     /spread/wlcs

@@ -1,8 +1,11 @@
 summary: Build
-variants: [gcc, clang]
+variants: [default, clang]
 
 execute: |
   set -xeuo pipefail
+
+  # Set defaults
+  : ${CC:=gcc} ${CXX:=g++}
 
   case "${SPREAD_SYSTEM}" in
     alpine-*)

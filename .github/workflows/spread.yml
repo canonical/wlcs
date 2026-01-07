@@ -22,19 +22,23 @@ jobs:
       fail-fast: false
       matrix:
         spread-task:
-        - lxd:ubuntu-24.04:...:gcc
-        - lxd:ubuntu-25.04:...:gcc
-        - lxd:ubuntu-25.10:...:gcc
+        - lxd:...:debian_sid
+        - lxd:...:ubuntu
+        - lxd:...:ubuntu_arm64
+        - lxd:...:ubuntu_armhf
+        - lxd:...:ubuntu_devel
+        - lxd:...:ubuntu_plucky
+        - lxd:...:ubuntu_proposed
+        - lxd:...:ubuntu_questing
+        - lxd:alpine-3.20:...:default
+        - lxd:alpine-3.21:...:default
+        - lxd:alpine-edge:...:default
+        - lxd:archlinux-cloud:...:default
+        - lxd:fedora-42:...:default
+        - lxd:fedora-43:...:default
+        - lxd:fedora-rawhide:...:default
         - lxd:ubuntu-25.10:...:clang
-        - lxd:fedora-42:...:gcc
-        - lxd:fedora-43:...:gcc
-        - lxd:fedora-rawhide:...:gcc
-        - lxd:alpine-3.20:...:gcc
-        - lxd:alpine-3.21:...:gcc
-        - lxd:ubuntu-devel:...:gcc
         - lxd:ubuntu-devel:...:clang
-        - lxd:alpine-edge:...:gcc
-        - lxd:archlinux-cloud:...:gcc
 
     runs-on: ubuntu-latest
 
@@ -48,9 +52,10 @@ jobs:
 
     - name: Set up Spread
       run: |
-        set -euo pipefail
         sudo snap install spread-mir-ci
-        sudo snap run lxd init --auto
+        lxc profile set default \
+          security.nesting=true \
+          security.privileged=true
 
     - name: Check out code
       uses: actions/checkout@v6
