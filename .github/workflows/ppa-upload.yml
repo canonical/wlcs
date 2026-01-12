@@ -21,15 +21,13 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    env:
-      DEBFULLNAME: "Mir CI Bot"
-      DEBEMAIL: "mir-ci-bot@canonical.com"
-
     steps:
     - name: Import GPG key
+      id: gpg
       uses: crazy-max/ghaction-import-gpg@v6
       with:
         gpg_private_key: ${{ secrets.MIR_BOT_GPG_PRIVATE_KEY }}
+        passphrase: ${{ secrets.MIR_BOT_GPG_PASSPHRASE }}
 
     - name: Check out code
       uses: actions/checkout@v6
@@ -54,6 +52,8 @@ jobs:
 
     - name: Upload to PPA
       env:
+        DEBFULLNAME: ${{ steps.gpg.outputs.name}}
+        DEBEMAIL: ${{ steps.gpg.outputs.email }}
         RELEASE: ${{ matrix.release }}
       run: tools/ppa-upload.sh ${{ github.workspace }}/../lp_credentials
 
