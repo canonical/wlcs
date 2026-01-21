@@ -6,7 +6,6 @@ backends:
     lxd:
         systems:
             - ubuntu-24.04
-            - ubuntu-25.04
             - ubuntu-25.10
             - ubuntu-devel:
                 image: ubuntu-daily:devel/amd64
@@ -40,7 +39,6 @@ suites:
             DISTRO/debian_sid: debian
             RELEASE: noble
             RELEASE/ubuntu: noble
-            RELEASE/ubuntu_plucky: plucky
             RELEASE/ubuntu_questing: questing
             RELEASE/ubuntu_devel: resolute
             RELEASE/debian_sid: sid
