@@ -1175,3 +1175,163 @@ INSTANTIATE_TEST_SUITE_P(
 // TODO: test it gets put on a specified output
 // TODO: test margin
 // TODO: test keyboard interactivity
+TEST_F(LayerSurfaceTest, layer_surface_remains_configured_when_occluded_by_fullscreen_window)
+{
+    // Verify that a layer surface attached to top+left+right maintains its configuration
+    // even when occluded by a fullscreen window, and becomes visible again when unfullscreened.
+    //
+    // This is a REGRESSION TEST for a bug where submitting a buffer to an occluded layer
+    // surface causes it to lose its attachment state and appear in the middle of the screen.
+    //
+    // Expected behavior:
+    // 1. Layer surface attached to top+left+right
+    // 2. Normal window is fullscreened, occluding the layer surface
+    // 3. Layer surface remains hidden (occluded)
+    // 4. Submitting a buffer to the layer surface should NOT change its position/size
+    // 5. Layer surface should remain hidden at the top, not appear in the middle
+    // 6. When window is unfullscreened, layer surface is visible again at top
+    //
+    // BUG: Step 5 currently FAILS - the layer surface appears in the middle of the screen
+    // instead of remaining hidden at the top edge.
+    
+    // Step 1: Create layer surface attached to top, left, and right edges
+    // This creates a horizontal bar at the top of the screen
+    // When anchored to left+right, width is determined by compositor, but height must be specified
+    zwlr_layer_surface_v1_set_size(layer_surface, 0, default_size.height.as_int());
+    zwlr_layer_surface_v1_set_anchor(
+        layer_surface,
+        ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP |
+        ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT |
+        ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT);
+    commit_and_wait_for_configure();
+    
+    auto const output = output_rect();
+    auto const layer_size = layer_surface.last_size();
+    ASSERT_THAT(layer_size.width, Eq(output.size.width))
+        << "Layer surface should span the full width when anchored to left+right";
+    
+    surface.attach_visible_buffer(layer_size.width.as_int(), layer_size.height.as_int());
+    client.roundtrip();
+    
+    // Verify layer surface is visible at the top
+    Point layer_top_left = output.top_left;
+    expect_surface_is_at_position(layer_top_left);
+    
+    // Step 2: Create a normal floating XDG toplevel window
+    wlcs::Surface window_surface{client};
+    wlcs::XdgSurfaceStable xdg_surface{client, window_surface};
+    wlcs::XdgToplevelStable toplevel{xdg_surface};
+    
+    int xdg_surface_configure_count = 0;
+    wlcs::XdgToplevelStable::State window_state{0, 0, nullptr};
+    
+    ON_CALL(xdg_surface, configure).WillByDefault([&](uint32_t serial)
+        {
+            xdg_surface_ack_configure(xdg_surface, serial);
+            xdg_surface_configure_count++;
+        });
+    
+    ON_CALL(toplevel, configure).WillByDefault([&](auto... args)
+        {
+            window_state = wlcs::XdgToplevelStable::State{args...};
+        });
+    
+    // Do initial commit without buffer, wait for configure, then attach buffer
+    wl_surface_commit(window_surface);
+    client.dispatch_until([&](){ return xdg_surface_configure_count > 0; });
+    
+    window_surface.attach_buffer(400, 300);
+    wl_surface_commit(window_surface);
+    client.flush();
+    
+    // Wait for window to be activated
+    client.dispatch_until([&](){ return window_state.activated; });
+    
+    ASSERT_THAT(window_state.fullscreen, Eq(false)) << "Window should not be fullscreen initially";
+    
+    // Verify layer surface is still visible
+    auto pointer = the_server().create_pointer();
+    pointer.move_to(layer_top_left.x.as_int() + 10, layer_top_left.y.as_int() + 10);
+    client.roundtrip();
+    
+    ASSERT_THAT(client.window_under_cursor(), Eq((wl_surface*)surface))
+        << "Precondition: layer surface should be visible before fullscreening window";
+    
+    // Step 3: Fullscreen the floating window
+    xdg_toplevel_set_fullscreen(toplevel, nullptr);
+    wl_surface_commit(window_surface);
+    client.dispatch_until([&](){ return window_state.fullscreen; });
+    
+    ASSERT_THAT(window_state.fullscreen, Eq(true)) << "Window should be fullscreen";
+    
+    // Step 4: Check that layer surface is now hidden (occluded by fullscreen window)
+    // In Mir, fullscreen windows occlude layer surfaces on lower layers
+    pointer.move_to(layer_top_left.x.as_int() + 10, layer_top_left.y.as_int() + 10);
+    client.roundtrip();
+    
+    EXPECT_THAT(client.window_under_cursor(), Ne((wl_surface*)surface))
+        << "Layer surface should be occluded by fullscreen window";
+    EXPECT_THAT(client.window_under_cursor(), Eq((wl_surface*)window_surface))
+        << "Fullscreen window should be under cursor at layer surface position";
+    
+    // Verify layer surface size hasn't changed while occluded
+    EXPECT_THAT(layer_surface.last_size(), Eq(layer_size))
+        << "Layer surface size should not change when occluded";
+    
+    // Step 5: Submit a buffer to the layer surface while it's occluded
+    // BUG: This should NOT change the layer surface's position or make it visible,
+    // but currently causes it to appear in the middle of the screen
+    // Use attach_buffer instead of attach_visible_buffer because the layer surface
+    // is occluded and the compositor might not render it (and thus never release the buffer)
+    surface.attach_buffer(layer_size.width.as_int(), layer_size.height.as_int());
+    wl_surface_commit(surface);
+    client.roundtrip();
+    
+    // Step 6: Check that it's still hidden and at the top edge
+    // **EXPECTED TO FAIL**: Due to the bug, the layer surface will appear in the
+    // middle of the screen instead of remaining hidden at the top
+    pointer.move_to(layer_top_left.x.as_int() + 10, layer_top_left.y.as_int() + 10);
+    client.roundtrip();
+    
+    // First check: layer surface should still be occluded
+    EXPECT_THAT(client.window_under_cursor(), Ne((wl_surface*)surface))
+        << "Layer surface should still be occluded after buffer submission";
+    EXPECT_THAT(client.window_under_cursor(), Eq((wl_surface*)window_surface))
+        << "Fullscreen window should still be under cursor at top";
+    
+    // Check if layer surface incorrectly appeared in the middle (the bug)
+    Point middle_of_screen{
+        output.top_left.x.as_int() + output.size.width.as_int() / 2,
+        output.top_left.y.as_int() + output.size.height.as_int() / 2
+    };
+    pointer.move_to(middle_of_screen.x.as_int(), middle_of_screen.y.as_int());
+    client.roundtrip();
+    
+    if (client.window_under_cursor() == (wl_surface*)surface)
+    {
+        ADD_FAILURE() << "BUG DETECTED: Layer surface appeared in middle of screen after "
+                      << "buffer submission while occluded. It should remain hidden at the top.";
+    }
+    
+    // Verify size hasn't changed
+    EXPECT_THAT(layer_surface.last_size(), Eq(layer_size))
+        << "Layer surface size should not change after buffer submission while occluded";
+    
+    // Step 7: Unfullscreen the window
+    xdg_toplevel_unset_fullscreen(toplevel);
+    wl_surface_commit(window_surface);
+    client.roundtrip();
+    
+    // Step 8: Check that layer surface is now visible again at the top
+    pointer.move_to(layer_top_left.x.as_int() + 10, layer_top_left.y.as_int() + 10);
+    client.roundtrip();
+    
+    EXPECT_THAT(client.window_under_cursor(), Eq((wl_surface*)surface))
+        << "Layer surface should be visible again after window is unfullscreened";
+    
+    // Verify layer surface position and size are correct
+    EXPECT_THAT(layer_surface.last_size(), Eq(layer_size))
+        << "Layer surface size should remain unchanged after unfullscreen";
+    
+    expect_surface_is_at_position(layer_top_left);
+}
