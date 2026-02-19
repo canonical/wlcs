@@ -1300,11 +1300,9 @@ TEST_F(LayerSurfaceTest, layer_surface_remains_configured_when_occluded_by_fulls
         << "Fullscreen window should still be under cursor at top";
 
     // Check if layer surface incorrectly appeared in the middle (the bug)
-    Point middle_of_screen{
-        output.top_left.x.as_int() + output.size.width.as_int() / 2,
-        output.top_left.y.as_int() + output.size.height.as_int() / 2
-    };
-    pointer.move_to(middle_of_screen.x.as_int(), middle_of_screen.y.as_int());
+    auto middle_x = output.top_left.x.as_int() + output.size.width.as_int() / 2;
+    auto middle_y = output.top_left.y.as_int() + output.size.height.as_int() / 2;
+    pointer.move_to(middle_x, middle_y);
     client.roundtrip();
 
     if (client.window_under_cursor() == (wl_surface*)surface)
