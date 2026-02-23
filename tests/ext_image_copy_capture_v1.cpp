@@ -90,6 +90,7 @@ public:
 
     auto is_ready() { return ready_; }
     auto failure_reason() { return failure_reason_; }
+    auto damage() { return damage_; }
 
 private:
     wlcs::WlHandle<ext_image_copy_capture_frame_v1> const frame;
@@ -418,7 +419,94 @@ TEST_F(ExtImageCopyCaptureTest, capture_succeeds)
     // zeroed out initial state. As the format includes an alpha
     // channel and we expect the output to be opaque, this should be
     // true.
-    ASSERT_THAT(data, Contains(Ne(std::byte{0})));
+    EXPECT_THAT(data, Contains(Ne(std::byte{0})));
+
+    // First frame should damage the entire buffer
+    EXPECT_THAT(frame->damage(), ElementsAre(wlcs::Rectangle{{}, buffer_size}));
+}
+
+TEST_F(ExtImageCopyCaptureTest, no_second_capture_without_damage)
+{
+    OutputImageCaptureSourceManager source_manager{client};
+    ImageCopyCaptureManager capture_manager{client};
+    auto output = client.output_state(0);
+    auto source = source_manager.create_source(output.output);
+    auto session = capture_manager.create_session(*source, 0);
+    client.roundtrip();
+
+    ASSERT_THAT(session->is_dirty(), IsFalse());
+    ASSERT_THAT(session->buffer_size(), Ne(std::nullopt));
+    auto buffer_size = session->buffer_size().value();
+    // TODO: compositor could report different formats
+    ASSERT_THAT(session->shm_formats(), Contains(Eq(WL_SHM_FORMAT_ARGB8888)));
+
+    wlcs::ShmBuffer shm_buffer{
+        client,
+        buffer_size.width.as_int(),
+        buffer_size.height.as_int(),
+    };
+
+    auto frame = session->create_frame();
+    frame->attach_buffer(shm_buffer);
+    frame->capture();
+    client.dispatch_until([&frame]() { return frame->is_ready() || frame->failure_reason() != std::nullopt; });
+    ASSERT_THAT(frame->is_ready(), IsTrue());
+
+    // Try to capture a second frame, which should not complete as
+    // there is no damage.
+    frame.reset();
+    frame = session->create_frame();
+    frame->attach_buffer(shm_buffer);
+    frame->capture();
+    try
+    {
+        client.dispatch_until([&frame]() { return frame->is_ready() || frame->failure_reason() != std::nullopt; }, wlcs::helpers::a_short_time());
+    } catch (wlcs::Timeout const& err) {
+        return;
+    }
+    FAIL() << "Frame captured without new damage";
+}
+
+TEST_F(ExtImageCopyCaptureTest, second_capture_after_damage)
+{
+    wlcs::Surface surface{client.create_visible_surface(200, 200)};
+
+    OutputImageCaptureSourceManager source_manager{client};
+    ImageCopyCaptureManager capture_manager{client};
+    auto output = client.output_state(0);
+    auto source = source_manager.create_source(output.output);
+    auto session = capture_manager.create_session(*source, 0);
+    client.roundtrip();
+
+    ASSERT_THAT(session->is_dirty(), IsFalse());
+    ASSERT_THAT(session->buffer_size(), Ne(std::nullopt));
+    auto buffer_size = session->buffer_size().value();
+    // TODO: compositor could report different formats
+    ASSERT_THAT(session->shm_formats(), Contains(Eq(WL_SHM_FORMAT_ARGB8888)));
+
+    wlcs::ShmBuffer shm_buffer{
+        client,
+        buffer_size.width.as_int(),
+        buffer_size.height.as_int(),
+    };
+
+    auto frame = session->create_frame();
+    frame->attach_buffer(shm_buffer);
+    frame->capture();
+    client.dispatch_until([&frame]() { return frame->is_ready() || frame->failure_reason() != std::nullopt; });
+    ASSERT_THAT(frame->is_ready(), IsTrue());
+
+    // Start a second frame capture, then create some damage
+    frame.reset();
+    frame = session->create_frame();
+    frame->attach_buffer(shm_buffer);
+    frame->capture();
+
+    surface.attach_buffer(200, 200);
+    wl_surface_commit(surface);
+
+    client.dispatch_until([&frame]() { return frame->is_ready() || frame->failure_reason() != std::nullopt; });
+    ASSERT_THAT(frame->is_ready(), IsTrue());
 }
 
 }
