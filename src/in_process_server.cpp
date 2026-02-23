@@ -41,6 +41,7 @@
 #include <unordered_map>
 #include <chrono>
 #include <poll.h>
+#include <sys/mman.h>
 
 using namespace std::literals::chrono_literals;
 
@@ -2263,10 +2264,20 @@ public:
     Impl(Client& client, int width, int height)
     {
         auto stride = width * 4;
-        auto size = stride * height;
-        auto fd = wlcs::helpers::create_anonymous_file(size);
+        size_ = stride * height;
+        auto fd = wlcs::helpers::create_anonymous_file(size_);
+        data_ = static_cast<std::byte*>(
+            mmap(nullptr, size_, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0));
+        if (data_ == MAP_FAILED)
+        {
+            close(fd);
+            BOOST_THROW_EXCEPTION((std::system_error{
+                errno,
+                std::system_category(),
+                "Failed to map buffer"}));
+        }
 
-        auto pool = wl_shm_create_pool(client.shm(), fd, size);
+        auto pool = wl_shm_create_pool(client.shm(), fd, size_);
         buffer_ = wl_shm_pool_create_buffer(
             pool,
             0,
@@ -2283,11 +2294,22 @@ public:
     ~Impl()
     {
         wl_buffer_destroy(buffer_);
+        munmap(data_, size_);
     }
 
     wl_buffer* buffer() const
     {
         return buffer_;
+    }
+
+    std::span<std::byte> data()
+    {
+        return {data_, (size_t)size_};
+    }
+
+    std::span<std::byte const> data() const
+    {
+        return {data_, (size_t)size_};
     }
 
     void add_release_listener(std::function<bool()> const& on_release)
@@ -2317,6 +2339,8 @@ private:
         &on_release
     };
 
+    int size_;
+    std::byte* data_;
     wl_buffer* buffer_;
     std::vector<std::function<bool()>> release_notifiers;
 };
@@ -2334,6 +2358,16 @@ wlcs::ShmBuffer::~ShmBuffer() = default;
 wlcs::ShmBuffer::operator wl_buffer*() const
 {
     return impl->buffer();
+}
+
+std::span<std::byte> wlcs::ShmBuffer::data()
+{
+    return impl->data();
+}
+
+std::span<std::byte const> wlcs::ShmBuffer::data() const
+{
+    return impl->data();
 }
 
 void wlcs::ShmBuffer::add_release_listener(std::function<bool()> const &on_release)

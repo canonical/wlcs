@@ -231,6 +231,9 @@ public:
 
     operator wl_buffer*() const;
 
+    std::span<std::byte> data();
+    std::span<std::byte const> data() const;
+
     void add_release_listener(std::function<bool()> const &on_release);
 
 private:
