@@ -400,17 +400,25 @@ TEST_F(ExtImageCopyCaptureTest, capture_succeeds)
     // TODO: compositor could report different formats
     ASSERT_THAT(session->shm_formats(), Contains(Eq(WL_SHM_FORMAT_ARGB8888)));
 
-    auto frame = session->create_frame();
     wlcs::ShmBuffer shm_buffer{
         client,
         buffer_size.width.as_int(),
         buffer_size.height.as_int(),
     };
+    auto data = shm_buffer.data();
+    memset(data.data(), 0, data.size());
+
+    auto frame = session->create_frame();
     frame->attach_buffer(shm_buffer);
     frame->capture();
     client.dispatch_until([&frame]() { return frame->is_ready() || frame->failure_reason() != std::nullopt; });
 
     ASSERT_THAT(frame->is_ready(), IsTrue());
+    // At least one byte of the buffer has been changed from the
+    // zeroed out initial state. As the format includes an alpha
+    // channel and we expect the output to be opaque, this should be
+    // true.
+    ASSERT_THAT(data, Contains(Ne(std::byte{0})));
 }
 
 }
