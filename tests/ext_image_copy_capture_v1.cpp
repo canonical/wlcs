@@ -32,6 +32,7 @@ WLCS_CREATE_INTERFACE_DESCRIPTOR(ext_output_image_capture_source_manager_v1)
 WLCS_CREATE_INTERFACE_DESCRIPTOR(ext_image_capture_source_v1)
 WLCS_CREATE_INTERFACE_DESCRIPTOR(ext_image_copy_capture_manager_v1)
 WLCS_CREATE_INTERFACE_DESCRIPTOR(ext_image_copy_capture_session_v1)
+WLCS_CREATE_INTERFACE_DESCRIPTOR(ext_image_copy_capture_cursor_session_v1)
 WLCS_CREATE_INTERFACE_DESCRIPTOR(ext_image_copy_capture_frame_v1)
 } // namespace wlcs
 
@@ -258,6 +259,63 @@ auto ImageCopyCaptureSession::create_frame() -> std::unique_ptr<ImageCopyCapture
     return std::make_unique<ImageCopyCaptureFrame>(ext_image_copy_capture_session_v1_create_frame(session));
 }
 
+class ImageCopyCaptureCursorSession
+{
+public:
+    explicit ImageCopyCaptureCursorSession(ext_image_copy_capture_cursor_session_v1* session);
+    ImageCopyCaptureCursorSession(ImageCopyCaptureCursorSession const&) = delete;
+    ImageCopyCaptureCursorSession& operator=(ImageCopyCaptureCursorSession const&) = delete;
+
+    auto position() const { return position_; }
+
+private:
+    wlcs::WlHandle<ext_image_copy_capture_cursor_session_v1> const session;
+
+    bool in_source_ = false;
+    wlcs::Point position_;
+    wlcs::Point hotspot_;
+};
+
+ImageCopyCaptureCursorSession::ImageCopyCaptureCursorSession(ext_image_copy_capture_cursor_session_v1* session)
+    : session{session}
+{
+    static ext_image_copy_capture_cursor_session_v1_listener const listener = {
+        .enter = [](
+            void* data,
+            ext_image_copy_capture_cursor_session_v1*)
+            {
+                auto self = static_cast<ImageCopyCaptureCursorSession*>(data);
+                self->in_source_ = true;
+            },
+        .leave = [](
+            void* data,
+            ext_image_copy_capture_cursor_session_v1*)
+            {
+                auto self = static_cast<ImageCopyCaptureCursorSession*>(data);
+                self->in_source_ = false;
+            },
+        .position = [](
+            void* data,
+            ext_image_copy_capture_cursor_session_v1*,
+            int32_t x,
+            int32_t y)
+            {
+                auto self = static_cast<ImageCopyCaptureCursorSession*>(data);
+                self->position_ = {x, y};
+            },
+        .hotspot = [](
+            void* data,
+            ext_image_copy_capture_cursor_session_v1*,
+            int32_t x,
+            int32_t y)
+            {
+                auto self = static_cast<ImageCopyCaptureCursorSession*>(data);
+                self->hotspot_ = {x, y};
+            },
+    };
+    ext_image_copy_capture_cursor_session_v1_add_listener(session, &listener, this);
+}
+
 class ImageCopyCaptureManager
 {
 public:
@@ -266,6 +324,7 @@ public:
     ImageCopyCaptureManager& operator=(ImageCopyCaptureManager const&) = delete;
 
     auto create_session(ext_image_capture_source_v1* source, uint32_t options) -> std::unique_ptr<ImageCopyCaptureSession>;
+    auto create_pointer_cursor_session(ext_image_capture_source_v1* source, wl_pointer* pointer) -> std::unique_ptr<ImageCopyCaptureCursorSession>;
 
 private:
     wlcs::WlHandle<ext_image_copy_capture_manager_v1> const manager;
@@ -279,6 +338,11 @@ ImageCopyCaptureManager::ImageCopyCaptureManager(wlcs::Client& client)
 auto ImageCopyCaptureManager::create_session(ext_image_capture_source_v1* source, uint32_t options) -> std::unique_ptr<ImageCopyCaptureSession>
 {
     return std::make_unique<ImageCopyCaptureSession>(ext_image_copy_capture_manager_v1_create_session(manager, source, options));
+}
+
+auto ImageCopyCaptureManager::create_pointer_cursor_session(ext_image_capture_source_v1* source, wl_pointer* pointer) -> std::unique_ptr<ImageCopyCaptureCursorSession>
+{
+    return std::make_unique<ImageCopyCaptureCursorSession>(ext_image_copy_capture_manager_v1_create_pointer_cursor_session(manager, source, pointer));
 }
 
 class ExtImageCopyCaptureTest
@@ -507,6 +571,23 @@ TEST_F(ExtImageCopyCaptureTest, second_capture_after_damage)
 
     client.dispatch_until([&frame]() { return frame->is_ready() || frame->failure_reason() != std::nullopt; });
     ASSERT_THAT(frame->is_ready(), IsTrue());
+}
+
+TEST_F(ExtImageCopyCaptureTest, cursor_session_sends_pointer)
+{
+    OutputImageCaptureSourceManager source_manager{client};
+    ImageCopyCaptureManager capture_manager{client};
+    auto output = client.output_state(0);
+    auto source = source_manager.create_source(output.output);
+    auto session = capture_manager.create_pointer_cursor_session(*source, client.the_pointer());
+
+    auto pointer = the_server().create_pointer();
+    for (int i = 1; i < 10; i++)
+    {
+        wlcs::Point point{10 * i, 20 * i};
+        pointer.move_to(point.x.as_int(), point.y.as_int());
+        client.dispatch_until([&]() { return session->position() == point; });
+    }
 }
 
 }
