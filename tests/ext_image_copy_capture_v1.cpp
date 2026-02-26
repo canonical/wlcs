@@ -267,6 +267,9 @@ public:
     ImageCopyCaptureCursorSession& operator=(ImageCopyCaptureCursorSession const&) = delete;
 
     auto position() const { return position_; }
+    auto hotspot() const { return hotspot_; }
+
+    auto get_capture_session() -> std::unique_ptr<ImageCopyCaptureSession>;
 
 private:
     wlcs::WlHandle<ext_image_copy_capture_cursor_session_v1> const session;
@@ -314,6 +317,11 @@ ImageCopyCaptureCursorSession::ImageCopyCaptureCursorSession(ext_image_copy_capt
             },
     };
     ext_image_copy_capture_cursor_session_v1_add_listener(session, &listener, this);
+}
+
+auto ImageCopyCaptureCursorSession::get_capture_session() -> std::unique_ptr<ImageCopyCaptureSession>
+{
+    return std::make_unique<ImageCopyCaptureSession>(ext_image_copy_capture_cursor_session_v1_get_capture_session(session));
 }
 
 class ImageCopyCaptureManager
@@ -588,6 +596,68 @@ TEST_F(ExtImageCopyCaptureTest, cursor_session_sends_pointer)
         pointer.move_to(point.x.as_int(), point.y.as_int());
         client.dispatch_until([&]() { return session->position() == point; });
     }
+}
+
+TEST_F(ExtImageCopyCaptureTest, cursor_session_captures_pointer_image)
+{
+    // Create a surface and place the cursor over it
+    wlcs::Surface surface{client.create_visible_surface(200, 200)};
+    the_server().move_surface_to(surface, 0, 0);
+    std::optional<uint32_t> enter_serial;
+    client.add_pointer_enter_notification([&](auto, auto, auto)
+        {
+            enter_serial = client.latest_serial();
+            return false;
+        });
+    auto pointer = the_server().create_pointer();
+    pointer.move_to(100, 100);
+    client.dispatch_until([&]() { return enter_serial.has_value(); });
+
+    // Set a cursor image
+    wlcs::Surface cursor_surface{client};
+    wlcs::ShmBuffer cursor_buffer1{client, 32, 32};
+    auto data = cursor_buffer1.data();
+    memset(data.data(), 0xff, data.size());
+    wl_surface_attach(cursor_surface, cursor_buffer1, 0, 0);
+    wl_surface_commit(cursor_surface);
+    wl_pointer_set_cursor(client.the_pointer(), enter_serial.value(), cursor_surface, 16, 16);
+    client.roundtrip();
+
+    // Create a cursor session for the output
+    OutputImageCaptureSourceManager source_manager{client};
+    ImageCopyCaptureManager capture_manager{client};
+    auto output = client.output_state(0);
+    auto source = source_manager.create_source(output.output);
+    auto cursor_session = capture_manager.create_pointer_cursor_session(*source, client.the_pointer());
+    auto capture_session = cursor_session->get_capture_session();
+    client.roundtrip();
+
+    // Attach one cursor image
+    ASSERT_THAT(capture_session->buffer_size(), Optional(wlcs::Size{32, 32}));
+    auto frame = capture_session->create_frame();
+    wlcs::ShmBuffer capture_buffer{client, 32, 32};
+    frame->attach_buffer(capture_buffer);
+    frame->capture();
+    client.dispatch_until([&frame]() { return frame->is_ready() || frame->failure_reason() != std::nullopt; });
+    ASSERT_THAT(frame->is_ready(), IsTrue());
+    EXPECT_THAT(capture_buffer.data(), ElementsAreArray(data.begin(), data.end()));
+    EXPECT_THAT(cursor_session->hotspot(), Eq(wlcs::Point{16, 16}));
+
+    // Change the cursor
+    wlcs::ShmBuffer cursor_buffer2{client, 32, 32};
+    data = cursor_buffer2.data();
+    memset(data.data(), 0x7f, data.size());
+    wl_surface_attach(cursor_surface, cursor_buffer2, 0, 0);
+    wl_surface_commit(cursor_surface);
+
+    // Capture a new frame
+    frame.reset();
+    frame = capture_session->create_frame();
+    frame->attach_buffer(capture_buffer);
+    frame->capture();
+    client.dispatch_until([&frame]() { return frame->is_ready() || frame->failure_reason() != std::nullopt; });
+    ASSERT_THAT(frame->is_ready(), IsTrue());
+    EXPECT_THAT(capture_buffer.data(), ElementsAreArray(data.begin(), data.end()));
 }
 
 }
