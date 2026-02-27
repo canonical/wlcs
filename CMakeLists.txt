@@ -172,6 +172,7 @@ set(WLCS_TESTS
   tests/gtk_primary_selection.cpp
   tests/test_surface_events.cpp
   tests/touches.cpp
+  tests/keyboard.cpp
   tests/wl_output.cpp
   tests/surface_input_regions.cpp
   tests/frame_submission.cpp
@@ -204,6 +205,7 @@ set(
   include/wlcs/display_server.h
   include/wlcs/pointer.h
   include/wlcs/touch.h
+  include/wlcs/keyboard.h
   include/expect_protocol_error.h
   include/helpers.h
   include/wl_handle.h

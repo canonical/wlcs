@@ -39,6 +39,7 @@
 
 struct WlcsPointer;
 struct WlcsTouch;
+struct WlcsKeyboard;
 struct WlcsServerIntegration;
 
 struct zwlr_layer_shell_v1;
@@ -126,6 +127,28 @@ private:
     std::unique_ptr<Impl> impl;
 };
 
+class Keyboard
+{
+public:
+    ~Keyboard();
+    Keyboard(Keyboard&&);
+
+    void key_down(int scancode);
+    void key_up(int scancode);
+    void key(int scancode);
+
+private:
+    friend class Server;
+    template<typename Proxy>
+    Keyboard(
+        WlcsKeyboard* raw_device,
+        std::shared_ptr<Proxy> const& proxy,
+        std::shared_ptr<void const> const& keep_dso_loaded);
+
+    class Impl;
+    std::unique_ptr<Impl> impl;
+};
+
 class Surface;
 
 class Server
@@ -141,6 +164,7 @@ public:
 
     Pointer create_pointer();
     Touch create_touch();
+    Keyboard create_keyboard();
 
     void move_surface_to(Surface& surface, int x, int y);
 
@@ -224,6 +248,14 @@ struct OutputState
     std::optional<int> scale;
 };
 
+struct KeyEvent
+{
+    uint32_t scancode;
+    bool is_down;
+    uint32_t serial;
+    uint32_t time;
+};
+
 class Client
 {
 public:
@@ -261,6 +293,7 @@ public:
     std::pair<wl_fixed_t, wl_fixed_t> pointer_position() const;
     std::pair<wl_fixed_t, wl_fixed_t> touch_position() const;
     std::optional<uint32_t> latest_serial() const;
+    std::optional<KeyEvent> last_key_event() const;
 
     using PointerEnterNotifier =
         std::function<bool(wl_surface*, wl_fixed_t x, wl_fixed_t y)>;
