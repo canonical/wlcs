@@ -172,6 +172,7 @@ set(WLCS_TESTS
   tests/gtk_primary_selection.cpp
   tests/test_surface_events.cpp
   tests/touches.cpp
+  tests/keyboard.cpp
   tests/wl_output.cpp
   tests/surface_input_regions.cpp
   tests/frame_submission.cpp
