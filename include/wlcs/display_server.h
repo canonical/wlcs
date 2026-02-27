@@ -31,6 +31,7 @@ typedef struct wl_event_loop wl_event_loop;
 
 typedef struct WlcsPointer WlcsPointer;
 typedef struct WlcsTouch WlcsTouch;
+typedef struct WlcsKeyboard WlcsKeyboard;
 
 /**
  * Maximum version of WlcsIntegrationDescriptor this header provides a definition for
@@ -68,7 +69,7 @@ struct WlcsIntegrationDescriptor
 /**
  * Maximum version of WlcsDisplayServer this header provides a definition for
  */
-#define WLCS_DISPLAY_SERVER_VERSION 3
+#define WLCS_DISPLAY_SERVER_VERSION 4
 typedef struct WlcsDisplayServer WlcsDisplayServer;
 struct WlcsDisplayServer
 {
@@ -156,6 +157,13 @@ struct WlcsDisplayServer
      * \param wlcs_event_dispatcher
      */
     void (*start_on_this_thread)(WlcsDisplayServer* server, wl_event_loop* wlcs_event_dispatcher);
+
+
+    /* Added in version 4 */
+    /**
+     * Create a fake keyboard device
+     */
+    WlcsKeyboard* (*create_keyboard)(WlcsDisplayServer* server);
 };
 
 /**

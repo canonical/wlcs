@@ -28,7 +28,7 @@ wlcs::Surface surface{client};       // Creates wl_surface
 client.roundtrip();                  // Block until server processes requests
 ```
 
-**Simulating Input** (see `include/wlcs/pointer.h`, `include/wlcs/touch.h`):
+**Simulating Input** (see `include/wlcs/pointer.h`, `include/wlcs/touch.h`, `include/wlcs/keyboard.h`):
 
 ```cpp
 auto pointer = the_server().create_pointer();
@@ -39,6 +39,11 @@ auto touch = the_server().create_touch();
 touch.down_at(50, 50);
 touch.move_to(60, 60);
 touch.up();
+
+auto keyboard = the_server().create_keyboard();
+keyboard.key_down(KEY_A);  // Linux input event codes
+keyboard.key_up(KEY_A);
+keyboard.key(KEY_ENTER);   // Press and release
 ```
 
 **Protocol Wrappers**: Headers like `layer_shell_v1.h`, `xdg_shell_stable.h` provide RAII wrappers around Wayland protocols with helper methods (e.g., `dispatch_until_configure()`).

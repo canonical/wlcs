@@ -21,6 +21,7 @@
 #include "version_specifier.h"
 #include "wlcs/display_server.h"
 #include "helpers.h"
+#include "wlcs/keyboard.h"
 #include "wlcs/pointer.h"
 #include "wlcs/touch.h"
 #include "xdg_shell_v6.h"
@@ -337,6 +338,91 @@ void wlcs::Touch::up()
     impl->up();
 }
 
+class wlcs::Keyboard::Impl
+{
+public:
+    template <typename Proxy>
+    Impl(
+        WlcsKeyboard* raw_device,
+        std::shared_ptr<Proxy> const& proxy,
+        std::shared_ptr<void const> const& keep_dso_loaded) :
+        keep_dso_loaded{keep_dso_loaded},
+        keyboard{
+            raw_device,
+            proxy->register_op(
+                [](WlcsKeyboard* raw_device)
+                {
+                    raw_device->destroy(raw_device);
+                })}
+    {
+        if (keyboard->version != WLCS_KEYBOARD_VERSION)
+        {
+            BOOST_THROW_EXCEPTION((std::runtime_error{std::format(
+                "Unexpected WlcsKeyboard version. Expected: {} received: {}",
+                WLCS_KEYBOARD_VERSION,
+                keyboard->version)}));
+        }
+        set_up_thunks(proxy);
+    }
+
+    void key_down(int scancode)
+    {
+        key_down_thunk(scancode);
+    }
+
+    void key_up(int scancode)
+    {
+        key_up_thunk(scancode);
+    }
+
+private:
+    template <typename Proxy> void set_up_thunks(std::shared_ptr<Proxy> const& proxy)
+    {
+        key_down_thunk = proxy->register_op(
+            [this](int scancode)
+            {
+                keyboard->key_down(keyboard.get(), scancode);
+            });
+        key_up_thunk = proxy->register_op(
+            [this](int scancode)
+            {
+                keyboard->key_up(keyboard.get(), scancode);
+            });
+    }
+
+    std::shared_ptr<void const> const keep_dso_loaded;
+    std::unique_ptr<WlcsKeyboard, std::function<void(WlcsKeyboard*)>> const keyboard;
+
+    std::function<void(int)> key_down_thunk;
+    std::function<void(int)> key_up_thunk;
+};
+
+wlcs::Keyboard::~Keyboard() = default;
+wlcs::Keyboard::Keyboard(Keyboard&&) = default;
+
+template <typename Proxy>
+wlcs::Keyboard::Keyboard(
+    WlcsKeyboard* raw_device, std::shared_ptr<Proxy> const& proxy, std::shared_ptr<void const> const& keep_dso_loaded) :
+    impl{std::make_unique<Impl>(raw_device, proxy, keep_dso_loaded)}
+{
+}
+
+void wlcs::Keyboard::key_down(int scancode)
+{
+    impl->key_down(scancode);
+}
+
+void wlcs::Keyboard::key_up(int scancode)
+{
+    impl->key_up(scancode);
+}
+
+void wlcs::Keyboard::key(int scancode)
+{
+    key_down(scancode);
+    key_up(scancode);
+}
+
 namespace
 {
 std::shared_ptr<std::unordered_map<std::string, uint32_t> const> extract_supported_extensions(WlcsDisplayServer* server)
@@ -456,6 +542,23 @@ public:
         }
     }
 
+    Keyboard create_keyboard()
+    {
+        if (server->version < 4 || !server->create_keyboard)
+        {
+            ::testing::Test::RecordProperty("wlcs-skip-test", "Display server does not support keyboard simulation");
+            BOOST_THROW_EXCEPTION(ShimNotImplemented{"Display server does not support keyboard simulation"});
+        }
+        if (thread_context)
+        {
+            return Keyboard{create_keyboard_thunk(), thread_context->proxy, hooks};
+        }
+        else
+        {
+            return Keyboard{create_keyboard_thunk(), std::make_shared<NullProxy>(), hooks};
+        }
+    }
+
     void move_surface_to(Surface& surface, int x, int y)
     {
         // Ensure the server knows about the IDs we're about to send...
@@ -552,6 +655,14 @@ private:
             {
                 return server->create_touch(server.get());
             });
+        if (server->version >= 4)
+        {
+            create_keyboard_thunk = proxy->register_op(
+                [this]()
+                {
+                    return server->create_keyboard(server.get());
+                });
+        }
         position_window_absolute_thunk = proxy->register_op(
             [this](
                 struct wl_display* client,
@@ -571,6 +682,7 @@ private:
     std::function<int()> create_client_socket_thunk;
     std::function<WlcsPointer*()> create_pointer_thunk;
     std::function<WlcsTouch*()> create_touch_thunk;
+    std::function<WlcsKeyboard*()> create_keyboard_thunk;
     std::function<void(struct wl_display*, struct wl_surface*, int, int)> position_window_absolute_thunk;
 };
 
@@ -617,6 +729,11 @@ wlcs::Pointer wlcs::Server::create_pointer()
 wlcs::Touch wlcs::Server::create_touch()
 {
     return impl->create_touch();
+}
+
+wlcs::Keyboard wlcs::Server::create_keyboard()
+{
+    return impl->create_keyboard();
 }
 
 wlcs::InProcessServer::InProcessServer()
@@ -945,6 +1062,11 @@ public:
         return latest_serial_;
     }
 
+    std::optional<wlcs::KeyEvent> last_key_event() const
+    {
+        return last_key_event_;
+    }
+
     bool pointer_events_pending() const
     {
         return !pending_buttons.empty() || pending_pointer_location;
@@ -1218,12 +1340,15 @@ private:
         void* ctx,
         wl_keyboard*,
         uint32_t serial,
-        uint32_t /*time*/,
-        uint32_t /*key*/,
-        uint32_t /*state*/)
+        uint32_t time,
+        uint32_t key,
+        uint32_t state)
     {
         auto me = static_cast<Impl*>(ctx);
         me->latest_serial_ = serial;
+
+        wlcs::KeyEvent event{key, state == WL_KEYBOARD_KEY_STATE_PRESSED, serial, time};
+        me->last_key_event_ = event;
     }
 
     static void keyboard_modifiers(void*, wl_keyboard*, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)
@@ -1682,6 +1807,8 @@ private:
     std::vector<PointerLeaveNotifier> leave_notifiers;
     std::vector<PointerMotionNotifier> motion_notifiers;
     std::vector<PointerButtonNotifier> button_notifiers;
+
+    std::optional<wlcs::KeyEvent> last_key_event_;
 };
 
 constexpr wl_keyboard_listener wlcs::Client::Impl::keyboard_listener;
@@ -1817,6 +1944,11 @@ std::pair<wl_fixed_t, wl_fixed_t> wlcs::Client::touch_position() const
 std::optional<uint32_t> wlcs::Client::latest_serial() const
 {
     return impl->latest_serial();
+}
+
+std::optional<wlcs::KeyEvent> wlcs::Client::last_key_event() const
+{
+    return impl->last_key_event();
 }
 
 void wlcs::Client::add_pointer_enter_notification(PointerEnterNotifier const& on_enter)
