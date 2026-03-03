@@ -2264,10 +2264,10 @@ public:
     Impl(Client& client, int width, int height)
     {
         auto stride = width * 4;
-        size_ = stride * height;
-        auto fd = wlcs::helpers::create_anonymous_file(size_);
+        size = stride * height;
+        auto fd = wlcs::helpers::create_anonymous_file(size);
         data_ = static_cast<std::byte*>(
-            mmap(nullptr, size_, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0));
+            mmap(nullptr, size, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0));
         if (data_ == MAP_FAILED)
         {
             close(fd);
@@ -2277,7 +2277,7 @@ public:
                 "Failed to map buffer"}));
         }
 
-        auto pool = wl_shm_create_pool(client.shm(), fd, size_);
+        auto pool = wl_shm_create_pool(client.shm(), fd, size);
         buffer_ = wl_shm_pool_create_buffer(
             pool,
             0,
@@ -2294,7 +2294,7 @@ public:
     ~Impl()
     {
         wl_buffer_destroy(buffer_);
-        munmap(data_, size_);
+        munmap(data_, size);
     }
 
     wl_buffer* buffer() const
@@ -2304,12 +2304,12 @@ public:
 
     std::span<std::byte> data()
     {
-        return {data_, (size_t)size_};
+        return {data_, static_cast<size_t>(size)};
     }
 
     std::span<std::byte const> data() const
     {
-        return {data_, (size_t)size_};
+        return {data_, static_cast<size_t>(size)};
     }
 
     void add_release_listener(std::function<bool()> const& on_release)
@@ -2339,7 +2339,7 @@ private:
         &on_release
     };
 
-    int size_;
+    int size;
     std::byte* data_;
     wl_buffer* buffer_;
     std::vector<std::function<bool()>> release_notifiers;
