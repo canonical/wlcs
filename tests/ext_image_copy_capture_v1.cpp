@@ -38,51 +38,12 @@ WLCS_CREATE_INTERFACE_DESCRIPTOR(ext_image_copy_capture_frame_v1)
 
 namespace {
 
-class ImageCaptureSource
-{
-public:
-    explicit ImageCaptureSource(ext_image_capture_source_v1* handle);
-    ImageCaptureSource(ImageCaptureSource const&) = delete;
-    ImageCaptureSource& operator=(ImageCaptureSource const&) = delete;
-
-    operator ext_image_capture_source_v1*() const { return handle; }
-
-private:
-    wlcs::WlHandle<ext_image_capture_source_v1> const handle;
-};
-
-ImageCaptureSource::ImageCaptureSource(ext_image_capture_source_v1* handle)
-    : handle{handle}
-{
-}
-
-class OutputImageCaptureSourceManager
-{
-public:
-    explicit OutputImageCaptureSourceManager(wlcs::Client& client);
-    OutputImageCaptureSourceManager(OutputImageCaptureSourceManager const&) = delete;
-    OutputImageCaptureSourceManager& operator=(OutputImageCaptureSourceManager const&) = delete;
-
-    operator ext_output_image_capture_source_manager_v1*() const { return manager; }
-
-private:
-    wlcs::WlHandle<ext_output_image_capture_source_manager_v1> const manager;
-};
-
-OutputImageCaptureSourceManager::OutputImageCaptureSourceManager(wlcs::Client& client)
-    : manager{client.bind_if_supported<ext_output_image_capture_source_manager_v1>(wlcs::AnyVersion)}
-{
-}
-
 class ImageCopyCaptureFrame
 {
 public:
     explicit ImageCopyCaptureFrame(ext_image_copy_capture_frame_v1* frame);
     ImageCopyCaptureFrame(ImageCopyCaptureFrame const&) = delete;
     ImageCopyCaptureFrame& operator=(ImageCopyCaptureFrame const&) = delete;
-
-    void attach_buffer(wl_buffer* buffer);
-    void capture();
 
     auto is_ready() { return ready_; }
     auto failure_reason() { return failure_reason_; }
@@ -150,16 +111,6 @@ ImageCopyCaptureFrame::ImageCopyCaptureFrame(ext_image_copy_capture_frame_v1* fr
             },
     };
     ext_image_copy_capture_frame_v1_add_listener(frame, &listener, this);
-}
-
-void ImageCopyCaptureFrame::attach_buffer(wl_buffer* buffer)
-{
-    ext_image_copy_capture_frame_v1_attach_buffer(frame, buffer);
-}
-
-void ImageCopyCaptureFrame::capture()
-{
-    ext_image_copy_capture_frame_v1_capture(frame);
 }
 
 class ImageCopyCaptureSession
@@ -311,24 +262,6 @@ ImageCopyCaptureCursorSession::ImageCopyCaptureCursorSession(ext_image_copy_capt
     ext_image_copy_capture_cursor_session_v1_add_listener(session, &listener, this);
 }
 
-class ImageCopyCaptureManager
-{
-public:
-    explicit ImageCopyCaptureManager(wlcs::Client& client);
-    ImageCopyCaptureManager(ImageCopyCaptureManager const&) = delete;
-    ImageCopyCaptureManager& operator=(ImageCopyCaptureManager const&) = delete;
-
-    operator ext_image_copy_capture_manager_v1*() const { return manager; }
-
-private:
-    wlcs::WlHandle<ext_image_copy_capture_manager_v1> const manager;
-};
-
-ImageCopyCaptureManager::ImageCopyCaptureManager(wlcs::Client& client)
-    : manager{client.bind_if_supported<ext_image_copy_capture_manager_v1>(wlcs::AnyVersion)}
-{
-}
-
 class ExtImageCopyCaptureTest
     : public wlcs::StartedInProcessServer
 {
@@ -343,18 +276,18 @@ public:
 
 TEST_F(ExtImageCopyCaptureTest, can_create_source_from_output)
 {
-    OutputImageCaptureSourceManager manager{client};
+    auto manager = client.bind_if_supported<ext_output_image_capture_source_manager_v1>(wlcs::AnyVersion);
     auto output = client.output_state(0);
-    [[maybe_unused]] ImageCaptureSource source{ext_output_image_capture_source_manager_v1_create_source(manager, output.output)};
+    auto source = wlcs::wrap_wl_object(ext_output_image_capture_source_manager_v1_create_source(manager, output.output));
     client.roundtrip();
 }
 
 TEST_F(ExtImageCopyCaptureTest, can_create_session_from_output)
 {
-    OutputImageCaptureSourceManager source_manager{client};
-    ImageCopyCaptureManager capture_manager{client};
+    auto source_manager = client.bind_if_supported<ext_output_image_capture_source_manager_v1>(wlcs::AnyVersion);
+    auto capture_manager = client.bind_if_supported<ext_image_copy_capture_manager_v1>(wlcs::AnyVersion);
     auto output = client.output_state(0);
-    ImageCaptureSource source{ext_output_image_capture_source_manager_v1_create_source(source_manager, output.output)};
+    auto source = wlcs::wrap_wl_object(ext_output_image_capture_source_manager_v1_create_source(source_manager, output.output));
     ImageCopyCaptureSession session{ext_image_copy_capture_manager_v1_create_session(capture_manager, source, 0)};
     client.roundtrip();
 
@@ -364,10 +297,10 @@ TEST_F(ExtImageCopyCaptureTest, can_create_session_from_output)
 
 TEST_F(ExtImageCopyCaptureTest, duplicate_frames_fails)
 {
-    OutputImageCaptureSourceManager source_manager{client};
-    ImageCopyCaptureManager capture_manager{client};
+    auto source_manager = client.bind_if_supported<ext_output_image_capture_source_manager_v1>(wlcs::AnyVersion);
+    auto capture_manager = client.bind_if_supported<ext_image_copy_capture_manager_v1>(wlcs::AnyVersion);
     auto output = client.output_state(0);
-    ImageCaptureSource source{ext_output_image_capture_source_manager_v1_create_source(source_manager, output.output)};
+    auto source = wlcs::wrap_wl_object(ext_output_image_capture_source_manager_v1_create_source(source_manager, output.output));
     ImageCopyCaptureSession session{ext_image_copy_capture_manager_v1_create_session(capture_manager, source, 0)};
 
     ImageCopyCaptureFrame frame1{ext_image_copy_capture_session_v1_create_frame(session)};
@@ -387,10 +320,10 @@ TEST_F(ExtImageCopyCaptureTest, duplicate_frames_fails)
 
 TEST_F(ExtImageCopyCaptureTest, capture_with_no_buffer_fails)
 {
-    OutputImageCaptureSourceManager source_manager{client};
-    ImageCopyCaptureManager capture_manager{client};
+    auto source_manager = client.bind_if_supported<ext_output_image_capture_source_manager_v1>(wlcs::AnyVersion);
+    auto capture_manager = client.bind_if_supported<ext_image_copy_capture_manager_v1>(wlcs::AnyVersion);
     auto output = client.output_state(0);
-    ImageCaptureSource source{ext_output_image_capture_source_manager_v1_create_source(source_manager, output.output)};
+    auto source = wlcs::wrap_wl_object(ext_output_image_capture_source_manager_v1_create_source(source_manager, output.output));
     ImageCopyCaptureSession session{ext_image_copy_capture_manager_v1_create_session(capture_manager, source, 0)};
 
     ImageCopyCaptureFrame frame{ext_image_copy_capture_session_v1_create_frame(session)};
@@ -410,10 +343,10 @@ TEST_F(ExtImageCopyCaptureTest, capture_with_no_buffer_fails)
 
 TEST_F(ExtImageCopyCaptureTest, capture_with_wrong_size_fails)
 {
-    OutputImageCaptureSourceManager source_manager{client};
-    ImageCopyCaptureManager capture_manager{client};
+    auto source_manager = client.bind_if_supported<ext_output_image_capture_source_manager_v1>(wlcs::AnyVersion);
+    auto capture_manager = client.bind_if_supported<ext_image_copy_capture_manager_v1>(wlcs::AnyVersion);
     auto output = client.output_state(0);
-    ImageCaptureSource source{ext_output_image_capture_source_manager_v1_create_source(source_manager, output.output)};
+    auto source = wlcs::wrap_wl_object(ext_output_image_capture_source_manager_v1_create_source(source_manager, output.output));
     ImageCopyCaptureSession session{ext_image_copy_capture_manager_v1_create_session(capture_manager, source, 0)};
     client.roundtrip();
 
@@ -427,8 +360,8 @@ TEST_F(ExtImageCopyCaptureTest, capture_with_wrong_size_fails)
         buffer_size.width.as_int() + 10,
         buffer_size.height.as_int() + 10,
     };
-    frame.attach_buffer(shm_buffer);
-    frame.capture();
+    ext_image_copy_capture_frame_v1_attach_buffer(frame, shm_buffer);
+    ext_image_copy_capture_frame_v1_capture(frame);
     client.roundtrip();
 
     EXPECT_THAT(frame.is_ready(), IsFalse());
@@ -438,10 +371,10 @@ TEST_F(ExtImageCopyCaptureTest, capture_with_wrong_size_fails)
 
 TEST_F(ExtImageCopyCaptureTest, capture_succeeds)
 {
-    OutputImageCaptureSourceManager source_manager{client};
-    ImageCopyCaptureManager capture_manager{client};
+    auto source_manager = client.bind_if_supported<ext_output_image_capture_source_manager_v1>(wlcs::AnyVersion);
+    auto capture_manager = client.bind_if_supported<ext_image_copy_capture_manager_v1>(wlcs::AnyVersion);
     auto output = client.output_state(0);
-    ImageCaptureSource source{ext_output_image_capture_source_manager_v1_create_source(source_manager, output.output)};
+    auto source = wlcs::wrap_wl_object(ext_output_image_capture_source_manager_v1_create_source(source_manager, output.output));
     ImageCopyCaptureSession session{ext_image_copy_capture_manager_v1_create_session(capture_manager, source, 0)};
     client.roundtrip();
 
@@ -477,10 +410,10 @@ TEST_F(ExtImageCopyCaptureTest, capture_succeeds)
 
 TEST_F(ExtImageCopyCaptureTest, no_second_capture_without_damage)
 {
-    OutputImageCaptureSourceManager source_manager{client};
-    ImageCopyCaptureManager capture_manager{client};
+    auto source_manager = client.bind_if_supported<ext_output_image_capture_source_manager_v1>(wlcs::AnyVersion);
+    auto capture_manager = client.bind_if_supported<ext_image_copy_capture_manager_v1>(wlcs::AnyVersion);
     auto output = client.output_state(0);
-    ImageCaptureSource source{ext_output_image_capture_source_manager_v1_create_source(source_manager, output.output)};
+    auto source = wlcs::wrap_wl_object(ext_output_image_capture_source_manager_v1_create_source(source_manager, output.output));
     ImageCopyCaptureSession session{ext_image_copy_capture_manager_v1_create_session(capture_manager, source, 0)};
     client.roundtrip();
 
@@ -523,10 +456,10 @@ TEST_F(ExtImageCopyCaptureTest, second_capture_after_damage)
 {
     wlcs::Surface surface{client.create_visible_surface(200, 200)};
 
-    OutputImageCaptureSourceManager source_manager{client};
-    ImageCopyCaptureManager capture_manager{client};
+    auto source_manager = client.bind_if_supported<ext_output_image_capture_source_manager_v1>(wlcs::AnyVersion);
+    auto capture_manager = client.bind_if_supported<ext_image_copy_capture_manager_v1>(wlcs::AnyVersion);
     auto output = client.output_state(0);
-    ImageCaptureSource source{ext_output_image_capture_source_manager_v1_create_source(source_manager, output.output)};
+    auto source = wlcs::wrap_wl_object(ext_output_image_capture_source_manager_v1_create_source(source_manager, output.output));
     ImageCopyCaptureSession session{ext_image_copy_capture_manager_v1_create_session(capture_manager, source, 0)};
     client.roundtrip();
 
@@ -566,10 +499,10 @@ TEST_F(ExtImageCopyCaptureTest, second_capture_after_damage)
 
 TEST_F(ExtImageCopyCaptureTest, cursor_session_sends_pointer)
 {
-    OutputImageCaptureSourceManager source_manager{client};
-    ImageCopyCaptureManager capture_manager{client};
+    auto source_manager = client.bind_if_supported<ext_output_image_capture_source_manager_v1>(wlcs::AnyVersion);
+    auto capture_manager = client.bind_if_supported<ext_image_copy_capture_manager_v1>(wlcs::AnyVersion);
     auto output = client.output_state(0);
-    ImageCaptureSource source{ext_output_image_capture_source_manager_v1_create_source(source_manager, output.output)};
+    auto source = wlcs::wrap_wl_object(ext_output_image_capture_source_manager_v1_create_source(source_manager, output.output));
     ImageCopyCaptureCursorSession session{ext_image_copy_capture_manager_v1_create_pointer_cursor_session(capture_manager, source, client.the_pointer())};
 
     auto pointer = the_server().create_pointer();
@@ -607,10 +540,10 @@ TEST_F(ExtImageCopyCaptureTest, cursor_session_captures_pointer_image)
     client.roundtrip();
 
     // Create a cursor session for the output
-    OutputImageCaptureSourceManager source_manager{client};
-    ImageCopyCaptureManager capture_manager{client};
+    auto source_manager = client.bind_if_supported<ext_output_image_capture_source_manager_v1>(wlcs::AnyVersion);
+    auto capture_manager = client.bind_if_supported<ext_image_copy_capture_manager_v1>(wlcs::AnyVersion);
     auto output = client.output_state(0);
-    ImageCaptureSource source{ext_output_image_capture_source_manager_v1_create_source(source_manager, output.output)};
+    auto source = wlcs::wrap_wl_object(ext_output_image_capture_source_manager_v1_create_source(source_manager, output.output));
     ImageCopyCaptureCursorSession cursor_session{ext_image_copy_capture_manager_v1_create_pointer_cursor_session(capture_manager, source, client.the_pointer())};
     ImageCopyCaptureSession capture_session{ext_image_copy_capture_cursor_session_v1_get_capture_session(cursor_session)};
     client.roundtrip();
