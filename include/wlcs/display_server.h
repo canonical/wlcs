@@ -166,10 +166,29 @@ struct WlcsDisplayServer
     WlcsKeyboard* (*create_keyboard)(WlcsDisplayServer* server);
 };
 
+typedef void(*TestBodyFn)();
+typedef void(*SetUpFn)();
+typedef void(*TearDownFn)();
+
+struct Test
+{
+    char const* name;
+    TestBodyFn body;
+};
+
+struct TestFixture
+{
+    char const* name;
+    SetUpFn setup;
+    TearDownFn teardown;
+    size_t num_tests;
+    struct Test* tests;
+};
+
 /**
  * Maximum version of WlcsServerIntegration this header provides a definition of
  */
-#define WLCS_SERVER_INTEGRATION_VERSION 1
+#define WLCS_SERVER_INTEGRATION_VERSION 2
 typedef struct WlcsServerIntegration WlcsServerIntegration;
 struct WlcsServerIntegration
 {
@@ -189,6 +208,13 @@ struct WlcsServerIntegration
      */
     WlcsDisplayServer* (*create_server)(int argc, char const** argv);
     void (*destroy_server)(WlcsDisplayServer* server);
+
+    /* New in version 2 */
+    /**
+     * Extra tests
+     */
+    TestFixture const* extra_test_suites;
+    size_t num_extra_tests;
 };
 
 /**
