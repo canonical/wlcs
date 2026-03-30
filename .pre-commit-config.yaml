@@ -20,7 +20,7 @@ repos:
     args:
     - --fix
 
-- repo: https://github.com/executablebooks/mdformat
+- repo: https://github.com/hukkin/mdformat
   rev: 82912cdaea4fb830f751504486a7879c70526547  # frozen: 1.0.0
   hooks:
   - id: mdformat
