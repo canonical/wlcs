@@ -58,7 +58,7 @@ jobs:
         git diff --name-only ${{ github.sha }}~1 ${{ github.sha }} >> $TICS_CHANGED_LIST
 
     - name: Run TICS analysis
-      uses: tiobe/tics-github-action@a53037a6bb9f71b6a97cdeb0ac41632266804b9e  # v3.8.0
+      uses: tiobe/tics-github-action@7901970b6e31982ab7c88b61ee28cac29b750395  # v3.9.0
       with:
         mode: ${{ contains(fromJSON('["pull_request", "merge_group"]'), github.event_name) && 'client' || 'qserver' }}
         project: wlcs
