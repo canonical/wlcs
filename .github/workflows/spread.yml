@@ -33,8 +33,9 @@ jobs:
         - lxd:...:ubuntu_devel
         - lxd:...:ubuntu_proposed
         - lxd:...:ubuntu_questing
-        - lxd:alpine-3.20:...:default
         - lxd:alpine-3.21:...:default
+        - lxd:alpine-3.22:...:default
+        - lxd:alpine-3.23:...:default
         - lxd:alpine-edge:...:default
         - lxd:archlinux-cloud:...:default
         - lxd:fedora-42:...:default

@@ -13,8 +13,9 @@ backends:
             - fedora-43
             - fedora-rawhide:
                 image: images:fedora/43
-            - alpine-3.20
             - alpine-3.21
+            - alpine-3.22
+            - alpine-3.23
             - alpine-edge
             - archlinux-cloud
 
