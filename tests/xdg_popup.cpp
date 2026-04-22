@@ -627,7 +627,7 @@ class XdgPopupPositionerTest:
 {
 };
 
-TEST_P(XdgPopupPositionerTest, xdg_shell_stable_popup_placed_correctly)
+TEST_F(XdgPopupPositionerTest, xdg_shell_stable_popup_placed_correctly)
 {
     auto manager = std::make_unique<XdgPopupStableManager>(the_server());
     auto const& param = GetParam();
@@ -1436,6 +1436,102 @@ TEST_F(XdgPopupTest, popup_role_can_not_replace)
         // for a proposal to add this missing error code to xdg_surface.
         EXPECT_THAT(err.interface(), Eq(&xdg_surface_interface));
         EXPECT_THAT(err.error_code(), Eq(XDG_WM_BASE_ERROR_ROLE));
+        return;
+    }
+    FAIL() << "Protocol error not raised";
+}
+
+// FIXME: Share size test code
+TEST_F(XdgPopupPositionerTest, zero_width_and_height)
+{
+    wlcs::Client client{the_server()};
+    wlcs::Surface surface{client};
+    wlcs::XdgPositionerStable positioner{client};
+    xdg_positioner_set_size(positioner, 0, 0);
+    try
+    {
+        client.roundtrip();
+    }
+    catch (wlcs::ProtocolError const& err)
+    {
+        EXPECT_THAT(err.interface(), Eq(&xdg_positioner_interface));
+        EXPECT_THAT(err.error_code(), Eq(XDG_POSITIONER_ERROR_INVALID_INPUT));
+        return;
+    }
+    FAIL() << "Protocol error not raised";
+}
+
+TEST_F(XdgPopupPositionerTest, zero_width)
+{
+    wlcs::Client client{the_server()};
+    wlcs::Surface surface{client};
+    wlcs::XdgPositionerStable positioner{client};
+    xdg_positioner_set_size(positioner, 0, 1);
+    try
+    {
+        client.roundtrip();
+    }
+    catch (wlcs::ProtocolError const& err)
+    {
+        EXPECT_THAT(err.interface(), Eq(&xdg_positioner_interface));
+        EXPECT_THAT(err.error_code(), Eq(XDG_POSITIONER_ERROR_INVALID_INPUT));
+        return;
+    }
+    FAIL() << "Protocol error not raised";
+}
+
+TEST_F(XdgPopupPositionerTest, zero_height)
+{
+    wlcs::Client client{the_server()};
+    wlcs::Surface surface{client};
+    wlcs::XdgPositionerStable positioner{client};
+    xdg_positioner_set_size(positioner, 1, 0);
+    try
+    {
+        client.roundtrip();
+    }
+    catch (wlcs::ProtocolError const& err)
+    {
+        EXPECT_THAT(err.interface(), Eq(&xdg_positioner_interface));
+        EXPECT_THAT(err.error_code(), Eq(XDG_POSITIONER_ERROR_INVALID_INPUT));
+        return;
+    }
+    FAIL() << "Protocol error not raised";
+}
+
+TEST_F(XdgPopupPositionerTest, invalid_anchor)
+{
+    wlcs::Client client{the_server()};
+    wlcs::Surface surface{client};
+    wlcs::XdgPositionerStable positioner{client};
+    xdg_positioner_set_anchor(positioner, 9); // invalid anchor
+    try
+    {
+        client.roundtrip();
+    }
+    catch (wlcs::ProtocolError const& err)
+    {
+        EXPECT_THAT(err.interface(), Eq(&xdg_positioner_interface));
+        EXPECT_THAT(err.error_code(), Eq(XDG_POSITIONER_ERROR_INVALID_INPUT));
+        return;
+    }
+    FAIL() << "Protocol error not raised";
+}
+
+TEST_F(XdgPopupPositionerTest, invalid_gravity)
+{
+    wlcs::Client client{the_server()};
+    wlcs::Surface surface{client};
+    wlcs::XdgPositionerStable positioner{client};
+    xdg_positioner_set_gravity(positioner, 9); // invalid gravity
+    try
+    {
+        client.roundtrip();
+    }
+    catch (wlcs::ProtocolError const& err)
+    {
+        EXPECT_THAT(err.interface(), Eq(&xdg_positioner_interface));
+        EXPECT_THAT(err.error_code(), Eq(XDG_POSITIONER_ERROR_INVALID_INPUT));
         return;
     }
     FAIL() << "Protocol error not raised";
