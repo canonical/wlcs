@@ -1392,6 +1392,55 @@ TEST_F(XdgPopupTest, popup_can_be_repositioned)
         IsTrue());
 }
 
+TEST_F(XdgPopupTest, popup_role_can_only_be_assigned_once)
+{
+    wlcs::Client client{the_server()};
+    wlcs::Surface surface{client};
+    wlcs::XdgSurfaceStable xdg_shell_surface{client, surface};
+    wlcs::XdgPositionerStable positioner1{client};
+    wlcs::XdgPopupStable popup1{xdg_shell_surface, nullptr, positioner1};
+    wlcs::XdgPositionerStable positioner2{client};
+    wlcs::XdgPopupStable popup2{xdg_shell_surface, nullptr, positioner2};
+    try
+    {
+        client.roundtrip();
+    }
+    catch (wlcs::ProtocolError const& err)
+    {
+        // Note the error code is for xdg_wm_base, see
+        // https://gitlab.freedesktop.org/wayland/wayland-protocols/-/merge_requests/508
+        // for a proposal to add this missing error code to xdg_surface.
+        EXPECT_THAT(err.interface(), Eq(&xdg_surface_interface));
+        EXPECT_THAT(err.error_code(), Eq(XDG_WM_BASE_ERROR_ROLE));
+        return;
+    }
+    FAIL() << "Protocol error not raised";
+}
+
+TEST_F(XdgPopupTest, popup_role_can_not_replace)
+{
+    wlcs::Client client{the_server()};
+    wlcs::Surface surface{client};
+    wlcs::XdgSurfaceStable xdg_shell_surface{client, surface};
+    wlcs::XdgToplevelStable toplevel{xdg_shell_surface};
+    wlcs::XdgPositionerStable positioner{client};
+    wlcs::XdgPopupStable popup{xdg_shell_surface, nullptr, positioner};
+    try
+    {
+        client.roundtrip();
+    }
+    catch (wlcs::ProtocolError const& err)
+    {
+        // Note the error code is for xdg_wm_base, see
+        // https://gitlab.freedesktop.org/wayland/wayland-protocols/-/merge_requests/508
+        // for a proposal to add this missing error code to xdg_surface.
+        EXPECT_THAT(err.interface(), Eq(&xdg_surface_interface));
+        EXPECT_THAT(err.error_code(), Eq(XDG_WM_BASE_ERROR_ROLE));
+        return;
+    }
+    FAIL() << "Protocol error not raised";
+}
+
 INSTANTIATE_TEST_SUITE_P(
     XdgPopupStable,
     XdgPopupTest,
