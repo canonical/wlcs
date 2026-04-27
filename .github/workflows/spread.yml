@@ -33,6 +33,7 @@ jobs:
         - lxd:...:ubuntu_devel
         - lxd:...:ubuntu_proposed
         - lxd:...:ubuntu_questing
+        - lxd:...:ubuntu_resolute
         - lxd:alpine-3.21:...:default
         - lxd:alpine-3.22:...:default
         - lxd:alpine-3.23:...:default
@@ -41,7 +42,7 @@ jobs:
         - lxd:fedora-42:...:default
         - lxd:fedora-43:...:default
         - lxd:fedora-rawhide:...:default
-        - lxd:ubuntu-25.10:...:clang
+        - lxd:ubuntu-26.04:...:clang
         - lxd:ubuntu-devel:...:clang
 
     runs-on: ubuntu-latest
