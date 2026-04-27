@@ -620,7 +620,7 @@ INSTANTIATE_TEST_SUITE_P(
             [](wlcs::InProcessServer& server, wlcs::Client& client, int x, int y, int width, int height)
                 -> std::unique_ptr<wlcs::Surface>
                 {
-                    auto surface = client.create_xdg_shell_v6_surface(
+                    auto surface = client.create_xdg_shell_stable_surface(
                         width,
                         height);
                     server.the_server().move_surface_to(surface, x, y);
@@ -918,7 +918,7 @@ INSTANTIATE_TEST_SUITE_P(
             [](wlcs::InProcessServer& server, wlcs::Client& client, int x, int y, int width, int height)
                 -> std::unique_ptr<wlcs::Surface>
                 {
-                    auto surface = client.create_xdg_shell_v6_surface(
+                    auto surface = client.create_xdg_shell_stable_surface(
                         width,
                         height);
                     server.the_server().move_surface_to(surface, x, y);
