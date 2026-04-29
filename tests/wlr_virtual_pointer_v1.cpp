@@ -51,6 +51,7 @@ public:
     MOCK_METHOD(void, axis_source, (uint32_t axis_source));
     MOCK_METHOD(void, axis_stop, (uint32_t time, uint32_t axis));
     MOCK_METHOD(void, axis_discrete, (uint32_t axis, int32_t discrete));
+    MOCK_METHOD(void, axis_value120, (uint32_t axis, int32_t value120));
 
 private:
     wl_pointer* const proxy;
@@ -71,6 +72,8 @@ PointerListener::PointerListener(wl_seat* seat)
         FORWARD_TO_MOCK(axis_source),
         FORWARD_TO_MOCK(axis_stop),
         FORWARD_TO_MOCK(axis_discrete),
+        FORWARD_TO_MOCK(axis_value120),
+        [](auto...){},  // axis_relative_direction
     };
 #undef FORWARD_TO_MOCK
     wl_pointer_add_listener(proxy, &listener, this);
@@ -253,7 +256,7 @@ TEST_F(VirtualPointerV1Test, when_virtual_pointer_scrolls_client_sees_axis)
 TEST_F(VirtualPointerV1Test, when_virtual_pointer_scrolls_with_steps_client_sees_axis_descrete)
 {
     EXPECT_CALL(listener, axis(_, WL_POINTER_AXIS_HORIZONTAL_SCROLL, wl_fixed_from_int(5)));
-    EXPECT_CALL(listener, axis_discrete(WL_POINTER_AXIS_HORIZONTAL_SCROLL, 4));
+    EXPECT_CALL(listener, axis_value120(WL_POINTER_AXIS_HORIZONTAL_SCROLL, _));
     EXPECT_CALL(listener, axis_source(_)).Times(AnyNumber());
     auto recieved_frame = false;
     EXPECT_CALL(listener, frame()).Times(AtLeast(1)).WillOnce(Invoke([&]{ recieved_frame = true; }));
