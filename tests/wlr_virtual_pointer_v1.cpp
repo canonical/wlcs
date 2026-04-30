@@ -256,7 +256,7 @@ TEST_F(VirtualPointerV1Test, when_virtual_pointer_scrolls_client_sees_axis)
 TEST_F(VirtualPointerV1Test, when_virtual_pointer_scrolls_with_steps_client_sees_axis_value120)
 {
     EXPECT_CALL(listener, axis(_, WL_POINTER_AXIS_HORIZONTAL_SCROLL, wl_fixed_from_int(5)));
-    EXPECT_CALL(listener, axis_value120(WL_POINTER_AXIS_HORIZONTAL_SCROLL, _));
+    EXPECT_CALL(listener, axis_value120(WL_POINTER_AXIS_HORIZONTAL_SCROLL, 4*120));
     EXPECT_CALL(listener, axis_source(_)).Times(AnyNumber());
     auto recieved_frame = false;
     EXPECT_CALL(listener, frame()).Times(AtLeast(1)).WillOnce(Invoke([&]{ recieved_frame = true; }));
