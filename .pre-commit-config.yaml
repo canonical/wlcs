@@ -14,7 +14,7 @@ repos:
   - id: check-added-large-files
 
 - repo: https://github.com/zizmorcore/zizmor-pre-commit
-  rev: 122913fcf3aa27fa6867c902c3e803b7bff22d28  # frozen: v1.25.0
+  rev: 9257c6050c0261b8c57e712f632dc4a8010109a9  # frozen: v1.25.2
   hooks:
   - id: zizmor
     args:
