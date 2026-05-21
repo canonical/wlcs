@@ -97,6 +97,36 @@ public:
             });
     }
 
+    void unmap_and_remap()
+    {
+        // Unmap the window by attaching a null buffer
+        wl_surface_attach(surface, nullptr, 0, 0);
+        wl_surface_commit(surface);
+        client.roundtrip();
+
+        // Remap the window by attaching a real buffer
+        surface.attach_visible_buffer(window_width, window_height);
+
+        // Wait for the window to be remapped - wait for activation which indicates it's fully mapped
+        client.dispatch_until(
+            [&]()
+            {
+                return state.activated;
+            });
+    }
+
+    auto set_fullscreen() -> void
+    {
+        xdg_toplevel_set_fullscreen(toplevel, nullptr);
+        dispatch_until_configure();
+    }
+
+    auto set_maximized() -> void
+    {
+        xdg_toplevel_set_maximized(toplevel);
+        dispatch_until_configure();
+    }
+
     operator wlcs::Surface&() {return surface;}
 
     operator wl_surface*() const {return surface;}
@@ -682,4 +712,123 @@ TEST_F(XdgToplevelStableConfigurationTest, activated_state_follows_pointer)
 
     EXPECT_THAT(state_a.activated, Eq(false));
     EXPECT_THAT(state_b.activated, Eq(true));
+}
+
+struct XdgTopLevelStableUnmapRemapTest: public wlcs::StartedInProcessServer
+{
+    wlcs::Client client{the_server()};
+    ConfigurationWindow window{client};
+    wlcs::XdgToplevelStable::State& state = window.state;
+};
+
+TEST_F(XdgTopLevelStableUnmapRemapTest, window_preserves_restored_after_unmap_remap)
+{
+    // Verify that a restored window remains restored after unmap/remap cycle
+    // This is the baseline test - restored is the default state
+
+    // Verify initial state is restored (not maximized, not fullscreen)
+    ASSERT_THAT(state.maximized, Eq(false)) << "precondition: window should be restored (not maximized)";
+    ASSERT_THAT(state.fullscreen, Eq(false)) << "precondition: window should be restored (not fullscreen)";
+    ASSERT_THAT(state.activated, Eq(true)) << "precondition: window should be activated";
+
+    window.unmap_and_remap();
+
+    // Verify window is still in restored state (not maximized, not fullscreen)
+    EXPECT_THAT(state.maximized, Eq(false))
+        << "window should remain restored (not maximized) after unmap/remap";
+    EXPECT_THAT(state.fullscreen, Eq(false))
+        << "window should remain restored (not fullscreen) after unmap/remap";
+    EXPECT_THAT(state.activated, Eq(true))
+        << "window should be activated after remap";
+}
+
+TEST_F(XdgTopLevelStableUnmapRemapTest, window_preserves_maximized_after_unmap_remap)
+{
+    // Verify that a maximized window remains maximized after unmap/remap cycle
+    // This tests the fix for the bug where windows would revert to restored state
+
+    window.set_maximized();
+
+    ASSERT_THAT(state.maximized, Eq(true)) << "precondition: window should be maximized";
+    ASSERT_THAT(state.activated, Eq(true)) << "precondition: window should be activated";
+
+    window.unmap_and_remap();
+
+    // Verify window is still maximized (not reverted to restored)
+    EXPECT_THAT(state.maximized, Eq(true))
+        << "window should preserve maximized state after unmap/remap, not revert to restored";
+    EXPECT_THAT(state.activated, Eq(true))
+        << "window should be activated after remap";
+}
+
+TEST_F(XdgTopLevelStableUnmapRemapTest, window_preserves_fullscreen_after_unmap_remap)
+{
+    // Verify that a fullscreen window remains fullscreen after unmap/remap cycle
+    // This tests the fix for the bug where windows would revert to restored state
+
+    // Set window to fullscreen state
+    window.set_fullscreen();
+
+    ASSERT_THAT(state.fullscreen, Eq(true)) << "precondition: window should be fullscreen";
+    ASSERT_THAT(state.activated, Eq(true)) << "precondition: window should be activated";
+
+    window.unmap_and_remap();
+
+    // Verify window is still fullscreen (not reverted to restored)
+    EXPECT_THAT(state.fullscreen, Eq(true))
+        << "window should preserve fullscreen state after unmap/remap, not revert to restored";
+    EXPECT_THAT(state.activated, Eq(true))
+        << "window should be activated after remap";
+}
+
+TEST_F(XdgTopLevelStableUnmapRemapTest, window_preserves_fullscreen_when_also_maximized_after_unmap_remap)
+{
+    // Verify that when a window has both fullscreen and maximized states,
+    // it returns to fullscreen after unmap/remap (higher precedence state)
+    // This tests the SurfaceStateTracker's state precedence logic
+
+    // Set window to maximized first
+    window.set_maximized();
+    ASSERT_THAT(state.maximized, Eq(true)) << "precondition: window should be maximized";
+
+    // Then set to fullscreen (higher precedence than maximized)
+    window.set_fullscreen();
+    ASSERT_THAT(state.fullscreen, Eq(true)) << "precondition: window should be fullscreen";
+    // Note: maximized state is still tracked internally, just not the active state
+
+    window.unmap_and_remap();
+
+    EXPECT_THAT(state.fullscreen, Eq(true))
+        << "window should preserve fullscreen state (higher precedence) after unmap/remap";
+    EXPECT_THAT(state.activated, Eq(true))
+        << "window should be activated after remap";
+
+    // After unsetting fullscreen, window should return to maximized
+    // (verifying that maximized was preserved in the state tracker)
+    xdg_toplevel_unset_fullscreen(window);
+    window.dispatch_until_configure();
+    EXPECT_THAT(state.fullscreen, Eq(false))
+        << "fullscreen should be unset";
+    EXPECT_THAT(state.maximized, Eq(true))
+        << "window should return to maximized state (which was preserved during unmap/remap)";
+}
+
+TEST_F(XdgTopLevelStableUnmapRemapTest, window_preserves_state_through_multiple_unmap_remap_cycles)
+{
+    // Verify that window state is preserved through multiple unmap/remap cycles
+    // This tests that the state tracking is robust across repeated hide/show operations
+
+    window.set_maximized();
+    ASSERT_THAT(state.maximized, Eq(true)) << "precondition: window should be maximized";
+
+    for (auto cycle = 1; cycle <= 3; cycle++)
+    {
+        window.unmap_and_remap();
+
+        EXPECT_THAT(state.maximized, Eq(true))
+            << "window should preserve maximized state after unmap/remap cycle " << cycle;
+    }
+
+    EXPECT_THAT(state.activated, Eq(true))
+        << "window should remain activated through multiple cycles";
 }
