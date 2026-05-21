@@ -1556,6 +1556,8 @@ private:
         [](auto...){},  // axis_source
         [](auto...){},  // axis_stop
         [](auto...){},  // axis_discrete
+        [](auto...){},  // axis_value120
+        [](auto...){},  // axis_relative_direction
     };
 
     static void touch_down(
