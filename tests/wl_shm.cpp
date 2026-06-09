@@ -106,8 +106,9 @@ TEST_F(ShmTest, create_buffer_exceeding_pool_size_is_an_error)
     EXPECT_PROTOCOL_ERROR(
         {
             // Offsetting by a full row pushes the buffer past the end of the pool.
+            int const offset = stride;
             wl_shm_pool_create_buffer(
-                pool, stride, width, height, stride, WL_SHM_FORMAT_ARGB8888);
+                pool, offset, width, height, stride, WL_SHM_FORMAT_ARGB8888);
             client.roundtrip();
         },
         &wl_shm_pool_interface,
