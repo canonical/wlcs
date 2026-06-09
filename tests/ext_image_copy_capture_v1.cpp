@@ -700,9 +700,32 @@ TEST_F(ExtImageCopyCaptureTest, toplevel_capture_continues_after_minimize)
     auto source_manager = client.bind_if_supported<ext_foreign_toplevel_image_capture_source_manager_v1>(wlcs::AnyVersion);
     auto capture_manager = client.bind_if_supported<ext_image_copy_capture_manager_v1>(wlcs::AnyVersion);
     wlcs::ExtForeignToplevelListV1 list{client};
+
+    // Create a surface we can minimize
     wlcs::Surface surface{client};
     wlcs::XdgSurfaceStable xdg_surface{client, surface};
     wlcs::XdgToplevelStable xdg_toplevel{xdg_surface};
+
+    // ack the initial xdg_surface configure
+    bool initial_configure_received = false;
+    EXPECT_CALL(xdg_surface, configure(_))
+        .WillOnce([&initial_configure_received, &xdg_surface](uint32_t serial)
+            {
+                xdg_surface_ack_configure(xdg_surface, serial);
+                initial_configure_received = true;
+            });
+    wl_surface_commit(surface);
+    client.dispatch_until([&]() { return initial_configure_received; });
+    Mock::VerifyAndClearExpectations(&xdg_surface);
+
+    // Ack any future configure events
+    EXPECT_CALL(xdg_surface, configure(_))
+        .Times(AnyNumber())
+        .WillRepeatedly(
+            [xdg_surface=static_cast<struct xdg_surface*>(xdg_surface)](uint32_t serial)
+            {
+                xdg_surface_ack_configure(xdg_surface, serial);
+            });
 
     // Attach our own buffer
     wlcs::ShmBuffer surface_buffer1{client, 100, 100};
