@@ -76,8 +76,8 @@ TEST_F(ShmTest, create_buffer_with_unknown_format_is_an_error)
     int const size = stride * height;
     auto const bogus_format = 0xDEADBEEF;
 
-    auto fd = wlcs::helpers::create_anonymous_file(size);
-    auto pool = wl_shm_create_pool(client.shm(), fd, size);
+    auto const fd = wlcs::helpers::create_anonymous_file(size);
+    auto const pool = wl_shm_create_pool(client.shm(), fd, size);
     close(fd);
 
     EXPECT_PROTOCOL_ERROR(
