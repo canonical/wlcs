@@ -70,7 +70,8 @@ TEST_F(ShmTest, advertises_mandatory_formats)
 // Requesting a buffer with a format the server never advertised must be rejected.
 TEST_F(ShmTest, create_buffer_with_unknown_format_is_an_error)
 {
-    int const width = 4, height = 4;
+    int const width = 4;
+    int const height = 4;
     int const stride = width * 4;
     int const size = stride * height;
     auto const bogus_format = 0xDEADBEEF;
