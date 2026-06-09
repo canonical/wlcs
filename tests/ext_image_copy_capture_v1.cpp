@@ -17,9 +17,11 @@
 #include "geometry/rectangle.h"
 #include "geometry/size.h"
 #include "in_process_server.h"
+#include "ext_foreign_toplevel_list_v1.h"
 #include "version_specifier.h"
 #include "wl_interface_descriptor.h"
 #include "expect_protocol_error.h"
+#include "xdg_shell_stable.h"
 #include "generated/ext-image-capture-source-v1-client.h"
 #include "generated/ext-image-copy-capture-v1-client.h"
 
@@ -28,7 +30,9 @@
 
 using namespace testing;
 
-namespace wlcs {
+namespace wlcs
+{
+WLCS_CREATE_INTERFACE_DESCRIPTOR(ext_foreign_toplevel_image_capture_source_manager_v1)
 WLCS_CREATE_INTERFACE_DESCRIPTOR(ext_output_image_capture_source_manager_v1)
 WLCS_CREATE_INTERFACE_DESCRIPTOR(ext_image_capture_source_v1)
 WLCS_CREATE_INTERFACE_DESCRIPTOR(ext_image_copy_capture_manager_v1)
@@ -37,7 +41,8 @@ WLCS_CREATE_INTERFACE_DESCRIPTOR(ext_image_copy_capture_cursor_session_v1)
 WLCS_CREATE_INTERFACE_DESCRIPTOR(ext_image_copy_capture_frame_v1)
 } // namespace wlcs
 
-namespace {
+namespace
+{
 
 class ImageCopyCaptureFrame
 {
@@ -275,6 +280,8 @@ public:
     wlcs::Client client;
 };
 
+} // namespace
+
 TEST_F(ExtImageCopyCaptureTest, can_create_source_from_output)
 {
     auto manager = client.bind_if_supported<ext_output_image_capture_source_manager_v1>(wlcs::AnyVersion);
@@ -289,6 +296,31 @@ TEST_F(ExtImageCopyCaptureTest, can_create_session_from_output)
     auto capture_manager = client.bind_if_supported<ext_image_copy_capture_manager_v1>(wlcs::AnyVersion);
     auto output = client.output_state(0);
     auto source = wlcs::wrap_wl_object(ext_output_image_capture_source_manager_v1_create_source(source_manager, output.output));
+    ImageCopyCaptureSession session{ext_image_copy_capture_manager_v1_create_session(capture_manager, source, 0)};
+    client.roundtrip();
+
+    ASSERT_THAT(session.is_dirty(), IsFalse());
+    EXPECT_THAT(session.buffer_size(), Ne(std::nullopt));
+}
+
+TEST_F(ExtImageCopyCaptureTest, can_create_source_from_toplevel)
+{
+    auto manager = client.bind_if_supported<ext_foreign_toplevel_image_capture_source_manager_v1>(wlcs::AnyVersion);
+    auto surface = client.create_visible_surface(100, 100);
+    wlcs::ExtForeignToplevelListV1 list{client};
+    client.roundtrip();
+    auto source = wlcs::wrap_wl_object(ext_foreign_toplevel_image_capture_source_manager_v1_create_source(manager, list.toplevel()));
+    client.roundtrip();
+}
+
+TEST_F(ExtImageCopyCaptureTest, can_create_session_from_toplevel)
+{
+    auto source_manager = client.bind_if_supported<ext_foreign_toplevel_image_capture_source_manager_v1>(wlcs::AnyVersion);
+    auto capture_manager = client.bind_if_supported<ext_image_copy_capture_manager_v1>(wlcs::AnyVersion);
+    auto surface = client.create_visible_surface(100, 100);
+    wlcs::ExtForeignToplevelListV1 list{client};
+    client.roundtrip();
+    auto source = wlcs::wrap_wl_object(ext_foreign_toplevel_image_capture_source_manager_v1_create_source(source_manager, list.toplevel()));
     ImageCopyCaptureSession session{ext_image_copy_capture_manager_v1_create_session(capture_manager, source, 0)};
     client.roundtrip();
 
@@ -565,4 +597,202 @@ TEST_F(ExtImageCopyCaptureTest, cursor_session_captures_pointer_image)
     }
 }
 
+TEST_F(ExtImageCopyCaptureTest, toplevel_capture_succeeds)
+{
+    auto source_manager = client.bind_if_supported<ext_foreign_toplevel_image_capture_source_manager_v1>(wlcs::AnyVersion);
+    auto capture_manager = client.bind_if_supported<ext_image_copy_capture_manager_v1>(wlcs::AnyVersion);
+    wlcs::ExtForeignToplevelListV1 list{client};
+    auto surface = client.create_visible_surface(100, 100);
+
+    // Attach our own buffer
+    wlcs::ShmBuffer surface_buffer{client, 100, 100};
+    memset(surface_buffer.data().data(), 0x7f, surface_buffer.data().size());
+    surface.attach_visible_buffer(surface_buffer);
+
+    auto source = wlcs::wrap_wl_object(ext_foreign_toplevel_image_capture_source_manager_v1_create_source(source_manager, list.toplevel()));
+    ImageCopyCaptureSession session{ext_image_copy_capture_manager_v1_create_session(capture_manager, source, 0)};
+    client.roundtrip();
+
+    ASSERT_THAT(session.is_dirty(), IsFalse());
+    ASSERT_THAT(session.buffer_size(), Ne(std::nullopt));
+    auto buffer_size = session.buffer_size().value();
+    // TODO: compositor could report different formats
+    ASSERT_THAT(session.shm_formats(), Contains(Eq(WL_SHM_FORMAT_ARGB8888)));
+
+    wlcs::ShmBuffer shm_buffer{
+        client,
+        buffer_size.width.as_int(),
+        buffer_size.height.as_int(),
+    };
+    auto data = shm_buffer.data();
+    memset(data.data(), 0, data.size());
+
+    ImageCopyCaptureFrame frame{ext_image_copy_capture_session_v1_create_frame(session)};
+    ext_image_copy_capture_frame_v1_attach_buffer(frame, shm_buffer);
+    ext_image_copy_capture_frame_v1_capture(frame);
+    client.dispatch_until([&frame]() { return frame.is_ready() || frame.failure_reason() != std::nullopt; });
+
+    ASSERT_THAT(frame.is_ready(), IsTrue());
+    // At least one byte of the buffer should contain the bytes we
+    // wrote the surface's buffer. It might not exactly match the
+    // original due to being composited to an opaque buffer.
+    EXPECT_THAT(data, Contains(Eq(std::byte{0x7f})));
+
+    // First frame should damage the entire buffer
+    EXPECT_THAT(frame.damage(), ElementsAre(wlcs::Rectangle{{0, 0}, buffer_size}));
+}
+
+TEST_F(ExtImageCopyCaptureTest, toplevel_capture_second_frame)
+{
+    auto source_manager = client.bind_if_supported<ext_foreign_toplevel_image_capture_source_manager_v1>(wlcs::AnyVersion);
+    auto capture_manager = client.bind_if_supported<ext_image_copy_capture_manager_v1>(wlcs::AnyVersion);
+    wlcs::ExtForeignToplevelListV1 list{client};
+    auto surface = client.create_visible_surface(100, 100);
+
+    // Attach our own buffer
+    wlcs::ShmBuffer surface_buffer1{client, 100, 100};
+    memset(surface_buffer1.data().data(), 0x7f, surface_buffer1.data().size());
+    surface.attach_visible_buffer(surface_buffer1);
+
+    auto source = wlcs::wrap_wl_object(ext_foreign_toplevel_image_capture_source_manager_v1_create_source(source_manager, list.toplevel()));
+    ImageCopyCaptureSession session{ext_image_copy_capture_manager_v1_create_session(capture_manager, source, 0)};
+    client.roundtrip();
+
+    ASSERT_THAT(session.is_dirty(), IsFalse());
+    ASSERT_THAT(session.buffer_size(), Ne(std::nullopt));
+    auto buffer_size = session.buffer_size().value();
+    // TODO: compositor could report different formats
+    ASSERT_THAT(session.shm_formats(), Contains(Eq(WL_SHM_FORMAT_ARGB8888)));
+
+    wlcs::ShmBuffer shm_buffer{
+        client,
+        buffer_size.width.as_int(),
+        buffer_size.height.as_int(),
+    };
+
+    {
+        ImageCopyCaptureFrame frame{ext_image_copy_capture_session_v1_create_frame(session)};
+        ext_image_copy_capture_frame_v1_attach_buffer(frame, shm_buffer);
+        ext_image_copy_capture_frame_v1_capture(frame);
+        client.dispatch_until([&frame]() { return frame.is_ready() || frame.failure_reason() != std::nullopt; });
+        ASSERT_THAT(frame.is_ready(), IsTrue());
+        EXPECT_THAT(shm_buffer.data(), Contains(Eq(std::byte{0x7f})));
+    }
+
+    // Start a second frame capture, then commit a new buffer
+    {
+        ImageCopyCaptureFrame frame{ext_image_copy_capture_session_v1_create_frame(session)};
+        ext_image_copy_capture_frame_v1_attach_buffer(frame, shm_buffer);
+        ext_image_copy_capture_frame_v1_capture(frame);
+
+        wlcs::ShmBuffer new_buffer{client, 100, 100};
+        memset(new_buffer.data().data(), 0x8f, new_buffer.data().size());
+        surface.attach_visible_buffer(new_buffer);
+
+        client.dispatch_until([&frame]() { return frame.is_ready() || frame.failure_reason() != std::nullopt; });
+        ASSERT_THAT(frame.is_ready(), IsTrue());
+        EXPECT_THAT(shm_buffer.data(), Contains(Eq(std::byte{0x8f})));
+    }
+}
+
+TEST_F(ExtImageCopyCaptureTest, toplevel_capture_continues_after_minimize)
+{
+    auto source_manager = client.bind_if_supported<ext_foreign_toplevel_image_capture_source_manager_v1>(wlcs::AnyVersion);
+    auto capture_manager = client.bind_if_supported<ext_image_copy_capture_manager_v1>(wlcs::AnyVersion);
+    wlcs::ExtForeignToplevelListV1 list{client};
+    wlcs::Surface surface{client};
+    wlcs::XdgSurfaceStable xdg_surface{client, surface};
+    wlcs::XdgToplevelStable xdg_toplevel{xdg_surface};
+
+    // Attach our own buffer
+    wlcs::ShmBuffer surface_buffer1{client, 100, 100};
+    memset(surface_buffer1.data().data(), 0x7f, surface_buffer1.data().size());
+    surface.attach_visible_buffer(surface_buffer1);
+
+    auto source = wlcs::wrap_wl_object(ext_foreign_toplevel_image_capture_source_manager_v1_create_source(source_manager, list.toplevel()));
+    ImageCopyCaptureSession session{ext_image_copy_capture_manager_v1_create_session(capture_manager, source, 0)};
+    client.roundtrip();
+
+    ASSERT_THAT(session.is_dirty(), IsFalse());
+    ASSERT_THAT(session.buffer_size(), Ne(std::nullopt));
+    auto buffer_size = session.buffer_size().value();
+    // TODO: compositor could report different formats
+    ASSERT_THAT(session.shm_formats(), Contains(Eq(WL_SHM_FORMAT_ARGB8888)));
+
+    wlcs::ShmBuffer shm_buffer{
+        client,
+        buffer_size.width.as_int(),
+        buffer_size.height.as_int(),
+    };
+
+    {
+        ImageCopyCaptureFrame frame{ext_image_copy_capture_session_v1_create_frame(session)};
+        ext_image_copy_capture_frame_v1_attach_buffer(frame, shm_buffer);
+        ext_image_copy_capture_frame_v1_capture(frame);
+        client.dispatch_until([&frame]() { return frame.is_ready() || frame.failure_reason() != std::nullopt; });
+        ASSERT_THAT(frame.is_ready(), IsTrue());
+        EXPECT_THAT(shm_buffer.data(), Contains(Eq(std::byte{0x7f})));
+    }
+
+    // Minimize the toplevel
+    xdg_toplevel_set_minimized(xdg_toplevel);
+    client.roundtrip();
+
+    // Start a second frame capture, then commit a new buffer
+    {
+        ImageCopyCaptureFrame frame{ext_image_copy_capture_session_v1_create_frame(session)};
+        ext_image_copy_capture_frame_v1_attach_buffer(frame, shm_buffer);
+        ext_image_copy_capture_frame_v1_capture(frame);
+
+        wlcs::ShmBuffer new_buffer{client, 100, 100};
+        memset(new_buffer.data().data(), 0x8f, new_buffer.data().size());
+        surface.attach_visible_buffer(new_buffer);
+
+        client.dispatch_until([&frame]() { return frame.is_ready() || frame.failure_reason() != std::nullopt; });
+        ASSERT_THAT(frame.is_ready(), IsTrue());
+        EXPECT_THAT(shm_buffer.data(), Contains(Eq(std::byte{0x8f})));
+    }
+}
+
+TEST_F(ExtImageCopyCaptureTest, toplevel_capture_handles_resize)
+{
+    auto source_manager = client.bind_if_supported<ext_foreign_toplevel_image_capture_source_manager_v1>(wlcs::AnyVersion);
+    auto capture_manager = client.bind_if_supported<ext_image_copy_capture_manager_v1>(wlcs::AnyVersion);
+    wlcs::ExtForeignToplevelListV1 list{client};
+    auto surface = client.create_visible_surface(100, 100);
+
+    auto source = wlcs::wrap_wl_object(ext_foreign_toplevel_image_capture_source_manager_v1_create_source(source_manager, list.toplevel()));
+    ImageCopyCaptureSession session{ext_image_copy_capture_manager_v1_create_session(capture_manager, source, 0)};
+    client.roundtrip();
+
+    ASSERT_THAT(session.is_dirty(), IsFalse());
+    ASSERT_THAT(session.buffer_size(), Ne(std::nullopt));
+    auto buffer_size = session.buffer_size().value();
+    // TODO: compositor could report different formats
+    ASSERT_THAT(session.shm_formats(), Contains(Eq(WL_SHM_FORMAT_ARGB8888)));
+
+    // New buffer constraints are sent after the toplevel is resized
+    surface.attach_visible_buffer(200, 200);
+    client.dispatch_until([&session, buffer_size]() { return !session.is_dirty() && session.buffer_size() != buffer_size; });
+    EXPECT_THAT(session.buffer_size(), Eq(wlcs::Size{buffer_size.width*2, buffer_size.height*2}));
+}
+
+TEST_F(ExtImageCopyCaptureTest, toplevel_capture_session_stops_on_surface_destroy)
+{
+    auto source_manager = client.bind_if_supported<ext_foreign_toplevel_image_capture_source_manager_v1>(wlcs::AnyVersion);
+    auto capture_manager = client.bind_if_supported<ext_image_copy_capture_manager_v1>(wlcs::AnyVersion);
+    wlcs::ExtForeignToplevelListV1 list{client};
+    auto surface = std::make_unique<wlcs::Surface>(client.create_visible_surface(100, 100));
+    client.roundtrip();
+
+    auto source = wlcs::wrap_wl_object(ext_foreign_toplevel_image_capture_source_manager_v1_create_source(source_manager, list.toplevel()));
+    ImageCopyCaptureSession session{ext_image_copy_capture_manager_v1_create_session(capture_manager, source, 0)};
+    client.roundtrip();
+
+    ASSERT_THAT(session.is_dirty(), IsFalse());
+    EXPECT_THAT(session.stopped(), IsFalse());
+
+    // Destroying the surface will stop the capture session
+    surface.reset();
+    client.dispatch_until([&session]() { return session.stopped(); });
 }
