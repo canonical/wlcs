@@ -58,6 +58,43 @@ std::vector<uint32_t> collect_advertised_formats(wlcs::Client& client)
 }
 }
 
+// Creating a pool from a file descriptor that cannot be mapped must be rejected.
+// A pipe is not mappable, so it serves as a conveniently-invalid fd.
+TEST_F(ShmTest, create_pool_with_invalid_fd_is_an_error)
+{
+    int pipe_fds[2];
+    ASSERT_THAT(pipe(pipe_fds), Eq(0));
+
+    EXPECT_PROTOCOL_ERROR(
+        {
+            auto pool = wl_shm_create_pool(client.shm(), pipe_fds[0], 4);
+            wl_shm_pool_destroy(pool);
+            client.roundtrip();
+        },
+        &wl_shm_interface,
+        WL_SHM_ERROR_INVALID_FD);
+
+    close(pipe_fds[0]);
+    close(pipe_fds[1]);
+}
+
+// Creating a pool with a non-positive size must be rejected.
+TEST_F(ShmTest, create_pool_with_negative_size_is_an_error)
+{
+    auto fd = wlcs::helpers::create_anonymous_file(64);
+
+    EXPECT_PROTOCOL_ERROR(
+        {
+            auto pool = wl_shm_create_pool(client.shm(), fd, -1);
+            wl_shm_pool_destroy(pool);
+            client.roundtrip();
+        },
+        &wl_shm_interface,
+        WL_SHM_ERROR_INVALID_STRIDE);
+
+    close(fd);
+}
+
 // The wl_shm protocol mandates that ARGB8888 and XRGB8888 are always supported.
 TEST_F(ShmTest, advertises_mandatory_formats)
 {
