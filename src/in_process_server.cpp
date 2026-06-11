@@ -1295,11 +1295,21 @@ public:
             me->pending.scale = factor;
         }
 
+        static void name_thunk(void* /*ctx*/, struct wl_output */*wl_output*/, const char */*name*/)
+        {
+        }
+
+        static void description_thunk(void* /*ctx*/, struct wl_output */*wl_output*/, const char */*description*/)
+        {
+        }
+
         static constexpr wl_output_listener listener = {
             &Impl::Output::geometry_thunk,
             &Impl::Output::mode_thunk,
             &Impl::Output::done_thunk,
             &Impl::Output::scale_thunk,
+            &Impl::Output::name_thunk,
+            &Impl::Output::description_thunk,
         };
     };
 
@@ -2139,9 +2149,19 @@ private:
         }
     }
 
+    static void on_preferred_buffer_scale(void* /*data*/, ::wl_surface* /*wl_surface*/, int32_t /*factor*/)
+    {
+    }
+
+    static void on_preferred_buffer_transform(void* /*data*/, ::wl_surface* /*wl_surface*/, uint32_t /*transform*/)
+    {
+    }
+
     static constexpr wl_surface_listener surface_listener{
         &on_enter,
         &on_leave,
+        &on_preferred_buffer_scale,
+        &on_preferred_buffer_transform,
     };
 
     struct wl_surface* const surface_;
