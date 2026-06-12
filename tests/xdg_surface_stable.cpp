@@ -33,6 +33,8 @@
 
 #include <gmock/gmock.h>
 
+#include <vector>
+
 using namespace testing;
 using XdgSurfaceStableTest = wlcs::InProcessServer;
 using wlcs::AnyVersion;
@@ -64,6 +66,269 @@ TEST_F(XdgSurfaceStableTest, gets_configure_event)
     wl_surface_commit(surface);
 
     client.dispatch_until([&configure_received]() { return configure_received;} );
+}
+
+TEST_F(XdgSurfaceStableTest, gets_multiple_configure_events)
+{
+    wlcs::Client client{the_server()};
+    wlcs::Surface surface{client};
+    wlcs::XdgSurfaceStable xdg_surface{client, surface};
+
+    std::vector<uint32_t> configure_serials;
+    ON_CALL(xdg_surface, configure)
+        .WillByDefault([&](auto serial)
+        {
+            xdg_surface_ack_configure(xdg_surface, serial);
+            configure_serials.push_back(serial);
+        });
+
+    wlcs::XdgToplevelStable toplevel{xdg_surface};
+    // The first commit triggers an initial xdg_surface.configure event
+    wl_surface_commit(surface);
+
+    auto const wait_for_another_configure = [&]()
+    {
+        auto const previous_count = configure_serials.size();
+        client.dispatch_until([&]() { return configure_serials.size() > previous_count; });
+    };
+
+    // Wait for the initial configure, ack it, and map the surface with a buffer.
+    wait_for_another_configure();
+    surface.attach_buffer(200, 320);
+    wl_surface_commit(surface);
+
+    // Requesting a state change causes the compositor to send a further configure.
+    xdg_toplevel_set_maximized(toplevel);
+    wait_for_another_configure();
+
+    EXPECT_THAT(configure_serials.size(), Ge(2u));
+    // Each configure event carries a distinct serial.
+    EXPECT_THAT(configure_serials.back(), Ne(configure_serials.front()));
+}
+
+TEST_F(XdgSurfaceStableTest, only_the_last_of_multiple_configures_needs_acking)
+{
+    wlcs::Client client{the_server()};
+    wlcs::Surface surface{client};
+    wlcs::XdgSurfaceStable xdg_surface{client, surface};
+
+    std::vector<uint32_t> configure_serials;
+    bool auto_ack{true};
+    ON_CALL(xdg_surface, configure)
+        .WillByDefault([&](auto serial)
+        {
+            configure_serials.push_back(serial);
+            if (auto_ack)
+                xdg_surface_ack_configure(xdg_surface, serial);
+        });
+
+    wlcs::XdgToplevelStable toplevel{xdg_surface};
+    // The first commit triggers an initial xdg_surface.configure event
+    wl_surface_commit(surface);
+
+    auto const wait_for_another_configure = [&]()
+    {
+        auto const previous_count = configure_serials.size();
+        client.dispatch_until([&]() { return configure_serials.size() > previous_count; });
+    };
+
+    // Map the surface, acking the initial configure as required.
+    wait_for_another_configure();
+    surface.attach_buffer(200, 320);
+    wl_surface_commit(surface);
+
+    // Stop acking so we can accumulate several un-acked configure events.
+    auto_ack = false;
+    auto const count_before_reconfigure = configure_serials.size();
+
+    // Each state change prompts the compositor to send a further configure.
+    xdg_toplevel_set_maximized(toplevel);
+    wait_for_another_configure();
+    xdg_toplevel_unset_maximized(toplevel);
+    wait_for_another_configure();
+
+    // Flush any further in-flight configure events so we know the latest serial.
+    client.roundtrip();
+
+    // We must have received multiple configure events without acking any of them.
+    ASSERT_THAT(configure_serials.size() - count_before_reconfigure, Ge(2u));
+
+    // Acknowledging only the most recent configure must be accepted: the earlier
+    // configure events do not need to be acknowledged individually.
+    xdg_surface_ack_configure(xdg_surface, configure_serials.back());
+    wl_surface_commit(surface);
+    client.roundtrip();
+}
+
+TEST_F(XdgSurfaceStableTest, ack_configure_for_an_earlier_configure_after_a_later_one_is_an_error)
+{
+    wlcs::Client client{the_server()};
+    wlcs::Surface surface{client};
+    wlcs::XdgSurfaceStable xdg_surface{client, surface};
+
+    std::vector<uint32_t> configure_serials;
+    bool auto_ack{true};
+    ON_CALL(xdg_surface, configure)
+        .WillByDefault([&](auto serial)
+        {
+            configure_serials.push_back(serial);
+            if (auto_ack)
+                xdg_surface_ack_configure(xdg_surface, serial);
+        });
+
+    wlcs::XdgToplevelStable toplevel{xdg_surface};
+    // The first commit triggers an initial xdg_surface.configure event
+    wl_surface_commit(surface);
+
+    auto const wait_for_another_configure = [&]()
+    {
+        auto const previous_count = configure_serials.size();
+        client.dispatch_until([&]() { return configure_serials.size() > previous_count; });
+    };
+
+    // Map the surface, acking the initial configure as required.
+    wait_for_another_configure();
+    surface.attach_buffer(200, 320);
+    wl_surface_commit(surface);
+
+    // Stop acking so we can accumulate several un-acked configure events.
+    auto_ack = false;
+    auto const first_reconfigure_index = configure_serials.size();
+
+    // Each state change prompts the compositor to send a further configure.
+    xdg_toplevel_set_maximized(toplevel);
+    wait_for_another_configure();
+    xdg_toplevel_unset_maximized(toplevel);
+    wait_for_another_configure();
+
+    // Flush any further in-flight configure events so we know the latest serial.
+    client.roundtrip();
+
+    // We need at least two distinct un-acked configure events to ack out of order.
+    ASSERT_THAT(configure_serials.size() - first_reconfigure_index, Ge(2u));
+
+    auto const earlier_serial = configure_serials.at(first_reconfigure_index);
+    auto const later_serial = configure_serials.back();
+
+    // Acking the most recent configure consumes all the earlier ones.
+    xdg_surface_ack_configure(xdg_surface, later_serial);
+    client.roundtrip();
+
+    try
+    {
+        // Acking a configure event issued before the last acked one must error.
+        xdg_surface_ack_configure(xdg_surface, earlier_serial);
+        client.roundtrip();
+    }
+    catch(wlcs::ProtocolError const& error)
+    {
+        EXPECT_THAT(error.interface(), Eq(&xdg_surface_interface));
+        EXPECT_THAT(error.error_code(), Eq(XDG_SURFACE_ERROR_INVALID_SERIAL));
+        return;
+    }
+
+    FAIL() << "Expected protocol error not received";
+}
+
+TEST_F(XdgSurfaceStableTest, ack_configure_with_invalid_serial_is_an_error)
+{
+    wlcs::Client client{the_server()};
+    wlcs::Surface surface{client};
+    wlcs::XdgSurfaceStable xdg_surface{client, surface};
+
+    uint32_t configure_serial{0};
+    bool configure_received{false};
+    EXPECT_CALL(xdg_surface, configure)
+        .WillOnce([&](auto serial)
+        {
+            configure_serial = serial;
+            configure_received = true;
+        });
+
+    wlcs::XdgToplevelStable toplevel{xdg_surface};
+    // The first commit triggers an initial xdg_surface.configure event
+    wl_surface_commit(surface);
+
+    client.dispatch_until([&configure_received]() { return configure_received; });
+
+    try
+    {
+        // Acking a configure event that was never sent must raise an error.
+        xdg_surface_ack_configure(xdg_surface, configure_serial + 1);
+        client.roundtrip();
+    }
+    catch(wlcs::ProtocolError const& error)
+    {
+        EXPECT_THAT(error.interface(), Eq(&xdg_surface_interface));
+        EXPECT_THAT(error.error_code(), Eq(XDG_SURFACE_ERROR_INVALID_SERIAL));
+        return;
+    }
+
+    FAIL() << "Expected protocol error not received";
+}
+
+TEST_F(XdgSurfaceStableTest, ack_configure_twice_for_same_event_is_an_error)
+{
+    wlcs::Client client{the_server()};
+    wlcs::Surface surface{client};
+    wlcs::XdgSurfaceStable xdg_surface{client, surface};
+
+    uint32_t configure_serial{0};
+    bool configure_received{false};
+    EXPECT_CALL(xdg_surface, configure)
+        .WillOnce([&](auto serial)
+        {
+            configure_serial = serial;
+            configure_received = true;
+        });
+
+    wlcs::XdgToplevelStable toplevel{xdg_surface};
+    // The first commit triggers an initial xdg_surface.configure event
+    wl_surface_commit(surface);
+
+    client.dispatch_until([&configure_received]() { return configure_received; });
+
+    // The first ack of the configure serial is valid.
+    xdg_surface_ack_configure(xdg_surface, configure_serial);
+    client.roundtrip();
+
+    try
+    {
+        // Acking the same configure event a second time must raise an error.
+        xdg_surface_ack_configure(xdg_surface, configure_serial);
+        client.roundtrip();
+    }
+    catch(wlcs::ProtocolError const& error)
+    {
+        EXPECT_THAT(error.interface(), Eq(&xdg_surface_interface));
+        EXPECT_THAT(error.error_code(), Eq(XDG_SURFACE_ERROR_INVALID_SERIAL));
+        return;
+    }
+
+    FAIL() << "Expected protocol error not received";
+}
+
+TEST_F(XdgSurfaceStableTest, ack_configure_without_a_configure_event_is_an_error)
+{
+    wlcs::Client client{the_server()};
+    wlcs::Surface surface{client};
+    wlcs::XdgSurfaceStable xdg_surface{client, surface};
+
+    // No surface commit is made, so the compositor never sends a configure
+    // event. Acking any serial must therefore raise an error.
+    try
+    {
+        xdg_surface_ack_configure(xdg_surface, 1);
+        client.roundtrip();
+    }
+    catch(wlcs::ProtocolError const& error)
+    {
+        EXPECT_THAT(error.interface(), Eq(&xdg_surface_interface));
+        EXPECT_THAT(error.error_code(), Eq(XDG_SURFACE_ERROR_INVALID_SERIAL));
+        return;
+    }
+
+    FAIL() << "Expected protocol error not received";
 }
 
 TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_existing_role_is_an_error)
@@ -177,3 +442,4 @@ TEST_F(XdgSurfaceStableTest, attaching_buffer_to_unconfigured_xdg_surface_is_an_
 
     FAIL() << "Expected protocol error not received";
 }
+
