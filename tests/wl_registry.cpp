@@ -37,7 +37,6 @@ struct RegistryTest : wlcs::StartedInProcessServer
 {
     wlcs::Client client{the_server()};
 
-    /// Creates a fresh registry and gathers every global the server advertises.
     std::vector<AdvertisedGlobal> enumerate_globals(wl_registry* registry)
     {
         globals.clear();
