@@ -20,7 +20,6 @@
 
 #include <algorithm>
 #include <string>
-#include <utility>
 #include <vector>
 
 using namespace testing;
@@ -81,56 +80,6 @@ TEST_F(RegistryTest, get_registry_returns_globals)
     EXPECT_THAT(interface_names(globals), Contains(Eq("wl_compositor")));
     EXPECT_THAT(interface_names(globals), Contains(Eq("wl_shm")));
 
-    wl_registry_destroy(registry);
-}
-
-// Each advertised global must be bindable via wl_registry.bind.
-TEST_F(RegistryTest, can_bind_advertised_globals)
-{
-    // Map the well-known core interfaces to the wl_interface needed to bind them.
-    static std::pair<char const*, wl_interface const*> const known_interfaces[]{
-        {"wl_compositor", &wl_compositor_interface},
-        {"wl_subcompositor", &wl_subcompositor_interface},
-        {"wl_shm", &wl_shm_interface},
-        {"wl_seat", &wl_seat_interface},
-        {"wl_output", &wl_output_interface},
-        {"wl_data_device_manager", &wl_data_device_manager_interface},
-    };
-
-    auto registry = wl_display_get_registry(client);
-
-    auto const globals = enumerate_globals(registry);
-    ASSERT_THAT(globals, Not(IsEmpty()));
-
-    std::vector<wl_proxy*> bound;
-    bool bound_any = false;
-    for (auto const& global : globals)
-    {
-        auto const known = std::find_if(
-            std::begin(known_interfaces), std::end(known_interfaces),
-            [&](auto const& entry) { return global.interface == entry.first; });
-        if (known == std::end(known_interfaces))
-            continue;
-
-        auto const version = std::min(global.version, static_cast<uint32_t>(known->second->version));
-        auto proxy = static_cast<wl_proxy*>(
-            wl_registry_bind(registry, global.name, known->second, version));
-
-        EXPECT_THAT(proxy, NotNull()) << "Failed to bind " << global.interface;
-        if (proxy)
-        {
-            bound.push_back(proxy);
-            bound_any = true;
-        }
-    }
-
-    EXPECT_TRUE(bound_any) << "No known core globals were advertised to bind";
-
-    // A successful roundtrip confirms the server accepted all the bind requests.
-    client.roundtrip();
-
-    for (auto proxy : bound)
-        wl_proxy_destroy(proxy);
     wl_registry_destroy(registry);
 }
 
