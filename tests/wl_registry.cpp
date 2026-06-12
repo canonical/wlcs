@@ -105,29 +105,20 @@ TEST_F(RegistryTest, registry_can_be_destroyed_with_wl_fixes)
     // Destroy a separate registry via wl_fixes; the client must not use it after.
     auto doomed_registry = wl_display_get_registry(client);
     client.roundtrip();
-
     auto const doomed_id = wl_proxy_get_id(reinterpret_cast<wl_proxy*>(doomed_registry));
-
     wl_fixes_destroy_registry(fixes, doomed_registry);
-
-    // A clean roundtrip confirms the server processed the destroy without error.
     client.roundtrip();
-
-    // wl_registry has no destructor request, so this only frees the local proxy.
-    // libwayland only releases the object ID for re-use once the server has sent
-    // the wl_display.delete_id event for it, so destroying the proxy now (after
-    // the roundtrip above) makes the ID reusable iff delete_id was emitted.
-    wl_registry_destroy(doomed_registry);
 
     // The compositor must emit wl_display.delete_id for the destroyed registry.
     // We cannot observe delete_id directly (libwayland handles it internally), but
     // a freed ID is re-used by the next object the client creates. If delete_id had
     // not been emitted, the ID would remain reserved and a fresh ID would be used.
+    wl_registry_destroy(doomed_registry);
     auto reused_registry = wl_display_get_registry(client);
     EXPECT_THAT(wl_proxy_get_id(reinterpret_cast<wl_proxy*>(reused_registry)), Eq(doomed_id))
         << "Compositor did not emit wl_display.delete_id for the destroyed registry";
-
     wl_registry_destroy(reused_registry);
+
     wl_fixes_destroy(fixes);
     wl_registry_destroy(registry);
 }
