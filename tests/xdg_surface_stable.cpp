@@ -442,4 +442,3 @@ TEST_F(XdgSurfaceStableTest, attaching_buffer_to_unconfigured_xdg_surface_is_an_
 
     FAIL() << "Expected protocol error not received";
 }
-
