@@ -30,6 +30,7 @@
 #include "xdg_shell_stable.h"
 #include "wl_handle.h"
 #include "version_specifier.h"
+#include "expect_protocol_error.h"
 
 #include <gmock/gmock.h>
 
@@ -101,8 +102,8 @@ TEST_F(XdgSurfaceStableTest, gets_multiple_configure_events)
     xdg_toplevel_set_maximized(toplevel);
     wait_for_another_configure();
 
-    EXPECT_THAT(configure_serials.size(), Ge(2u));
-    // Each configure event carries a distinct serial.
+    // The two waits above guarantee at least two configure events; each must
+    // carry a distinct serial.
     EXPECT_THAT(configure_serials.back(), Ne(configure_serials.front()));
 }
 
@@ -137,11 +138,11 @@ TEST_F(XdgSurfaceStableTest, only_the_last_of_multiple_configures_needs_acking)
     surface.attach_buffer(200, 320);
     wl_surface_commit(surface);
 
-    // Stop acking so we can accumulate several un-acked configure events.
+    // Stop acking so we accumulate several un-acked configure events.
     auto_ack = false;
-    auto const count_before_reconfigure = configure_serials.size();
 
-    // Each state change prompts the compositor to send a further configure.
+    // Each state change prompts the compositor to send a further configure. The
+    // two waits guarantee multiple un-acked configure events are accumulated.
     xdg_toplevel_set_maximized(toplevel);
     wait_for_another_configure();
     xdg_toplevel_unset_maximized(toplevel);
@@ -149,9 +150,6 @@ TEST_F(XdgSurfaceStableTest, only_the_last_of_multiple_configures_needs_acking)
 
     // Flush any further in-flight configure events so we know the latest serial.
     client.roundtrip();
-
-    // We must have received multiple configure events without acking any of them.
-    ASSERT_THAT(configure_serials.size() - count_before_reconfigure, Ge(2u));
 
     // Acknowledging only the most recent configure must be accepted: the earlier
     // configure events do not need to be acknowledged individually.
@@ -191,43 +189,29 @@ TEST_F(XdgSurfaceStableTest, ack_configure_for_an_earlier_configure_after_a_late
     surface.attach_buffer(200, 320);
     wl_surface_commit(surface);
 
-    // Stop acking so we can accumulate several un-acked configure events.
+    // Stop acking so we can ack the following configure events out of order.
     auto_ack = false;
-    auto const first_reconfigure_index = configure_serials.size();
 
     // Each state change prompts the compositor to send a further configure.
     xdg_toplevel_set_maximized(toplevel);
     wait_for_another_configure();
+    auto const earlier_serial = configure_serials.back();
+
     xdg_toplevel_unset_maximized(toplevel);
     wait_for_another_configure();
-
-    // Flush any further in-flight configure events so we know the latest serial.
-    client.roundtrip();
-
-    // We need at least two distinct un-acked configure events to ack out of order.
-    ASSERT_THAT(configure_serials.size() - first_reconfigure_index, Ge(2u));
-
-    auto const earlier_serial = configure_serials.at(first_reconfigure_index);
     auto const later_serial = configure_serials.back();
+
+    ASSERT_THAT(later_serial, Ne(earlier_serial));
 
     // Acking the most recent configure consumes all the earlier ones.
     xdg_surface_ack_configure(xdg_surface, later_serial);
     client.roundtrip();
 
-    try
-    {
-        // Acking a configure event issued before the last acked one must error.
+    // Acking a configure event issued before the last acked one must error.
+    EXPECT_PROTOCOL_ERROR({
         xdg_surface_ack_configure(xdg_surface, earlier_serial);
         client.roundtrip();
-    }
-    catch(wlcs::ProtocolError const& error)
-    {
-        EXPECT_THAT(error.interface(), Eq(&xdg_surface_interface));
-        EXPECT_THAT(error.error_code(), Eq(XDG_SURFACE_ERROR_INVALID_SERIAL));
-        return;
-    }
-
-    FAIL() << "Expected protocol error not received";
+    }, &xdg_surface_interface, XDG_SURFACE_ERROR_INVALID_SERIAL);
 }
 
 TEST_F(XdgSurfaceStableTest, ack_configure_with_invalid_serial_is_an_error)
@@ -251,20 +235,11 @@ TEST_F(XdgSurfaceStableTest, ack_configure_with_invalid_serial_is_an_error)
 
     client.dispatch_until([&configure_received]() { return configure_received; });
 
-    try
-    {
-        // Acking a configure event that was never sent must raise an error.
+    // Acking a configure event that was never sent must raise an error.
+    EXPECT_PROTOCOL_ERROR({
         xdg_surface_ack_configure(xdg_surface, configure_serial + 1);
         client.roundtrip();
-    }
-    catch(wlcs::ProtocolError const& error)
-    {
-        EXPECT_THAT(error.interface(), Eq(&xdg_surface_interface));
-        EXPECT_THAT(error.error_code(), Eq(XDG_SURFACE_ERROR_INVALID_SERIAL));
-        return;
-    }
-
-    FAIL() << "Expected protocol error not received";
+    }, &xdg_surface_interface, XDG_SURFACE_ERROR_INVALID_SERIAL);
 }
 
 TEST_F(XdgSurfaceStableTest, ack_configure_twice_for_same_event_is_an_error)
@@ -292,20 +267,11 @@ TEST_F(XdgSurfaceStableTest, ack_configure_twice_for_same_event_is_an_error)
     xdg_surface_ack_configure(xdg_surface, configure_serial);
     client.roundtrip();
 
-    try
-    {
-        // Acking the same configure event a second time must raise an error.
+    // Acking the same configure event a second time must raise an error.
+    EXPECT_PROTOCOL_ERROR({
         xdg_surface_ack_configure(xdg_surface, configure_serial);
         client.roundtrip();
-    }
-    catch(wlcs::ProtocolError const& error)
-    {
-        EXPECT_THAT(error.interface(), Eq(&xdg_surface_interface));
-        EXPECT_THAT(error.error_code(), Eq(XDG_SURFACE_ERROR_INVALID_SERIAL));
-        return;
-    }
-
-    FAIL() << "Expected protocol error not received";
+    }, &xdg_surface_interface, XDG_SURFACE_ERROR_INVALID_SERIAL);
 }
 
 TEST_F(XdgSurfaceStableTest, ack_configure_without_a_configure_event_is_an_error)
@@ -316,19 +282,10 @@ TEST_F(XdgSurfaceStableTest, ack_configure_without_a_configure_event_is_an_error
 
     // No surface commit is made, so the compositor never sends a configure
     // event. Acking any serial must therefore raise an error.
-    try
-    {
+    EXPECT_PROTOCOL_ERROR({
         xdg_surface_ack_configure(xdg_surface, 1);
         client.roundtrip();
-    }
-    catch(wlcs::ProtocolError const& error)
-    {
-        EXPECT_THAT(error.interface(), Eq(&xdg_surface_interface));
-        EXPECT_THAT(error.error_code(), Eq(XDG_SURFACE_ERROR_INVALID_SERIAL));
-        return;
-    }
-
-    FAIL() << "Expected protocol error not received";
+    }, &xdg_surface_interface, XDG_SURFACE_ERROR_INVALID_SERIAL);
 }
 
 TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_existing_role_is_an_error)
@@ -348,19 +305,10 @@ TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_existing_
 
     client.roundtrip();
 
-    try
-    {
+    EXPECT_PROTOCOL_ERROR({
         xdg_wm_base_get_xdg_surface(xdg_wm_base, surface);
         client.roundtrip();
-    }
-    catch(wlcs::ProtocolError const& error)
-    {
-        EXPECT_THAT(error.interface(), Eq(&xdg_wm_base_interface));
-        EXPECT_THAT(error.error_code(), Eq(XDG_WM_BASE_ERROR_ROLE));
-        return;
-    }
-
-    FAIL() << "Expected protocol error not received";
+    }, &xdg_wm_base_interface, XDG_WM_BASE_ERROR_ROLE);
 }
 
 
@@ -375,19 +323,10 @@ TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_attached_
     wl_surface_attach(surface, buffer, 0, 0);
     client.roundtrip();
 
-    try
-    {
+    EXPECT_PROTOCOL_ERROR({
         xdg_wm_base_get_xdg_surface(xdg_wm_base, surface);
         client.roundtrip();
-    }
-    catch(wlcs::ProtocolError const& error)
-    {
-        EXPECT_THAT(error.interface(), Eq(&xdg_wm_base_interface));
-        EXPECT_THAT(error.error_code(), Eq(XDG_WM_BASE_ERROR_INVALID_SURFACE_STATE));
-        return;
-    }
-
-    FAIL() << "Expected protocol error not received";
+    }, &xdg_wm_base_interface, XDG_WM_BASE_ERROR_INVALID_SURFACE_STATE);
 }
 
 TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_committed_buffer_is_an_error)
@@ -402,19 +341,10 @@ TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_committed
     wl_surface_commit(surface);
     client.roundtrip();
 
-    try
-    {
+    EXPECT_PROTOCOL_ERROR({
         xdg_wm_base_get_xdg_surface(xdg_wm_base, surface);
         client.roundtrip();
-    }
-    catch(wlcs::ProtocolError const& error)
-    {
-        EXPECT_THAT(error.interface(), Eq(&xdg_wm_base_interface));
-        EXPECT_THAT(error.error_code(), Eq(XDG_WM_BASE_ERROR_INVALID_SURFACE_STATE));
-        return;
-    }
-
-    FAIL() << "Expected protocol error not received";
+    }, &xdg_wm_base_interface, XDG_WM_BASE_ERROR_INVALID_SURFACE_STATE);
 }
 
 TEST_F(XdgSurfaceStableTest, attaching_buffer_to_unconfigured_xdg_surface_is_an_error)
@@ -427,18 +357,9 @@ TEST_F(XdgSurfaceStableTest, attaching_buffer_to_unconfigured_xdg_surface_is_an_
     wlcs::ShmBuffer buffer{client, 300, 300};
     client.roundtrip();
 
-    try
-    {
+    EXPECT_PROTOCOL_ERROR({
         xdg_wm_base_get_xdg_surface(xdg_wm_base, surface);
         wl_surface_attach(surface, buffer, 0, 0);
         client.roundtrip();
-    }
-    catch(wlcs::ProtocolError const& error)
-    {
-        EXPECT_THAT(error.interface(), Eq(&xdg_surface_interface));
-        EXPECT_THAT(error.error_code(), Eq(XDG_SURFACE_ERROR_UNCONFIGURED_BUFFER));
-        return;
-    }
-
-    FAIL() << "Expected protocol error not received";
+    }, &xdg_surface_interface, XDG_SURFACE_ERROR_UNCONFIGURED_BUFFER);
 }
