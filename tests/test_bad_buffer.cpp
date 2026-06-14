@@ -31,6 +31,7 @@
 #include "helpers.h"
 
 #include "in_process_server.h"
+#include "expect_protocol_error.h"
 
 /* tests, that attempt to crash the compositor on purpose */
 
@@ -82,20 +83,12 @@ TEST_F(BadBufferTest, test_truncated_shm_file)
 
     wl_surface_commit(surface);
 
-    try
-    {
-        // We dispatch until we receive the protocol error, or hit the timeout.
+    // We dispatch until we receive the protocol error, or hit the timeout.
+    EXPECT_PROTOCOL_ERROR({
         client.dispatch_until([]() { return false; });
-    }
-    catch (wlcs::ProtocolError const& err)
-    {
-        wl_buffer_destroy(bad_buffer);
-        EXPECT_THAT(err.error_code(), Eq(WL_SHM_ERROR_INVALID_FD));
-        EXPECT_THAT(err.interface(), Eq(&wl_buffer_interface));
-        return;
-    }
+    }, &wl_buffer_interface, WL_SHM_ERROR_INVALID_FD);
 
-    FAIL() << "Expected protocol error not raised";
+    wl_buffer_destroy(bad_buffer);
 }
 
 TEST_F(BadBufferTest, client_lies_about_buffer_size)
@@ -120,22 +113,14 @@ TEST_F(BadBufferTest, client_lies_about_buffer_size)
         incorrect_stride, // Stride is in bytes, not pixels, so this is ¼ the correct value.
         WL_SHM_FORMAT_ARGB8888);
 
-    try
-    {
+    EXPECT_PROTOCOL_ERROR({
         /* Buffer creation should fail, so all we need is for the create_buffer
          * call to be processed
          */
         client.roundtrip();
-    }
-    catch (wlcs::ProtocolError const& err)
-    {
-        wl_buffer_destroy(bad_buffer);
-        EXPECT_THAT(err.error_code(), Eq(WL_SHM_ERROR_INVALID_STRIDE));
-        EXPECT_THAT(err.interface(), Eq(&wl_shm_pool_interface));
-        return;
-    }
+    }, &wl_shm_pool_interface, WL_SHM_ERROR_INVALID_STRIDE);
 
-    FAIL() << "Expected protocol error not raised";
+    wl_buffer_destroy(bad_buffer);
 }
 
 // This should be identical to the first tests case of the previous test. It tests if a 2nd instance of the server can
@@ -159,18 +144,10 @@ TEST_F(SecondBadBufferTest, test_truncated_shm_file)
 
     wl_surface_commit(surface);
 
-    try
-    {
-        // We dispatch until we receive the protocol error, or hit the timeout.
+    // We dispatch until we receive the protocol error, or hit the timeout.
+    EXPECT_PROTOCOL_ERROR({
         client.dispatch_until([]() { return false; });
-    }
-    catch (wlcs::ProtocolError const& err)
-    {
-        wl_buffer_destroy(bad_buffer);
-        EXPECT_THAT(err.error_code(), Eq(WL_SHM_ERROR_INVALID_FD));
-        EXPECT_THAT(err.interface(), Eq(&wl_buffer_interface));
-        return;
-    }
+    }, &wl_buffer_interface, WL_SHM_ERROR_INVALID_FD);
 
-    FAIL() << "Expected protocol error not raised";
+    wl_buffer_destroy(bad_buffer);
 }
