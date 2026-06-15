@@ -10,13 +10,14 @@ backends:
             - ubuntu-26.04
             - ubuntu-devel:
                 image: ubuntu-daily:devel/amd64
-            - fedora-42
             - fedora-43
+            - fedora-44
             - fedora-rawhide:
-                image: images:fedora/43
+                image: images:fedora/44
             - alpine-3.21
             - alpine-3.22
             - alpine-3.23
+            - alpine-3.24
             - alpine-edge
             - archlinux-cloud
 
