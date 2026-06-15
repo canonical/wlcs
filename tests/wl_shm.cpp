@@ -23,6 +23,7 @@
 
 #include <sys/mman.h>
 #include <unistd.h>
+#include <cassert>
 #include <vector>
 
 using namespace testing;
@@ -30,6 +31,13 @@ using namespace testing;
 namespace
 {
 struct ShmTest : wlcs::StartedInProcessServer
+{
+    wlcs::Client client{the_server()};
+};
+
+// A separate fixture, identical to ShmTest, used to spin up a second server
+// instance (see truncated_shm_file_is_an_error_on_a_second_server_instance).
+struct SecondShmTest : wlcs::StartedInProcessServer
 {
     wlcs::Client client{the_server()};
 };
@@ -55,6 +63,35 @@ std::vector<uint32_t> collect_advertised_formats(wlcs::Client& client)
 
     wl_shm_destroy(shm);
     return formats;
+}
+
+// Creates a wl_buffer whose backing file is then truncated to a tiny size, so
+// that the compositor will access it out-of-bounds (and hit SIGBUS) if it does
+// not validate the buffer. Used to check the server handles this gracefully.
+struct wl_buffer* create_bad_shm_buffer(wlcs::Client& client, int width, int height)
+{
+    struct wl_shm* shm = client.shm();
+    int stride = width * 4;
+    int size = stride * height;
+
+    int fd = wlcs::helpers::create_anonymous_file(size);
+
+    auto pool = wl_shm_create_pool(shm, fd, size);
+    auto buffer = wl_shm_pool_create_buffer(
+        pool,
+        0,
+        width,
+        height,
+        stride,
+        WL_SHM_FORMAT_ARGB8888);
+    wl_shm_pool_destroy(pool);
+
+    // Truncate the file to a small size, so that the compositor will access it
+    // out-of-bounds, and hit SIGBUS.
+    assert(ftruncate(fd, 12) == 0);
+    close(fd);
+
+    return buffer;
 }
 }
 
@@ -212,4 +249,82 @@ TEST_F(ShmTest, multiple_buffers_can_share_a_pool)
 
     for (auto buffer : buffers)
         wl_buffer_destroy(buffer);
+}
+
+// Attaching a buffer whose backing file has been truncated must not crash the
+// compositor; it should raise a protocol error instead.
+TEST_F(ShmTest, truncated_shm_file_is_an_error)
+{
+    auto surface = client.create_visible_surface(200, 200);
+
+    wl_buffer* bad_buffer = create_bad_shm_buffer(client, 200, 200);
+
+    wl_surface_attach(surface, bad_buffer, 0, 0);
+    wl_surface_damage(surface, 0, 0, 200, 200);
+    wl_surface_commit(surface);
+
+    // We dispatch until we receive the protocol error, or hit the timeout.
+    EXPECT_PROTOCOL_ERROR(
+        {
+            client.dispatch_until([]() { return false; });
+        },
+        &wl_buffer_interface,
+        WL_SHM_ERROR_INVALID_FD);
+
+    wl_buffer_destroy(bad_buffer);
+}
+
+// This should behave identically to truncated_shm_file_is_an_error, but runs in
+// a second server instance. There have been issues with the server installing a
+// SIGBUS handler (via wl_shm_buffer_begin_access()) that only works for the
+// first server instance.
+TEST_F(SecondShmTest, truncated_shm_file_is_an_error_on_a_second_server_instance)
+{
+    auto surface = client.create_visible_surface(200, 200);
+
+    wl_buffer* bad_buffer = create_bad_shm_buffer(client, 200, 200);
+
+    wl_surface_attach(surface, bad_buffer, 0, 0);
+    wl_surface_damage(surface, 0, 0, 200, 200);
+    wl_surface_commit(surface);
+
+    EXPECT_PROTOCOL_ERROR(
+        {
+            client.dispatch_until([]() { return false; });
+        },
+        &wl_buffer_interface,
+        WL_SHM_ERROR_INVALID_FD);
+
+    wl_buffer_destroy(bad_buffer);
+}
+
+// Creating a buffer with a stride too small for its declared width must be
+// rejected.
+TEST_F(ShmTest, client_lies_about_buffer_size)
+{
+    auto const width = 200, height = 200;
+    auto const incorrect_stride = width;
+
+    auto fd = wlcs::helpers::create_anonymous_file(height * incorrect_stride);
+    auto shm_pool = wl_shm_create_pool(client.shm(), fd, height * incorrect_stride);
+    close(fd);
+
+    auto bad_buffer = wl_shm_pool_create_buffer(
+        shm_pool,
+        0,
+        width, height,
+        incorrect_stride, // Stride is in bytes, not pixels, so this is ¼ the correct value.
+        WL_SHM_FORMAT_ARGB8888);
+
+    EXPECT_PROTOCOL_ERROR(
+        {
+            // Buffer creation should fail, so all we need is for the
+            // create_buffer call to be processed.
+            client.roundtrip();
+        },
+        &wl_shm_pool_interface,
+        WL_SHM_ERROR_INVALID_STRIDE);
+
+    wl_buffer_destroy(bad_buffer);
+    wl_shm_pool_destroy(shm_pool);
 }
