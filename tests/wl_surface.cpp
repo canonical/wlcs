@@ -195,3 +195,21 @@ TEST_F(SurfaceTest, attach_with_non_zero_offset_is_an_error)
         client.roundtrip();
     }, &wl_surface_interface, WL_SURFACE_ERROR_INVALID_OFFSET);
 }
+
+TEST_F(SurfaceTest, attach_with_non_zero_offset_is_accepted_before_version_5)
+{
+    // Before version 5, passing a non-zero offset to wl_surface.attach was the
+    // way to offset a buffer (the dedicated wl_surface.offset request did not
+    // exist yet), so it must be accepted rather than raising a protocol error.
+    auto compositor =
+        client.bind_if_supported<wl_compositor>(AtMostVersion{WL_SURFACE_OFFSET_SINCE_VERSION - 1});
+    auto surface = wrap_wl_object(wl_compositor_create_surface(compositor));
+    ShmBuffer buffer{client, 100, 100};
+
+    wl_surface_attach(surface, buffer, 10, 10);
+    wl_surface_commit(surface);
+
+    // If the offset were rejected, this roundtrip would raise a protocol error
+    // and fail the test.
+    client.roundtrip();
+}
