@@ -48,6 +48,7 @@ namespace wlcs
 {
 class VersionSpecifier;
 
+WLCS_CREATE_INTERFACE_DESCRIPTOR(wl_compositor)
 WLCS_CREATE_INTERFACE_DESCRIPTOR(wl_surface)
 WLCS_CREATE_INTERFACE_DESCRIPTOR(wl_subsurface)
 

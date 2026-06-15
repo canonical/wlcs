@@ -16,6 +16,7 @@
 
 #include "in_process_server.h"
 #include "expect_protocol_error.h"
+#include "version_specifier.h"
 
 #include <gmock/gmock.h>
 
@@ -48,11 +49,6 @@ struct SurfaceTest : StartedInProcessServer
 {
     Client client{the_server()};
 
-    auto compositor_version() const -> uint32_t
-    {
-        return wl_proxy_get_version(reinterpret_cast<wl_proxy*>(client.compositor()));
-    }
-
     // Commit `surface` and block until the compositor has presented the frame.
     void commit_and_wait(Surface& surface)
     {
@@ -77,8 +73,7 @@ TEST_F(SurfaceTest, attach)
 
 TEST_F(SurfaceTest, buffer_scale)
 {
-    if (compositor_version() < 3)
-        GTEST_SKIP() << "wl_compositor version does not support set_buffer_scale";
+    client.bind_if_supported<wl_compositor>(AtLeastVersion{WL_SURFACE_SET_BUFFER_SCALE_SINCE_VERSION});
 
     // FUTURE IMPROVEMENT: confirm the 200x200 buffer is presented at a 100x100
     // logical size, and that its contents are downscaled accordingly.
@@ -92,8 +87,7 @@ TEST_F(SurfaceTest, buffer_scale)
 
 TEST_F(SurfaceTest, buffer_transform_90)
 {
-    if (compositor_version() < 2)
-        GTEST_SKIP() << "wl_compositor version does not support set_buffer_transform";
+    client.bind_if_supported<wl_compositor>(AtLeastVersion{WL_SURFACE_SET_BUFFER_TRANSFORM_SINCE_VERSION});
 
     // FUTURE IMPROVEMENT: confirm the buffer is actually rotated 90° - e.g. that
     // the surface's logical dimensions are swapped (200x100 -> 100x200) and that
@@ -108,8 +102,7 @@ TEST_F(SurfaceTest, buffer_transform_90)
 
 TEST_F(SurfaceTest, buffer_transform_180)
 {
-    if (compositor_version() < 2)
-        GTEST_SKIP() << "wl_compositor version does not support set_buffer_transform";
+    client.bind_if_supported<wl_compositor>(AtLeastVersion{WL_SURFACE_SET_BUFFER_TRANSFORM_SINCE_VERSION});
 
     // FUTURE IMPROVEMENT: confirm the buffer is actually rotated 180° - the
     // logical size is unchanged, but a known pixel should end up diagonally
@@ -124,8 +117,7 @@ TEST_F(SurfaceTest, buffer_transform_180)
 
 TEST_F(SurfaceTest, buffer_transform_270)
 {
-    if (compositor_version() < 2)
-        GTEST_SKIP() << "wl_compositor version does not support set_buffer_transform";
+    client.bind_if_supported<wl_compositor>(AtLeastVersion{WL_SURFACE_SET_BUFFER_TRANSFORM_SINCE_VERSION});
 
     // FUTURE IMPROVEMENT: confirm the buffer is actually rotated 270° - e.g. that
     // the surface's logical dimensions are swapped (200x100 -> 100x200) and that
@@ -140,8 +132,7 @@ TEST_F(SurfaceTest, buffer_transform_270)
 
 TEST_F(SurfaceTest, damage_buffer)
 {
-    if (compositor_version() < 4)
-        GTEST_SKIP() << "wl_compositor version does not support damage_buffer";
+    client.bind_if_supported<wl_compositor>(AtLeastVersion{WL_SURFACE_DAMAGE_BUFFER_SINCE_VERSION});
 
     // FUTURE IMPROVEMENT: attach a second buffer with different contents, damage
     // only part of it with damage_buffer, and confirm via capture that the
@@ -156,8 +147,7 @@ TEST_F(SurfaceTest, damage_buffer)
 
 TEST_F(SurfaceTest, offset)
 {
-    if (compositor_version() < 5)
-        GTEST_SKIP() << "wl_compositor version does not support offset";
+    client.bind_if_supported<wl_compositor>(AtLeastVersion{WL_SURFACE_OFFSET_SINCE_VERSION});
 
     // FUTURE IMPROVEMENT: confirm the buffer contents are actually shifted by the
     // requested offset relative to the surface origin (e.g. via capture).
@@ -171,8 +161,7 @@ TEST_F(SurfaceTest, offset)
 
 TEST_F(SurfaceTest, set_buffer_scale_with_zero_is_an_error)
 {
-    if (compositor_version() < 3)
-        GTEST_SKIP() << "wl_compositor version does not support set_buffer_scale";
+    client.bind_if_supported<wl_compositor>(AtLeastVersion{WL_SURFACE_SET_BUFFER_SCALE_SINCE_VERSION});
 
     auto surface = client.create_visible_surface(100, 100);
 
@@ -184,8 +173,7 @@ TEST_F(SurfaceTest, set_buffer_scale_with_zero_is_an_error)
 
 TEST_F(SurfaceTest, set_buffer_transform_with_invalid_value_is_an_error)
 {
-    if (compositor_version() < 2)
-        GTEST_SKIP() << "wl_compositor version does not support set_buffer_transform";
+    client.bind_if_supported<wl_compositor>(AtLeastVersion{WL_SURFACE_SET_BUFFER_TRANSFORM_SINCE_VERSION});
 
     auto surface = client.create_visible_surface(100, 100);
 
@@ -197,8 +185,7 @@ TEST_F(SurfaceTest, set_buffer_transform_with_invalid_value_is_an_error)
 
 TEST_F(SurfaceTest, attach_with_non_zero_offset_is_an_error)
 {
-    if (compositor_version() < 5)
-        GTEST_SKIP() << "wl_compositor version does not treat attach offset as an error";
+    client.bind_if_supported<wl_compositor>(AtLeastVersion{WL_SURFACE_OFFSET_SINCE_VERSION});
 
     auto surface = client.create_visible_surface(100, 100);
     ShmBuffer buffer{client, 100, 100};
