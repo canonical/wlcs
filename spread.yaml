@@ -40,6 +40,7 @@ suites:
             RELEASE/debian_sid: sid
             PROPOSED: false
             PROPOSED/ubuntu_proposed: true
+            DEB_BUILD_EXTRA:
 
 path:
     /spread/wlcs
