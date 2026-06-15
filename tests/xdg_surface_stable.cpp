@@ -31,6 +31,8 @@
 #include "wl_handle.h"
 #include "version_specifier.h"
 
+#include "expect_protocol_error.h"
+
 #include <gmock/gmock.h>
 
 using namespace testing;
@@ -83,19 +85,10 @@ TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_existing_
 
     client.roundtrip();
 
-    try
-    {
+    EXPECT_PROTOCOL_ERROR({
         xdg_wm_base_get_xdg_surface(xdg_wm_base, surface);
         client.roundtrip();
-    }
-    catch(wlcs::ProtocolError const& error)
-    {
-        EXPECT_THAT(error.interface(), Eq(&xdg_wm_base_interface));
-        EXPECT_THAT(error.error_code(), Eq(XDG_WM_BASE_ERROR_ROLE));
-        return;
-    }
-
-    FAIL() << "Expected protocol error not received";
+    }, &xdg_wm_base_interface, XDG_WM_BASE_ERROR_ROLE);
 }
 
 
@@ -110,19 +103,10 @@ TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_attached_
     wl_surface_attach(surface, buffer, 0, 0);
     client.roundtrip();
 
-    try
-    {
+    EXPECT_PROTOCOL_ERROR({
         xdg_wm_base_get_xdg_surface(xdg_wm_base, surface);
         client.roundtrip();
-    }
-    catch(wlcs::ProtocolError const& error)
-    {
-        EXPECT_THAT(error.interface(), Eq(&xdg_wm_base_interface));
-        EXPECT_THAT(error.error_code(), Eq(XDG_WM_BASE_ERROR_INVALID_SURFACE_STATE));
-        return;
-    }
-
-    FAIL() << "Expected protocol error not received";
+    }, &xdg_wm_base_interface, XDG_WM_BASE_ERROR_INVALID_SURFACE_STATE);
 }
 
 TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_committed_buffer_is_an_error)
@@ -137,19 +121,10 @@ TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_committed
     wl_surface_commit(surface);
     client.roundtrip();
 
-    try
-    {
+    EXPECT_PROTOCOL_ERROR({
         xdg_wm_base_get_xdg_surface(xdg_wm_base, surface);
         client.roundtrip();
-    }
-    catch(wlcs::ProtocolError const& error)
-    {
-        EXPECT_THAT(error.interface(), Eq(&xdg_wm_base_interface));
-        EXPECT_THAT(error.error_code(), Eq(XDG_WM_BASE_ERROR_INVALID_SURFACE_STATE));
-        return;
-    }
-
-    FAIL() << "Expected protocol error not received";
+    }, &xdg_wm_base_interface, XDG_WM_BASE_ERROR_INVALID_SURFACE_STATE);
 }
 
 TEST_F(XdgSurfaceStableTest, attaching_buffer_to_unconfigured_xdg_surface_is_an_error)
@@ -162,18 +137,9 @@ TEST_F(XdgSurfaceStableTest, attaching_buffer_to_unconfigured_xdg_surface_is_an_
     wlcs::ShmBuffer buffer{client, 300, 300};
     client.roundtrip();
 
-    try
-    {
+    EXPECT_PROTOCOL_ERROR({
         xdg_wm_base_get_xdg_surface(xdg_wm_base, surface);
         wl_surface_attach(surface, buffer, 0, 0);
         client.roundtrip();
-    }
-    catch(wlcs::ProtocolError const& error)
-    {
-        EXPECT_THAT(error.interface(), Eq(&xdg_surface_interface));
-        EXPECT_THAT(error.error_code(), Eq(XDG_SURFACE_ERROR_UNCONFIGURED_BUFFER));
-        return;
-    }
-
-    FAIL() << "Expected protocol error not received";
+    }, &xdg_surface_interface, XDG_SURFACE_ERROR_UNCONFIGURED_BUFFER);
 }

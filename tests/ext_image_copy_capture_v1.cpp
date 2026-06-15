@@ -19,6 +19,7 @@
 #include "in_process_server.h"
 #include "version_specifier.h"
 #include "wl_interface_descriptor.h"
+#include "expect_protocol_error.h"
 #include "generated/ext-image-capture-source-v1-client.h"
 #include "generated/ext-image-copy-capture-v1-client.h"
 
@@ -305,17 +306,9 @@ TEST_F(ExtImageCopyCaptureTest, duplicate_frames_fails)
 
     ImageCopyCaptureFrame frame1{ext_image_copy_capture_session_v1_create_frame(session)};
     ImageCopyCaptureFrame frame2{ext_image_copy_capture_session_v1_create_frame(session)};
-    try
-    {
+    EXPECT_PROTOCOL_ERROR({
         client.roundtrip();
-    }
-    catch (wlcs::ProtocolError const& err)
-    {
-        ASSERT_THAT(err.interface(), Eq(&ext_image_copy_capture_session_v1_interface));
-        ASSERT_THAT(err.error_code(), Eq(EXT_IMAGE_COPY_CAPTURE_SESSION_V1_ERROR_DUPLICATE_FRAME));
-        return;
-    }
-    FAIL() << "Protocol error not raised";
+    }, &ext_image_copy_capture_session_v1_interface, EXT_IMAGE_COPY_CAPTURE_SESSION_V1_ERROR_DUPLICATE_FRAME);
 }
 
 TEST_F(ExtImageCopyCaptureTest, capture_with_no_buffer_fails)
@@ -328,17 +321,9 @@ TEST_F(ExtImageCopyCaptureTest, capture_with_no_buffer_fails)
 
     ImageCopyCaptureFrame frame{ext_image_copy_capture_session_v1_create_frame(session)};
     ext_image_copy_capture_frame_v1_capture(frame);
-    try
-    {
+    EXPECT_PROTOCOL_ERROR({
         client.roundtrip();
-    }
-    catch (wlcs::ProtocolError const& err)
-    {
-        ASSERT_THAT(err.interface(), Eq(&ext_image_copy_capture_frame_v1_interface));
-        ASSERT_THAT(err.error_code(), Eq(EXT_IMAGE_COPY_CAPTURE_FRAME_V1_ERROR_NO_BUFFER));
-        return;
-    }
-    FAIL() << "Protocol error not raised";
+    }, &ext_image_copy_capture_frame_v1_interface, EXT_IMAGE_COPY_CAPTURE_FRAME_V1_ERROR_NO_BUFFER);
 }
 
 TEST_F(ExtImageCopyCaptureTest, capture_with_wrong_size_fails)
