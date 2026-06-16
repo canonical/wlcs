@@ -54,7 +54,7 @@ struct MockDataOfferListener : DataOfferListener
     MOCK_METHOD(void, offer, (wl_data_offer*, char const*), (override));
 };
 
-struct DragAndDrop : StartedInProcessServer
+struct DataDeviceDragAndDrop : StartedInProcessServer
 {
     Client client{the_server()};
 
@@ -74,7 +74,7 @@ struct DragAndDrop : StartedInProcessServer
     // remember which surface was last entered).
     wl_surface* surface_under_pointer = nullptr;
 
-    DragAndDrop()
+    DataDeviceDragAndDrop()
     {
         ON_CALL(device_listener, enter(_, _, _, _, _, _))
             .WillByDefault(Invoke(
@@ -143,7 +143,7 @@ struct DragAndDrop : StartedInProcessServer
 };
 }
 
-TEST_F(DragAndDrop, data_device_receives_offer_when_drag_enters_target_surface)
+TEST_F(DataDeviceDragAndDrop, data_device_receives_offer_when_drag_enters_target_surface)
 {
     EXPECT_CALL(device_listener, data_offer(_, _)).Times(AtLeast(1));
 
@@ -153,7 +153,7 @@ TEST_F(DragAndDrop, data_device_receives_offer_when_drag_enters_target_surface)
     move_pointer_to_target();
 }
 
-TEST_F(DragAndDrop, data_offer_advertises_source_mime_type)
+TEST_F(DataDeviceDragAndDrop, data_offer_advertises_source_mime_type)
 {
     // A distinctive mime type, so we can be sure the advertised type is the one
     // the source offered rather than something the compositor added itself.
@@ -175,7 +175,7 @@ TEST_F(DragAndDrop, data_offer_advertises_source_mime_type)
     client.dispatch_until([&]() { return got_mime_type; });
 }
 
-TEST_F(DragAndDrop, data_device_receives_motion_during_drag)
+TEST_F(DataDeviceDragAndDrop, data_device_receives_motion_during_drag)
 {
     bool got_motion{false};
     EXPECT_CALL(device_listener, motion(_, _, _, _))
@@ -191,7 +191,7 @@ TEST_F(DragAndDrop, data_device_receives_motion_during_drag)
     client.dispatch_until([&]() { return got_motion; });
 }
 
-TEST_F(DragAndDrop, data_device_receives_leave_when_drag_leaves_target_surface)
+TEST_F(DataDeviceDragAndDrop, data_device_receives_leave_when_drag_leaves_target_surface)
 {
     move_pointer_to_source();
     auto const button_serial = press_pointer();
@@ -204,7 +204,7 @@ TEST_F(DragAndDrop, data_device_receives_leave_when_drag_leaves_target_surface)
     client.dispatch_until([this]() { return surface_under_pointer != target_surface.wl_surface(); });
 }
 
-TEST_F(DragAndDrop, data_device_receives_drop_when_button_released_over_target_surface)
+TEST_F(DataDeviceDragAndDrop, data_device_receives_drop_when_button_released_over_target_surface)
 {
     bool dropped{false};
     EXPECT_CALL(device_listener, drop(_))
