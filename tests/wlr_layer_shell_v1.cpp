@@ -22,6 +22,7 @@
 #include "xdg_shell_stable.h"
 #include "version_specifier.h"
 #include "geometry/rectangle.h"
+#include "expect_protocol_error.h"
 
 #include <gmock/gmock.h>
 
@@ -356,54 +357,30 @@ class LayerSurfaceErrorsTest:
 
 TEST_F(LayerSurfaceTest, specifying_no_size_without_anchors_is_an_error)
 {
-    try
-    {
+    // The protocol does not explicitly state what error to send here; INVALID_SIZE seems most appropriate
+    EXPECT_PROTOCOL_ERROR({
         // Protocol specifies that a size of (0,0) is the default
         commit_and_wait_for_configure();
-    }
-    catch (wlcs::ProtocolError const& err)
-    {
-        EXPECT_THAT(err.interface(), Eq(&zwlr_layer_surface_v1_interface));
-        // The protocol does not explicitly state what error to send here; INVALID_SIZE seems most appropriate
-        EXPECT_THAT(err.error_code(), Eq(ZWLR_LAYER_SURFACE_V1_ERROR_INVALID_SIZE));
-        return;
-    }
-    FAIL() << "Expected protocol error not raised";
+    }, &zwlr_layer_surface_v1_interface, ZWLR_LAYER_SURFACE_V1_ERROR_INVALID_SIZE);
 }
 
 TEST_F(LayerSurfaceTest, specifying_zero_size_without_anchors_is_an_error)
 {
-    try
-    {
+    // The protocol does not explicitly state what error to send here; INVALID_SIZE seems most appropriate
+    EXPECT_PROTOCOL_ERROR({
         zwlr_layer_surface_v1_set_size(layer_surface, 0, 0);
         commit_and_wait_for_configure();
-    }
-    catch (wlcs::ProtocolError const& err)
-    {
-        EXPECT_THAT(err.interface(), Eq(&zwlr_layer_surface_v1_interface));
-        // The protocol does not explicitly state what error to send here; INVALID_SIZE seems most appropriate
-        EXPECT_THAT(err.error_code(), Eq(ZWLR_LAYER_SURFACE_V1_ERROR_INVALID_SIZE));
-        return;
-    }
-    FAIL() << "Expected protocol error not raised";
+    }, &zwlr_layer_surface_v1_interface, ZWLR_LAYER_SURFACE_V1_ERROR_INVALID_SIZE);
 }
 
 TEST_P(LayerSurfaceErrorsTest, specifying_zero_size_without_corresponding_anchors_is_an_error)
 {
-    try
-    {
+    // The protocol does not explicitly state what error to send here; INVALID_SIZE seems most appropriate
+    EXPECT_PROTOCOL_ERROR({
         zwlr_layer_surface_v1_set_size(layer_surface, GetParam().width, GetParam().height);
         zwlr_layer_surface_v1_set_anchor(layer_surface, GetParam().anchors);
         commit_and_wait_for_configure();
-    }
-    catch (wlcs::ProtocolError const& err)
-    {
-        EXPECT_THAT(err.interface(), Eq(&zwlr_layer_surface_v1_interface));
-        // The protocol does not explicitly state what error to send here; INVALID_SIZE seems most appropriate
-        EXPECT_THAT(err.error_code(), Eq(ZWLR_LAYER_SURFACE_V1_ERROR_INVALID_SIZE));
-        return;
-    }
-    FAIL() << "Expected protocol error not raised";
+    }, &zwlr_layer_surface_v1_interface, ZWLR_LAYER_SURFACE_V1_ERROR_INVALID_SIZE);
 }
 
 INSTANTIATE_TEST_SUITE_P(

@@ -172,6 +172,7 @@ option(WLCS_BUILD_UBSAN "Build a test runner with UndefinedBehaviourSanitizer an
 set(WLCS_TESTS
   tests/test_bad_buffer.cpp
   tests/wl_shm.cpp
+  tests/wl_registry.cpp
   tests/pointer_constraints.cpp
   tests/copy_cut_paste.cpp
   tests/data_device_drag_and_drop.cpp
@@ -184,7 +185,7 @@ set(WLCS_TESTS
   tests/frame_submission.cpp
   tests/primary_selection.cpp
   tests/relative_pointer.cpp
-  tests/subsurfaces.cpp
+  tests/wl_subsurface.cpp
   tests/xdg_surface_v6.cpp
   tests/xdg_toplevel_v6.cpp
   tests/xdg_surface_stable.cpp

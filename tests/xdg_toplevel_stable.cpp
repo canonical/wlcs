@@ -29,6 +29,7 @@
 #include "in_process_server.h"
 #include "version_specifier.h"
 #include "xdg_shell_stable.h"
+#include "expect_protocol_error.h"
 
 #include <gmock/gmock.h>
 
@@ -465,15 +466,9 @@ TEST_F(XdgToplevelStableTest, when_parent_is_set_to_self_error_is_raised)
     ConfigurationWindow window{client};
     xdg_toplevel_set_parent(window, window);
     wl_surface_commit(window);
-    try
-    {
+    EXPECT_PROTOCOL_ERROR({
         client.roundtrip();
-    }
-    catch (wlcs::ProtocolError const& err)
-    {
-        return;
-    }
-    FAIL() << "Protocol error not raised";
+    }, &xdg_toplevel_interface, XDG_TOPLEVEL_ERROR_INVALID_PARENT);
 }
 
 TEST_F(XdgToplevelStableTest, when_parent_is_set_to_child_descendant_error_is_raised)
@@ -493,15 +488,9 @@ TEST_F(XdgToplevelStableTest, when_parent_is_set_to_child_descendant_error_is_ra
     xdg_toplevel_set_parent(parent, grandchild);
     wl_surface_commit(parent);
 
-    try
-    {
+    EXPECT_PROTOCOL_ERROR({
         client.roundtrip();
-    }
-    catch (wlcs::ProtocolError const& err)
-    {
-        return;
-    }
-    FAIL() << "Protocol error not raised";
+    }, &xdg_toplevel_interface, XDG_TOPLEVEL_ERROR_INVALID_PARENT);
 }
 
 using XdgToplevelStableConfigurationTest = wlcs::InProcessServer;
