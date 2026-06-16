@@ -20,9 +20,6 @@
 
 #include <gmock/gmock.h>
 
-#include <memory>
-#include <optional>
-
 using namespace testing;
 using namespace wlcs;
 
@@ -72,8 +69,22 @@ struct DragAndDrop : StartedInProcessServer
 
     wlcs::Pointer pointer = the_server().create_pointer();
 
+    // The surface the drag is currently over, tracked via the data device's
+    // enter/leave events (leave itself carries no surface, so we have to
+    // remember which surface was last entered).
+    wl_surface* surface_under_pointer = nullptr;
+
     DragAndDrop()
     {
+        ON_CALL(device_listener, enter(_, _, _, _, _, _))
+            .WillByDefault(Invoke(
+                [this](wl_data_device*, uint32_t, wl_surface* surface, wl_fixed_t, wl_fixed_t, wl_data_offer*)
+                {
+                    surface_under_pointer = surface;
+                }));
+        ON_CALL(device_listener, leave(_))
+            .WillByDefault(Invoke([this](wl_data_device*) { surface_under_pointer = nullptr; }));
+
         the_server().move_surface_to(source_surface, source_x, source_y);
         the_server().move_surface_to(target_surface, target_x, target_y);
         client.roundtrip();
@@ -85,44 +96,49 @@ struct DragAndDrop : StartedInProcessServer
         StartedInProcessServer::TearDown();
     }
 
-    // Press the pointer over the source surface and begin a drag, offering
-    // any_mime_type. Returns once the compositor has processed the request.
-    void start_drag()
+    // Move the pointer to the centre of the source surface.
+    void move_pointer_to_source()
     {
         pointer.move_to(source_x + surface_width / 2, source_y + surface_height / 2);
+    }
 
-        std::optional<uint32_t> button_serial;
+    // Press the left button, returning the serial of the button-press event
+    // (which is needed to start a drag).
+    auto press_pointer() -> uint32_t
+    {
+        uint32_t button_serial{0};
+        bool button_down{false};
         client.add_pointer_button_notification(
-            [&](uint32_t serial, uint32_t, bool is_down)
+            [&](uint32_t serial, uint32_t, bool)
             {
-                if (is_down)
-                    button_serial = serial;
+                button_serial = serial;
+                button_down = true;
                 return false;
             });
         pointer.left_button_down();
-        client.dispatch_until([&]() { return button_serial.has_value(); });
+        client.dispatch_until([&]() { return button_down; });
 
-        wl_data_source_offer(data_source, any_mime_type);
+        return button_serial;
+    }
+
+    // Begin a drag from the source surface, offering mime_type, using the grab
+    // identified by button_serial.
+    void start_drag(uint32_t button_serial, char const* mime_type)
+    {
+        wl_data_source_offer(data_source, mime_type);
         wl_data_device_start_drag(
-            data_device, data_source, source_surface, nullptr, button_serial.value());
+            data_device, data_source, source_surface, nullptr, button_serial);
         client.roundtrip();
     }
 
     // Move the pointer over the target surface and wait until the drag has
-    // entered it.
-    void drag_over_target()
+    // entered it. Waiting on the tracked surface (rather than just any enter
+    // event) also drains the leave of the source surface, so that a subsequent
+    // wait in the test isn't satisfied by a stale event.
+    void move_pointer_to_target()
     {
-        auto const entered_target = std::make_shared<bool>(false);
-        EXPECT_CALL(device_listener, enter(_, _, _, _, _, _))
-            .WillRepeatedly(Invoke(
-                [this, entered_target](wl_data_device*, uint32_t, wl_surface* surface, wl_fixed_t, wl_fixed_t, wl_data_offer*)
-                {
-                    if (surface == target_surface.wl_surface())
-                        *entered_target = true;
-                }));
-
         pointer.move_to(target_x + surface_width / 2, target_y + surface_height / 2);
-        client.dispatch_until([entered_target]() { return *entered_target; });
+        client.dispatch_until([this]() { return surface_under_pointer == target_surface.wl_surface(); });
     }
 };
 }
@@ -131,12 +147,18 @@ TEST_F(DragAndDrop, data_device_receives_offer_when_drag_enters_target_surface)
 {
     EXPECT_CALL(device_listener, data_offer(_, _)).Times(AtLeast(1));
 
-    start_drag();
-    drag_over_target();
+    move_pointer_to_source();
+    auto const button_serial = press_pointer();
+    start_drag(button_serial, any_mime_type);
+    move_pointer_to_target();
 }
 
 TEST_F(DragAndDrop, data_offer_advertises_source_mime_type)
 {
+    // A distinctive mime type, so we can be sure the advertised type is the one
+    // the source offered rather than something the compositor added itself.
+    char const* const specific_mime_type = "application/x-wlcs-test-mime";
+
     MockDataOfferListener offer_listener;
 
     EXPECT_CALL(device_listener, data_offer(_, _))
@@ -144,10 +166,12 @@ TEST_F(DragAndDrop, data_offer_advertises_source_mime_type)
             [&](wl_data_device*, wl_data_offer* offer) { offer_listener.listen_to(offer); }));
 
     bool got_mime_type{false};
-    EXPECT_CALL(offer_listener, offer(_, StrEq(any_mime_type)))
+    EXPECT_CALL(offer_listener, offer(_, StrEq(specific_mime_type)))
         .WillRepeatedly(Invoke([&](wl_data_offer*, char const*) { got_mime_type = true; }));
 
-    start_drag();
+    move_pointer_to_source();
+    auto const button_serial = press_pointer();
+    start_drag(button_serial, specific_mime_type);
     client.dispatch_until([&]() { return got_mime_type; });
 }
 
@@ -157,8 +181,10 @@ TEST_F(DragAndDrop, data_device_receives_motion_during_drag)
     EXPECT_CALL(device_listener, motion(_, _, _, _))
         .WillRepeatedly(Invoke([&](wl_data_device*, uint32_t, wl_fixed_t, wl_fixed_t) { got_motion = true; }));
 
-    start_drag();
-    drag_over_target();
+    move_pointer_to_source();
+    auto const button_serial = press_pointer();
+    start_drag(button_serial, any_mime_type);
+    move_pointer_to_target();
 
     got_motion = false;
     pointer.move_to(target_x + surface_width / 4, target_y + surface_height / 4);
@@ -167,18 +193,15 @@ TEST_F(DragAndDrop, data_device_receives_motion_during_drag)
 
 TEST_F(DragAndDrop, data_device_receives_leave_when_drag_leaves_target_surface)
 {
-    bool left{false};
-    EXPECT_CALL(device_listener, leave(_))
-        .WillRepeatedly(Invoke([&](wl_data_device*) { left = true; }));
+    move_pointer_to_source();
+    auto const button_serial = press_pointer();
+    start_drag(button_serial, any_mime_type);
+    move_pointer_to_target();
 
-    start_drag();
-    drag_over_target();
-
-    // Any leave events from moving off the source surface have already
-    // happened; only interested in leaving the target now.
-    left = false;
+    // Moving off the target should leave it. We check the tracked surface, so a
+    // leave of any other surface (e.g. the source) can't satisfy this.
     pointer.move_to(target_x + surface_width + 50, target_y + surface_height + 50);
-    client.dispatch_until([&]() { return left; });
+    client.dispatch_until([this]() { return surface_under_pointer != target_surface.wl_surface(); });
 }
 
 TEST_F(DragAndDrop, data_device_receives_drop_when_button_released_over_target_surface)
@@ -187,8 +210,10 @@ TEST_F(DragAndDrop, data_device_receives_drop_when_button_released_over_target_s
     EXPECT_CALL(device_listener, drop(_))
         .WillRepeatedly(Invoke([&](wl_data_device*) { dropped = true; }));
 
-    start_drag();
-    drag_over_target();
+    move_pointer_to_source();
+    auto const button_serial = press_pointer();
+    start_drag(button_serial, any_mime_type);
+    move_pointer_to_target();
 
     pointer.left_button_up();
     client.dispatch_until([&]() { return dropped; });
