@@ -23,6 +23,7 @@
 
 #include <boost/throw_exception.hpp>
 
+#include <cerrno>
 #include <sys/mman.h>
 #include <unistd.h>
 #include <system_error>
