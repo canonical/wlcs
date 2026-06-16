@@ -32,7 +32,6 @@
 #include <chrono>
 
 #include "helpers.h"
-#include "shared_library.h"
 #include "wl_handle.h"
 
 #include <wayland-client.h>
