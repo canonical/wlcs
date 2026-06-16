@@ -21,9 +21,11 @@
 
 #include <gmock/gmock.h>
 
+#include <boost/throw_exception.hpp>
+
 #include <sys/mman.h>
 #include <unistd.h>
-#include <cassert>
+#include <system_error>
 #include <vector>
 
 using namespace testing;
@@ -88,7 +90,12 @@ struct wl_buffer* create_bad_shm_buffer(wlcs::Client& client, int width, int hei
 
     // Truncate the file to a small size, so that the compositor will access it
     // out-of-bounds, and hit SIGBUS.
-    assert(ftruncate(fd, 12) == 0);
+    if (ftruncate(fd, 12) == -1)
+    {
+        close(fd);
+        BOOST_THROW_EXCEPTION(
+            std::system_error(errno, std::system_category(), "Failed to truncate temporary file"));
+    }
     close(fd);
 
     return buffer;
