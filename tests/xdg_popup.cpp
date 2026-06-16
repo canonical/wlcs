@@ -25,7 +25,6 @@
  * SOFTWARE.
  */
 
-#include "helpers.h"
 #include "in_process_server.h"
 #include "xdg_shell_stable.h"
 #include "xdg_shell_v6.h"
