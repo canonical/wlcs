@@ -20,6 +20,7 @@
 
 #include <gmock/gmock.h>
 
+#include <memory>
 #include <optional>
 
 using namespace testing;
@@ -71,8 +72,6 @@ struct DragAndDrop : StartedInProcessServer
 
     wlcs::Pointer pointer = the_server().create_pointer();
 
-    bool entered_target{false};
-
     DragAndDrop()
     {
         the_server().move_surface_to(source_surface, source_x, source_y);
@@ -113,16 +112,17 @@ struct DragAndDrop : StartedInProcessServer
     // entered it.
     void drag_over_target()
     {
+        auto const entered_target = std::make_shared<bool>(false);
         EXPECT_CALL(device_listener, enter(_, _, _, _, _, _))
             .WillRepeatedly(Invoke(
-                [this](wl_data_device*, uint32_t, wl_surface* surface, wl_fixed_t, wl_fixed_t, wl_data_offer*)
+                [this, entered_target](wl_data_device*, uint32_t, wl_surface* surface, wl_fixed_t, wl_fixed_t, wl_data_offer*)
                 {
                     if (surface == target_surface.wl_surface())
-                        entered_target = true;
+                        *entered_target = true;
                 }));
 
         pointer.move_to(target_x + surface_width / 2, target_y + surface_height / 2);
-        client.dispatch_until([this]() { return entered_target; });
+        client.dispatch_until([entered_target]() { return *entered_target; });
     }
 };
 }
