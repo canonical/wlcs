@@ -183,7 +183,7 @@ set(WLCS_TESTS
   tests/frame_submission.cpp
   tests/primary_selection.cpp
   tests/relative_pointer.cpp
-  tests/subsurfaces.cpp
+  tests/wl_subsurface.cpp
   tests/xdg_surface_v6.cpp
   tests/xdg_toplevel_v6.cpp
   tests/xdg_surface_stable.cpp
