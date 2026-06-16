@@ -190,7 +190,7 @@
     </event>
   </interface>
 
-  <interface name="wl_compositor" version="6">
+  <interface name="wl_compositor" version="7">
     <description summary="the compositor singleton">
       A compositor.  This object is a singleton global.  The
       compositor is in charge of combining the contents of multiple
@@ -209,6 +209,14 @@
 	Ask the compositor to create a new region.
       </description>
       <arg name="id" type="new_id" interface="wl_region" summary="the new region"/>
+    </request>
+
+    <!-- Version 7 additions -->
+
+    <request name="release" type="destructor" since="7">
+      <description summary="destroy wl_compositor">
+	This request destroys the wl_compositor. This has no effect on any other objects.
+      </description>
     </request>
   </interface>
 

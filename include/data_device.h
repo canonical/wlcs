@@ -23,7 +23,7 @@
 #include "wl_interface_descriptor.h"
 #include "wl_handle.h"
 
-#include <wayland-client.h>
+#include "generated/wayland-client.h"
 #include <gmock/gmock.h>
 
 #include <memory>
