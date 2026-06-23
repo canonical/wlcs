@@ -170,41 +170,41 @@ option(WLCS_BUILD_TSAN "Build a test runner with ThreadSanitizer annotations" ON
 option(WLCS_BUILD_UBSAN "Build a test runner with UndefinedBehaviourSanitizer annotations" ON)
 
 set(WLCS_TESTS
-  tests/wl_shm.cpp
-  tests/wl_registry.cpp
-  tests/pointer_constraints.cpp
-  tests/copy_cut_paste.cpp
-  tests/gtk_primary_selection.cpp
-  tests/test_surface_events.cpp
-  tests/touches.cpp
-  tests/keyboard.cpp
-  tests/wl_output.cpp
-  tests/surface_input_regions.cpp
-  tests/frame_submission.cpp
-  tests/primary_selection.cpp
-  tests/relative_pointer.cpp
-  tests/wl_subsurface.cpp
-  tests/xdg_surface_v6.cpp
-  tests/xdg_toplevel_v6.cpp
-  tests/xdg_surface_stable.cpp
-  tests/xdg_toplevel_stable.cpp
-  tests/xdg_popup.cpp
-  tests/wlr_layer_shell_v1.cpp
-  tests/xdg_output_v1.cpp
-  tests/wlr_foreign_toplevel_management_v1.cpp
-  tests/self_test.cpp
-  tests/text_input_v3_with_input_method_v2.cpp
-  tests/wlr_virtual_pointer_v1.cpp
-  tests/text_input_v2_with_input_method_v1.cpp
-  tests/xdg_decoration_v1.cpp
-  tests/wp_viewporter.cpp
-  tests/fractional_scale_v1.cpp
-  tests/linux_dmabuf_v1.cpp
   tests/ext_data_control_v1.cpp
   tests/ext_foreign_toplevel_list_v1.cpp
   tests/ext_image_copy_capture_v1.cpp
   tests/ext_input_trigger_action_v1.cpp
   tests/ext_input_trigger_registration_v1.cpp
+  tests/self_test.cpp
+  tests/wl_data_offer_copy_cut_paste.cpp
+  tests/wl_data_offer_gtk_primary_selection.cpp
+  tests/wl_keyboard.cpp
+  tests/wl_output.cpp
+  tests/wl_registry.cpp
+  tests/wl_shm.cpp
+  tests/wl_subsurface.cpp
+  tests/wl_surface_events.cpp
+  tests/wl_surface_frame_submission.cpp
+  tests/wl_surface_input_region.cpp
+  tests/wl_surface_pointer_constraints.cpp
+  tests/wl_touch.cpp
+  tests/wlr_foreign_toplevel_management_v1.cpp
+  tests/wlr_layer_shell_v1.cpp
+  tests/wlr_virtual_pointer_v1.cpp
+  tests/wp_fractional_scale_v1.cpp
+  tests/wp_viewporter.cpp
+  tests/xdg_decoration_v1.cpp
+  tests/xdg_output_v1.cpp
+  tests/xdg_popup.cpp
+  tests/xdg_surface_stable.cpp
+  tests/xdg_surface_v6.cpp
+  tests/xdg_toplevel_stable.cpp
+  tests/xdg_toplevel_v6.cpp
+  tests/zwp_linux_dmabuf_v1.cpp
+  tests/zwp_primary_selection_v1.cpp
+  tests/zwp_relative_pointer_v1.cpp
+  tests/zwp_text_input_v2_with_input_method_v1.cpp
+  tests/zwp_text_input_v3_with_input_method_v2.cpp
 )
 
 set(
