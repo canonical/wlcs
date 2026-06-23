@@ -175,6 +175,7 @@ set(WLCS_TESTS
   tests/wl_registry.cpp
   tests/pointer_constraints.cpp
   tests/copy_cut_paste.cpp
+  tests/wl_data_device_drag_and_drop.cpp
   tests/gtk_primary_selection.cpp
   tests/test_surface_events.cpp
   tests/touches.cpp
