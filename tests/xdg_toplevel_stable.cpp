@@ -25,15 +25,12 @@
  * SOFTWARE.
  */
 
-#include "helpers.h"
 #include "in_process_server.h"
 #include "version_specifier.h"
 #include "xdg_shell_stable.h"
 #include "expect_protocol_error.h"
 
 #include <gmock/gmock.h>
-
-#include <optional>
 
 using namespace testing;
 

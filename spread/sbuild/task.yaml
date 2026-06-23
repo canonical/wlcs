@@ -1,4 +1,8 @@
-systems: [ubuntu-24.04]
+environment:
+    DEB_BUILD_OPTIONS: "${DEB_BUILD_EXTRA}"
+    NO_PKG_MANGLE: 1
+
+systems: [ubuntu-*]
 variants:
 - ubuntu*
 - debian*
@@ -21,10 +25,7 @@ execute: |
         schroot \
         ubuntu-dev-tools
 
-    cat <<'EOF' > ~/.sbuildrc
-    $mailto = 'null@example.com';
-    1;
-    EOF
+    printf "\$mailto = 'null@example.com';\n1;\n" > ~/.sbuildrc
 
     # work around sbuild apparmor issues
     cat <<EOF > /etc/apparmor.d/local/sbuild
@@ -35,7 +36,12 @@ execute: |
     EOF
     apparmor_parser -r /etc/apparmor.d/sbuild
 
+    # trick mk-sbuild into making the chroot for us
+    addgroup --system sbuild
     adduser $USER sbuild
+    mkdir --parents /var/lib/sbuild/build
+    chown --recursive :sbuild /var/lib/sbuild
+    chmod --recursive g+w /var/lib/sbuild
     # set host and build environment up
     source <( dpkg-architecture --print-set --host-arch ${ARCH} )
 
@@ -44,14 +50,22 @@ execute: |
     MKSBUILD_OPTS=(
       mk-sbuild
       --distro ${DISTRO}
+      --debootstrap-include=ccache,passwd,qemu-user
       ${RELEASE}
     )
 
+    if [[ "${SPREAD_VARIANT}" == *"ubuntu"* ]]; then
+      MKSBUILD_OPTS+=("--debootstrap-mirror=http://azure.archive.ubuntu.com/ubuntu/")
+      export SOURCES_SECURITY_URL=http://azure.archive.ubuntu.com/ubuntu/
+    fi
+
     SBUILD_OPTS=(
+      --chroot-mode schroot
       --no-clean-source
       --jobs=$(nproc)
       --verbose
       --dist=${RELEASE}
+      --build=${DEB_BUILD_ARCH}
       --host=${DEB_HOST_ARCH}
       --purge=never
     )
@@ -70,6 +84,7 @@ execute: |
     # Cross building
     if [ "${DEB_BUILD_ARCH}" != "${DEB_HOST_ARCH}" ]; then
       MKSBUILD_OPTS+=("--arch=${DEB_BUILD_ARCH}" "--target=${DEB_HOST_ARCH}")
+      unset SOURCES_SECURITY_URL
 
       SCHROOT_NAME="${SCHROOT_NAME}-${DEB_HOST_ARCH}"
     fi

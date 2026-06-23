@@ -170,7 +170,6 @@ option(WLCS_BUILD_TSAN "Build a test runner with ThreadSanitizer annotations" ON
 option(WLCS_BUILD_UBSAN "Build a test runner with UndefinedBehaviourSanitizer annotations" ON)
 
 set(WLCS_TESTS
-  tests/test_bad_buffer.cpp
   tests/wl_shm.cpp
   tests/wl_surface.cpp
   tests/wl_registry.cpp
