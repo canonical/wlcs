@@ -171,6 +171,7 @@ option(WLCS_BUILD_UBSAN "Build a test runner with UndefinedBehaviourSanitizer an
 
 set(WLCS_TESTS
   tests/wl_shm.cpp
+  tests/wl_surface.cpp
   tests/wl_registry.cpp
   tests/pointer_constraints.cpp
   tests/copy_cut_paste.cpp
