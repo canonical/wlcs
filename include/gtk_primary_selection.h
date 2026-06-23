@@ -23,11 +23,8 @@
 
 #include "active_listeners.h"
 #include "wl_interface_descriptor.h"
-#include "wl_handle.h"
 
 #include <memory>
-#include <mutex>
-#include <set>
 
 namespace wlcs
 {
