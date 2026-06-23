@@ -23,14 +23,38 @@
 #include "wl_interface_descriptor.h"
 #include "wl_handle.h"
 
-#include <wayland-client.h>
+#include "generated/wayland-client.h"
 #include <gmock/gmock.h>
 
 #include <memory>
 
 namespace wlcs
 {
-WLCS_CREATE_INTERFACE_DESCRIPTOR(wl_data_device_manager)
+/* A manually-specified descriptor for wl_data_device_manager, as it only has a
+ * destructor (release) for version >= 4.
+ */
+namespace detail
+{
+inline void release_data_device_manager(wl_data_device_manager* to_destroy)
+{
+    if (wl_data_device_manager_get_version(to_destroy) >= WL_DATA_DEVICE_MANAGER_RELEASE_SINCE_VERSION)
+    {
+        wl_data_device_manager_release(to_destroy);
+    }
+    else
+    {
+        wl_data_device_manager_destroy(to_destroy);
+    }
+}
+}
+
+template<>
+struct WlInterfaceDescriptor<wl_data_device_manager>
+{
+    static constexpr bool const has_specialisation = true;
+    static constexpr wl_interface const* const interface = &wl_data_device_manager_interface;
+    static constexpr void (* const destructor)(wl_data_device_manager*) = &detail::release_data_device_manager;
+};
 
 class DataSource
 {
