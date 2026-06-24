@@ -148,7 +148,7 @@ struct WlOutputTest : wlcs::InProcessServer
     void receive_initial_properties(wlcs::Client& client, MockWlOutputListener& listener)
     {
         bool done = false;
-        EXPECT_CALL(listener, done(_)).WillRepeatedly(Invoke([&done](auto) { done = true; }));
+        ON_CALL(listener, done(_)).WillByDefault(Invoke([&done](auto) { done = true; }));
         client.dispatch_until([&done]() { return done; });
     }
 };
