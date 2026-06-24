@@ -176,6 +176,7 @@ set(WLCS_TESTS
   tests/ext_input_trigger_action_v1.cpp
   tests/ext_input_trigger_registration_v1.cpp
   tests/self_test.cpp
+  tests/wl_data_device_drag_and_drop.cpp
   tests/wl_data_offer_copy_cut_paste.cpp
   tests/wl_data_offer_gtk_primary_selection.cpp
   tests/wl_keyboard.cpp

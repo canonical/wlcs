@@ -50,6 +50,31 @@ class VersionSpecifier;
 WLCS_CREATE_INTERFACE_DESCRIPTOR(wl_surface)
 WLCS_CREATE_INTERFACE_DESCRIPTOR(wl_subsurface)
 
+/* A manually-specified descriptor for wl_compositor, as it only has a
+ * destructor (release) for version >= 7.
+ */
+namespace
+{
+void send_release_if_supported(wl_compositor* to_destroy)
+{
+    if (wl_compositor_get_version(to_destroy) >= WL_COMPOSITOR_RELEASE_SINCE_VERSION)
+    {
+        wl_compositor_release(to_destroy);
+    }
+    else
+    {
+        wl_compositor_destroy(to_destroy);
+    }
+}
+}
+template<>
+struct WlInterfaceDescriptor<wl_compositor>
+{
+    static constexpr bool const has_specialisation = true;
+    static constexpr wl_interface const* const interface = &wl_compositor_interface;
+    static constexpr void (* const destructor)(wl_compositor*) = &send_release_if_supported;
+};
+
 /* We need a manually-specified descriptor for wl_output,
  * as wl_output only has a destructor for version >= 3
  */
