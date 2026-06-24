@@ -18,6 +18,7 @@
 
 #include "version_specifier.h"
 #include "boost/throw_exception.hpp"
+#include <algorithm>
 #include <stdexcept>
 
 wlcs::ExactlyVersion::ExactlyVersion(uint32_t version) noexcept
@@ -84,6 +85,25 @@ auto wlcs::AtLeastVersion::select_version(
 auto wlcs::AtLeastVersion::describe() const -> std::string
 {
     return std::string{">= "} + std::to_string(version);
+}
+
+wlcs::AtMostVersion::AtMostVersion(uint32_t version) noexcept
+    : version{version}
+{
+}
+
+auto wlcs::AtMostVersion::select_version(
+    uint32_t max_available_version,
+    uint32_t max_supported_version) const -> std::optional<uint32_t>
+{
+    // Bind the highest version that is no greater than the requested version,
+    // and that both the server and WLCS support.
+    return {std::min({version, max_available_version, max_supported_version})};
+}
+
+auto wlcs::AtMostVersion::describe() const -> std::string
+{
+    return std::string{"<= "} + std::to_string(version);
 }
 
 wlcs::VersionSpecifier const& wlcs::AnyVersion = wlcs::AtLeastVersion{1};

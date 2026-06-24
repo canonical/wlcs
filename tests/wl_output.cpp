@@ -16,7 +16,6 @@
  * Authored by: William Wold <william.wold@canonical.com>
  */
 
-#include "helpers.h"
 #include "in_process_server.h"
 #include "version_specifier.h"
 
