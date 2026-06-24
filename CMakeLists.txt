@@ -184,6 +184,7 @@ set(WLCS_TESTS
   tests/wl_registry.cpp
   tests/wl_shm.cpp
   tests/wl_subsurface.cpp
+  tests/wl_surface.cpp
   tests/wl_surface_events.cpp
   tests/wl_surface_frame_submission.cpp
   tests/wl_surface_input_region.cpp
