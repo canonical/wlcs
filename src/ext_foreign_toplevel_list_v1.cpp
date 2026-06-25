@@ -192,7 +192,7 @@ auto wlcs::ExtForeignToplevelListV1::toplevel(std::string const& app_id) const -
         }
     }
     if (!match)
-        BOOST_THROW_EXCEPTION(std::runtime_error("No toplevels have the app ID " + app_id));
+        BOOST_THROW_EXCEPTION(std::out_of_range("No toplevels have the app ID " + app_id));
     if (match.value()->is_dirty())
         BOOST_THROW_EXCEPTION(std::runtime_error("Toplevel has pending updates"));
     return *match.value();
