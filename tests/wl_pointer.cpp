@@ -137,11 +137,12 @@ TEST_F(WlPointerTest, set_cursor_may_reassign_the_cursor_role_to_the_same_surfac
     });
 }
 
-TEST_F(WlPointerTest, set_cursor_on_a_surface_with_an_xdg_role_is_a_protocol_error)
+TEST_F(WlPointerTest, set_cursor_on_a_surface_with_another_role_is_a_protocol_error)
 {
     auto const enter_serial = move_pointer_to_surface();
 
-    // A mapped xdg_toplevel surface already holds the toplevel role.
+    // create_visible_surface gives the surface a shell role (wl_shell or
+    // xdg_toplevel, depending on what the compositor supports).
     auto roled_surface = client.create_visible_surface(surface_width, surface_height);
 
     EXPECT_PROTOCOL_ERROR({
@@ -169,10 +170,10 @@ TEST_F(WlPointerTest, set_cursor_with_a_stale_serial_is_ignored)
 {
     auto const enter_serial = move_pointer_to_surface();
 
-    // A mapped xdg_toplevel surface already holds the toplevel role, so it
-    // would be rejected if the serial were honoured. The spec requires the
-    // request to be ignored when the serial does not match the latest enter,
-    // so no protocol error must be raised.
+    // create_visible_surface gives the surface a shell role, so it would be
+    // rejected if the serial were honoured. The spec requires the request to
+    // be ignored when the serial does not match the latest enter, so no
+    // protocol error must be raised.
     auto roled_surface = client.create_visible_surface(surface_width, surface_height);
 
     EXPECT_NO_THROW({
