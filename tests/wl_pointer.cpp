@@ -184,6 +184,9 @@ TEST_F(WlPointerTest, set_cursor_with_a_stale_serial_is_ignored)
 
 TEST_F(WlPointerTest, a_cursor_surface_cannot_be_given_a_different_role)
 {
+    if (!client.xdg_shell_stable())
+        GTEST_SKIP() << "Compositor does not support xdg_wm_base";
+
     auto const enter_serial = move_pointer_to_surface();
 
     auto cursor = make_cursor_surface();
