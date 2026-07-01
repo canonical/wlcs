@@ -202,6 +202,7 @@ private:
 };
 
 class Client;
+class ShmBuffer;
 
 class Surface
 {
@@ -214,8 +215,10 @@ public:
     operator ::wl_surface*() const;
     auto wl_surface() const -> ::wl_surface* { return *this; };
 
+    void attach_buffer(ShmBuffer const& buffer);
     void attach_buffer(int width, int height);
     void add_frame_callback(std::function<void(int)> const& on_frame);
+    void attach_visible_buffer(ShmBuffer const& buffer);
     void attach_visible_buffer(int width, int height);
     void run_on_destruction(std::function<void()> callback);
 
