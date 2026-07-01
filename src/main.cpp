@@ -25,6 +25,7 @@
 #include "xfail_supporting_test_listener.h"
 #include "shared_library.h"
 #include "wlcs/display_server.h"
+#include "external_tests.h"
 
 #include "helpers.h"
 
@@ -75,6 +76,26 @@ int main(int argc, char** argv)
         std::cerr
             << "Failed to load compositor entry point: " << err.what() << std::endl;
         return 1;
+    }
+
+    if (entry_point->version >= 2)
+    {
+        for (auto const& suite : std::span{entry_point->extra_test_suites, entry_point->num_extra_tests})
+        {
+            for (auto const& test: std::span{suite.tests, suite.num_tests})
+            {
+                testing::RegisterTest(
+                    suite.name,
+                    test.name,
+                    nullptr,
+                    nullptr,
+                    __FILE__, __LINE__,
+                    [&test, &suite]() -> ExternalTest*
+                    {
+                        return new ExternalTest{suite.setup, suite.teardown, test.body};
+                    });
+            }
+        }
     }
 
     wlcs::helpers::set_entry_point(entry_point);
