@@ -2049,10 +2049,15 @@ public:
         return surface_;
     }
 
+    void attach_buffer(ShmBuffer const& buffer)
+    {
+        wl_surface_attach(surface_, buffer, 0, 0);
+    }
+
     void attach_buffer(int width, int height)
     {
         auto& buffer = owner_.create_buffer(width, height);
-        wl_surface_attach(surface_, buffer, 0, 0);
+        attach_buffer(buffer);
     }
 
     void add_frame_callback(std::function<void(uint32_t)> const& on_frame)
@@ -2067,13 +2072,19 @@ public:
         wl_callback_add_listener(callback, &frame_listener, holder.release());
     }
 
-    void attach_visible_buffer(int width, int height)
+    void attach_visible_buffer(ShmBuffer const& buffer)
     {
-        attach_buffer(width, height);
+        attach_buffer(buffer);
         auto surface_rendered = std::make_shared<bool>(false);
         add_frame_callback([surface_rendered](auto) { *surface_rendered = true; });
         wl_surface_commit(surface_);
         owner_.dispatch_until([surface_rendered]() { return *surface_rendered; });
+    }
+
+    void attach_visible_buffer(int width, int height)
+    {
+        auto& buffer = owner_.create_buffer(width, height);
+        attach_visible_buffer(buffer);
     }
 
     void run_on_destruction(std::function<void()> callback)
@@ -2188,6 +2199,11 @@ wlcs::Surface::operator ::wl_surface*() const
     return impl->surface();
 }
 
+void wlcs::Surface::attach_buffer(ShmBuffer const& buffer)
+{
+    impl->attach_buffer(buffer);
+}
+
 void wlcs::Surface::attach_buffer(int width, int height)
 {
     impl->attach_buffer(width, height);
@@ -2196,6 +2212,11 @@ void wlcs::Surface::attach_buffer(int width, int height)
 void wlcs::Surface::add_frame_callback(std::function<void(int)> const& on_frame)
 {
     impl->add_frame_callback(on_frame);
+}
+
+void wlcs::Surface::attach_visible_buffer(ShmBuffer const& buffer)
+{
+    impl->attach_visible_buffer(buffer);
 }
 
 void wlcs::Surface::attach_visible_buffer(int width, int height)
