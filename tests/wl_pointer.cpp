@@ -83,22 +83,18 @@ TEST_F(WlPointerTest, set_cursor_with_a_role_less_surface_is_accepted)
 
     auto cursor = make_cursor_surface();
 
-    EXPECT_NO_THROW({
-        wl_pointer_set_cursor(
-            client.the_pointer(), enter_serial, cursor, cursor_hotspot_x, cursor_hotspot_y);
-        wl_surface_commit(cursor);
-        client.roundtrip();
-    });
+    wl_pointer_set_cursor(
+        client.the_pointer(), enter_serial, cursor, cursor_hotspot_x, cursor_hotspot_y);
+    wl_surface_commit(cursor);
+    client.roundtrip();
 }
 
 TEST_F(WlPointerTest, set_cursor_with_null_surface_hides_the_cursor)
 {
     auto const enter_serial = move_pointer_to_surface();
 
-    EXPECT_NO_THROW({
-        wl_pointer_set_cursor(client.the_pointer(), enter_serial, nullptr, 0, 0);
-        client.roundtrip();
-    });
+    wl_pointer_set_cursor(client.the_pointer(), enter_serial, nullptr, 0, 0);
+    client.roundtrip();
 }
 
 TEST_F(WlPointerTest, set_cursor_with_null_surface_hides_a_previously_set_cursor)
@@ -107,14 +103,11 @@ TEST_F(WlPointerTest, set_cursor_with_null_surface_hides_a_previously_set_cursor
 
     auto cursor = make_cursor_surface();
 
-    EXPECT_NO_THROW({
-        wl_pointer_set_cursor(
-            client.the_pointer(), enter_serial, cursor, cursor_hotspot_x, cursor_hotspot_y);
-        wl_surface_commit(cursor);
-        client.roundtrip();
-        wl_pointer_set_cursor(client.the_pointer(), enter_serial, nullptr, 0, 0);
-        client.roundtrip();
-    });
+    wl_pointer_set_cursor(
+        client.the_pointer(), enter_serial, cursor, cursor_hotspot_x, cursor_hotspot_y);
+    wl_surface_commit(cursor);
+    wl_pointer_set_cursor(client.the_pointer(), enter_serial, nullptr, 0, 0);
+    client.roundtrip();
 }
 
 TEST_F(WlPointerTest, set_cursor_may_reassign_the_cursor_role_to_the_same_surface)
@@ -125,16 +118,13 @@ TEST_F(WlPointerTest, set_cursor_may_reassign_the_cursor_role_to_the_same_surfac
 
     // The Wayland spec explicitly allows giving a surface the cursor role
     // again; this must not raise a protocol error.
-    EXPECT_NO_THROW({
-        wl_pointer_set_cursor(
-            client.the_pointer(), enter_serial, cursor, cursor_hotspot_x, cursor_hotspot_y);
-        wl_surface_commit(cursor);
-        client.roundtrip();
-        wl_pointer_set_cursor(
-            client.the_pointer(), enter_serial, cursor, cursor_hotspot_x + 1, cursor_hotspot_y + 1);
-        wl_surface_commit(cursor);
-        client.roundtrip();
-    });
+    wl_pointer_set_cursor(
+        client.the_pointer(), enter_serial, cursor, cursor_hotspot_x, cursor_hotspot_y);
+    wl_surface_commit(cursor);
+    wl_pointer_set_cursor(
+        client.the_pointer(), enter_serial, cursor, cursor_hotspot_x + 1, cursor_hotspot_y + 1);
+    wl_surface_commit(cursor);
+    client.roundtrip();
 }
 
 TEST_F(WlPointerTest, set_cursor_on_a_surface_with_another_role_is_a_protocol_error)
@@ -176,11 +166,9 @@ TEST_F(WlPointerTest, set_cursor_with_a_stale_serial_is_ignored)
     // protocol error must be raised.
     auto roled_surface = client.create_visible_surface(surface_width, surface_height);
 
-    EXPECT_NO_THROW({
-        wl_pointer_set_cursor(
-            client.the_pointer(), enter_serial + 1, roled_surface, cursor_hotspot_x, cursor_hotspot_y);
-        client.roundtrip();
-    });
+    wl_pointer_set_cursor(
+        client.the_pointer(), enter_serial + 1, roled_surface, cursor_hotspot_x, cursor_hotspot_y);
+    client.roundtrip();
 }
 
 TEST_F(WlPointerTest, a_cursor_surface_cannot_be_given_a_different_role)
