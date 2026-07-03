@@ -266,7 +266,57 @@ auto const multi_rect_corners = Values(
         {surface_size.first - small_rect_inset - 1, surface_size.second / 2 - 1},
         {1, 1}});
 
-// TODO: test subtract
+// A region covering the whole surface with a rectangular hole subtracted out
+// of the middle. Input should be seen on the surrounding frame but not inside
+// the hole.
+//    _______________
+//   |  ___________  |
+//   | |           | |
+//   | |   hole    | |
+//   | |___________| |
+//   |_______________|
+int const hole_inset = 30;
+
+Region const hole_region{"subtracted hole", surface_size, {
+    // whole surface...
+    {RegionAction::add, {0, 0}, surface_size},
+    // ...minus a hole in the middle
+    {RegionAction::subtract, {hole_inset, hole_inset}, {
+        surface_size.first - hole_inset * 2,
+        surface_size.second - hole_inset * 2}}}};
+
+// on_surface points sit on the frame (just outside the hole); moving by delta
+// crosses into the subtracted hole, which is outside the input region.
+auto const hole_edges = Values(
+    RegionWithTestPoints{"left edge of hole", hole_region,
+        {hole_inset - 1, surface_size.second / 2},
+        {1, 0}},
+    RegionWithTestPoints{"right edge of hole", hole_region,
+        {surface_size.first - hole_inset, surface_size.second / 2},
+        {-1, 0}},
+    RegionWithTestPoints{"top edge of hole", hole_region,
+        {surface_size.first / 2, hole_inset - 1},
+        {0, 1}},
+    RegionWithTestPoints{"bottom edge of hole", hole_region,
+        {surface_size.first / 2, surface_size.second - hole_inset},
+        {0, -1}});
+
+// Corners of the hole: on_surface sits on the frame diagonally outside the
+// hole corner, and delta moves diagonally into the hole.
+auto const hole_corners = Values(
+    RegionWithTestPoints{"top-left corner of hole", hole_region,
+        {hole_inset - 1, hole_inset - 1},
+        {1, 1}},
+    RegionWithTestPoints{"top-right corner of hole", hole_region,
+        {surface_size.first - hole_inset, hole_inset - 1},
+        {-1, 1}},
+    RegionWithTestPoints{"bottom-left corner of hole", hole_region,
+        {hole_inset - 1, surface_size.second - hole_inset},
+        {1, -1}},
+    RegionWithTestPoints{"bottom-right corner of hole", hole_region,
+        {surface_size.first - hole_inset, surface_size.second - hole_inset},
+        {-1, -1}});
+
 // TODO: test empty region
 // TODO: test default region
 
@@ -825,6 +875,16 @@ INSTANTIATE_TEST_SUITE_P(
     MultiRectCorners,
     RegionSurfaceInputCombinations,
     Combine(multi_rect_corners, xdg_stable_surface_type, all_input_types));
+
+INSTANTIATE_TEST_SUITE_P(
+    SubtractedHoleEdges,
+    RegionSurfaceInputCombinations,
+    Combine(hole_edges, xdg_stable_surface_type, all_input_types));
+
+INSTANTIATE_TEST_SUITE_P(
+    SubtractedHoleCorners,
+    RegionSurfaceInputCombinations,
+    Combine(hole_corners, xdg_stable_surface_type, all_input_types));
 
 INSTANTIATE_TEST_SUITE_P(
     SurfaceInputRegions,
