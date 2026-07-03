@@ -338,6 +338,12 @@ public:
     void add_pointer_motion_notification(PointerMotionNotifier const& on_motion);
     void add_pointer_button_notification(PointerButtonNotifier const& on_button);
 
+    /// Move \p pointer to the absolute coordinates (x, y) and return the serial
+    /// of the resulting wl_pointer.enter event. Fails the test if no enter
+    /// event is received. The returned serial is required by many wl_pointer
+    /// requests, most notably wl_pointer.set_cursor.
+    uint32_t move_pointer_to(Pointer& pointer, int x, int y);
+
     void dispatch_until(
         std::function<bool()> const& predicate,
         std::chrono::seconds timeout = helpers::a_long_time());

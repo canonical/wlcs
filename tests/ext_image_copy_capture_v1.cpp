@@ -538,15 +538,8 @@ TEST_F(ExtImageCopyCaptureTest, cursor_session_captures_pointer_image)
     // Create a surface and place the cursor over it
     wlcs::Surface surface{client.create_visible_surface(200, 200)};
     the_server().move_surface_to(surface, 0, 0);
-    std::optional<uint32_t> enter_serial;
-    client.add_pointer_enter_notification([&](auto, auto, auto)
-        {
-            enter_serial = client.latest_serial();
-            return false;
-        });
     auto pointer = the_server().create_pointer();
-    pointer.move_to(100, 100);
-    client.dispatch_until([&]() { return enter_serial.has_value(); });
+    auto const enter_serial = client.move_pointer_to(pointer, 100, 100);
 
     // Set a cursor image
     wlcs::Surface cursor_surface{client};
@@ -555,7 +548,7 @@ TEST_F(ExtImageCopyCaptureTest, cursor_session_captures_pointer_image)
     memset(data.data(), 0xff, data.size());
     wl_surface_attach(cursor_surface, cursor_buffer1, 0, 0);
     wl_surface_commit(cursor_surface);
-    wl_pointer_set_cursor(client.the_pointer(), enter_serial.value(), cursor_surface, 16, 16);
+    wl_pointer_set_cursor(client.the_pointer(), enter_serial, cursor_surface, 16, 16);
     client.roundtrip();
 
     // Create a cursor session for the output

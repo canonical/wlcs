@@ -46,18 +46,8 @@ public:
     /// notably set_cursor, must be issued with a valid enter serial.
     auto move_pointer_to_surface() -> uint32_t
     {
-        std::optional<uint32_t> enter_serial;
-        client.add_pointer_enter_notification(
-            [&](auto, auto, auto)
-            {
-                // Inside the enter handler the client's latest serial is, by
-                // definition, the enter serial.
-                enter_serial = client.latest_serial();
-                return false;
-            });
-        pointer.move_to(surface_x + pointer_offset_x, surface_y + pointer_offset_y);
-        client.dispatch_until([&]{ return enter_serial.has_value(); });
-        return enter_serial.value();
+        return client.move_pointer_to(
+            pointer, surface_x + pointer_offset_x, surface_y + pointer_offset_y);
     }
 
     /// A role-less surface suitable for use as a cursor.
