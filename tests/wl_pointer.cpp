@@ -21,6 +21,13 @@
 
 using namespace testing;
 
+// NOTE: WLCS currently has no way to observe the compositor's applied cursor
+// (its image, hotspot, or whether it is hidden). The "acceptance" tests below
+// can therefore only verify that a set_cursor request is not rejected with a
+// protocol error; they cannot confirm the request actually took effect. If a
+// hook to inspect the applied cursor is added in the future, these tests should
+// be extended to assert on the resulting cursor state.
+
 namespace
 {
 class WlPointerTest : public wlcs::StartedInProcessServer
@@ -83,6 +90,9 @@ TEST_F(WlPointerTest, set_cursor_with_a_role_less_surface_is_accepted)
 
     auto cursor = make_cursor_surface();
 
+    // We can only check that the request is accepted; we cannot verify the
+    // cursor image the compositor ends up showing. See the note at the top of
+    // this file.
     wl_pointer_set_cursor(
         client.the_pointer(), enter_serial, cursor, cursor_hotspot_x, cursor_hotspot_y);
     wl_surface_commit(cursor);
@@ -93,6 +103,9 @@ TEST_F(WlPointerTest, set_cursor_with_null_surface_hides_the_cursor)
 {
     auto const enter_serial = move_pointer_to_surface();
 
+    // A null surface asks the compositor to hide the cursor. We can only check
+    // that the request is accepted; we have no hook to confirm the cursor is
+    // actually hidden. See the note at the top of this file.
     wl_pointer_set_cursor(client.the_pointer(), enter_serial, nullptr, 0, 0);
     client.roundtrip();
 }
@@ -103,6 +116,9 @@ TEST_F(WlPointerTest, set_cursor_with_null_surface_hides_a_previously_set_cursor
 
     auto cursor = make_cursor_surface();
 
+    // As above, we can only check that hiding an already-set cursor is
+    // accepted, not that the cursor image is actually removed. See the note at
+    // the top of this file.
     wl_pointer_set_cursor(
         client.the_pointer(), enter_serial, cursor, cursor_hotspot_x, cursor_hotspot_y);
     wl_surface_commit(cursor);
@@ -117,7 +133,9 @@ TEST_F(WlPointerTest, set_cursor_may_reassign_the_cursor_role_to_the_same_surfac
     auto cursor = make_cursor_surface();
 
     // The Wayland spec explicitly allows giving a surface the cursor role
-    // again; this must not raise a protocol error.
+    // again; this must not raise a protocol error. We can only check that the
+    // reassignment is accepted, not that the updated hotspot takes effect. See
+    // the note at the top of this file.
     wl_pointer_set_cursor(
         client.the_pointer(), enter_serial, cursor, cursor_hotspot_x, cursor_hotspot_y);
     wl_surface_commit(cursor);
@@ -163,7 +181,9 @@ TEST_F(WlPointerTest, set_cursor_with_a_stale_serial_is_ignored)
     // create_visible_surface gives the surface a shell role, so it would be
     // rejected if the serial were honoured. The spec requires the request to
     // be ignored when the serial does not match the latest enter, so no
-    // protocol error must be raised.
+    // protocol error must be raised. We rely on the absence of a protocol
+    // error here; without a hook to inspect the applied cursor we cannot
+    // otherwise observe that the request was dropped.
     auto roled_surface = client.create_visible_surface(surface_width, surface_height);
 
     wl_pointer_set_cursor(
