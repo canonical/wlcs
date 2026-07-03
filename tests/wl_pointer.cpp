@@ -135,11 +135,11 @@ TEST_F(WlPointerTest, set_cursor_on_a_surface_with_another_role_is_a_protocol_er
     // xdg_toplevel, depending on what the compositor supports).
     auto roled_surface = client.create_visible_surface(surface_width, surface_height);
 
-    EXPECT_PROTOCOL_ERROR({
-        wl_pointer_set_cursor(
-            client.the_pointer(), enter_serial, roled_surface, cursor_hotspot_x, cursor_hotspot_y);
-        client.roundtrip();
-    }, &wl_pointer_interface, WL_POINTER_ERROR_ROLE);
+    wl_pointer_set_cursor(
+        client.the_pointer(), enter_serial, roled_surface, cursor_hotspot_x, cursor_hotspot_y);
+    EXPECT_PROTOCOL_ERROR(
+        { client.roundtrip(); },
+        &wl_pointer_interface, WL_POINTER_ERROR_ROLE);
 }
 
 TEST_F(WlPointerTest, set_cursor_on_a_subsurface_is_a_protocol_error)
@@ -149,11 +149,11 @@ TEST_F(WlPointerTest, set_cursor_on_a_subsurface_is_a_protocol_error)
     // Creating a subsurface gives the wl_surface the subsurface role.
     wlcs::Subsurface subsurface{surface};
 
-    EXPECT_PROTOCOL_ERROR({
-        wl_pointer_set_cursor(
-            client.the_pointer(), enter_serial, subsurface, cursor_hotspot_x, cursor_hotspot_y);
-        client.roundtrip();
-    }, &wl_pointer_interface, WL_POINTER_ERROR_ROLE);
+    wl_pointer_set_cursor(
+        client.the_pointer(), enter_serial, subsurface, cursor_hotspot_x, cursor_hotspot_y);
+    EXPECT_PROTOCOL_ERROR(
+        { client.roundtrip(); },
+        &wl_pointer_interface, WL_POINTER_ERROR_ROLE);
 }
 
 TEST_F(WlPointerTest, set_cursor_with_a_stale_serial_is_ignored)
@@ -187,10 +187,8 @@ TEST_F(WlPointerTest, a_cursor_surface_cannot_be_given_a_different_role)
 
     // The surface now has the cursor role, so trying to give it the xdg
     // surface role must fail.
-    EXPECT_PROTOCOL_ERROR({
-        auto xdg_surface = xdg_wm_base_get_xdg_surface(client.xdg_shell_stable(), cursor);
-        client.roundtrip();
-        // (Unreachable on conformant servers, but keep the proxy tidy.)
-        xdg_surface_destroy(xdg_surface);
-    }, &xdg_wm_base_interface, XDG_WM_BASE_ERROR_ROLE);
+    xdg_wm_base_get_xdg_surface(client.xdg_shell_stable(), cursor);
+    EXPECT_PROTOCOL_ERROR(
+        { client.roundtrip(); },
+        &xdg_wm_base_interface, XDG_WM_BASE_ERROR_ROLE);
 }
