@@ -1984,6 +1984,22 @@ void wlcs::Client::add_pointer_button_notification(PointerButtonNotifier const& 
     impl->add_pointer_button_notification(on_button);
 }
 
+uint32_t wlcs::Client::move_pointer_to(Pointer& pointer, int x, int y)
+{
+    std::optional<uint32_t> enter_serial;
+    add_pointer_enter_notification(
+        [&](auto, auto, auto)
+        {
+            // Inside the enter handler the client's latest serial is, by
+            // definition, the enter serial.
+            enter_serial = latest_serial();
+            return false;
+        });
+    pointer.move_to(x, y);
+    dispatch_until([&]{ return enter_serial.has_value(); });
+    return enter_serial.value();
+}
+
 void wlcs::Client::dispatch_until(std::function<bool()> const& predicate, std::chrono::seconds timeout)
 {
     impl->dispatch_until(predicate, timeout);

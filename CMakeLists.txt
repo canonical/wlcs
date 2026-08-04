@@ -181,6 +181,7 @@ set(WLCS_TESTS
   tests/wl_data_offer_gtk_primary_selection.cpp
   tests/wl_keyboard.cpp
   tests/wl_output.cpp
+  tests/wl_pointer.cpp
   tests/wl_registry.cpp
   tests/wl_shm.cpp
   tests/wl_subsurface.cpp
