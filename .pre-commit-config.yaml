@@ -14,7 +14,7 @@ repos:
   - id: check-added-large-files
 
 - repo: https://github.com/zizmorcore/zizmor-pre-commit
-  rev: 067260dc5fe6ea86b7551bfd6f8b3ba4e6c93129  # frozen: v1.28.0
+  rev: 451b56af716f9f0d0c2b816503a3fd0cf8b036fa  # frozen: v1.29.0
   hooks:
   - id: zizmor
     args:
@@ -32,7 +32,7 @@ repos:
     - setuptools # Necessary until beautysh fix their stuff, see: https://github.com/hukkin/mdformat/issues/442
 
 - repo: https://github.com/jackdewinter/pymarkdown
-  rev: 5a91b386476b633c4a594951397139aa5ab45a78  # frozen: v0.9.38
+  rev: b7c6d5936ef699bcf5af0b0c2558118d3eba24d6  # frozen: v0.9.39
   hooks:
   - id: pymarkdown
     args:
