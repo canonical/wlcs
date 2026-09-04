@@ -372,6 +372,11 @@ public:
      */
     void flush();
 
+    /**
+     * When a surface is dropped by WLCS, 
+     */
+    void invalidate_surface(wl_surface* surface);
+
 private:
     class Impl;
     std::unique_ptr<Impl> const impl;

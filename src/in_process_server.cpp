@@ -1232,6 +1232,22 @@ public:
         }
     }
 
+    void invalidate_surface(wl_surface* surface)
+    {
+        // If the surface gets destroyed, any state associated with it should
+        // be invalidated, particularly the pending_pointer_leave state, as
+        // a leave event will not be sent for a destroyed surface.
+        if (current_pointer_location.has_value())
+        {
+            if (surface == current_pointer_location.value().surface)
+            {
+                pending_pointer_leave = false;
+                pending_pointer_location.reset();
+                current_pointer_location.reset();
+            }
+        }
+    }
+
     struct Output
     {
         OutputState current;
@@ -1413,8 +1429,8 @@ private:
         if (!me->current_pointer_location)
             FAIL() << "Got wl_pointer.leave when the pointer was not on a surface";
 
-        // the surface should never be null along the wire, but may come out as null if it's been destroyed
-        if (surface != nullptr && surface != me->current_pointer_location.value().surface)
+        // The surface should never be null along the wire, as "allow-null" is not set to `true` in the protocol.
+        if (surface != me->current_pointer_location.value().surface)
             FAIL()
                 << "Got wl_pointer.leave with surface " << surface
                 << " instead of " << me->current_pointer_location.value().surface;
@@ -1999,6 +2015,11 @@ void wlcs::Client::flush()
     impl->client_flush();
 }
 
+void wlcs::Client::invalidate_surface(wl_surface* surface)
+{
+    impl->invalidate_surface(surface);
+}
+
 void* wlcs::Client::bind_if_supported(wl_interface const& interface, VersionSpecifier const& version) const
 {
     return impl->bind_if_supported(interface, version);
@@ -2021,6 +2042,8 @@ public:
 
     ~Impl()
     {
+        owner().invalidate_surface(surface());
+
         for (auto i = 0u; i < pending_callbacks.size(); )
         {
             if (pending_callbacks[i].first == this)
