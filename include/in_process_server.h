@@ -372,12 +372,24 @@ public:
      */
     void flush();
 
+private:
+    friend class Surface;
+
     /**
-     * When a surface is dropped by WLCS, 
+     * Drop any input-focus bookkeeping (pointer, touch and keyboard) that
+     * refers to \p surface.
+     *
+     * When a client destroys a surface the compositor will not send a
+     * `wl_pointer.leave` (or the touch/keyboard equivalents) for it, so the
+     * stale tracking state must be cleared here. Otherwise a subsequent
+     * `wl_pointer.enter` on another surface would be misdiagnosed as a
+     * missing-leave protocol violation, and accessors such as
+     * `window_under_cursor()` would return a dangling pointer.
+     *
+     * This is called by `Surface`'s destructor.
      */
     void invalidate_surface(wl_surface* surface);
 
-private:
     class Impl;
     std::unique_ptr<Impl> const impl;
 };

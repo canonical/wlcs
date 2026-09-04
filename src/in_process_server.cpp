@@ -1234,18 +1234,24 @@ public:
 
     void invalidate_surface(wl_surface* surface)
     {
-        // If the surface gets destroyed, any state associated with it should
-        // be invalidated, particularly the pending_pointer_leave state, as
-        // a leave event will not be sent for a destroyed surface.
-        if (current_pointer_location.has_value())
+        // If the surface gets destroyed, any input-focus state associated with
+        // it must be invalidated: the compositor will not send a
+        // wl_pointer.leave (or the touch/keyboard equivalents) for a destroyed
+        // surface, so the stale tracking state has to be dropped here.
+        if (current_pointer_location && current_pointer_location->surface == surface)
         {
-            if (surface == current_pointer_location.value().surface)
-            {
-                pending_pointer_leave = false;
-                pending_pointer_location.reset();
-                current_pointer_location.reset();
-            }
+            pending_pointer_leave = false;
+            current_pointer_location.reset();
         }
+
+        if (pending_pointer_location && pending_pointer_location->surface == surface)
+            pending_pointer_location.reset();
+
+        std::erase_if(current_touches, [surface](auto const& t) { return t.second.surface == surface; });
+        std::erase_if(pending_touches, [surface](auto const& t) { return t.second.surface == surface; });
+
+        if (keyboard_focused_surface == surface)
+            keyboard_focused_surface = nullptr;
     }
 
     struct Output
@@ -2042,8 +2048,6 @@ public:
 
     ~Impl()
     {
-        owner().invalidate_surface(surface());
-
         for (auto i = 0u; i < pending_callbacks.size(); )
         {
             if (pending_callbacks[i].first == this)
@@ -2213,7 +2217,12 @@ wlcs::Surface::Surface(Client& client)
 {
 }
 
-wlcs::Surface::~Surface() = default;
+wlcs::Surface::~Surface()
+{
+    // A moved-from Surface has a null impl and owns nothing to invalidate.
+    if (impl)
+        owner().invalidate_surface(*this);
+}
 
 wlcs::Surface::Surface(Surface&&) = default;
 
