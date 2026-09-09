@@ -435,7 +435,7 @@ TEST_F(ExtDataControlV1Test, DISABLED_paste_from_clipboard_reaches_core_protocol
 
     InSequence seq;
     EXPECT_CALL(sink.listener, data_offer(_, _))
-        .WillOnce(Invoke(
+        .WillOnce(
             [&mdol, &current_offer](struct wl_data_device*, struct wl_data_offer* id)
             {
                 mdol.listen_to(id);
@@ -531,7 +531,7 @@ TEST_F(ExtDataControlV1Test, DISABLED_paste_from_clipboard_reaches_primary_selec
     std::string current_mime;
     InSequence seq;
     EXPECT_CALL(listener, data_offer(_, _))
-        .WillOnce(Invoke(
+        .WillOnce(
             [&](struct zwp_primary_selection_device_v1*, struct zwp_primary_selection_offer_v1* id)
             {
                 mpsol.listen_to(id);
@@ -539,7 +539,7 @@ TEST_F(ExtDataControlV1Test, DISABLED_paste_from_clipboard_reaches_primary_selec
             }));
 
     EXPECT_CALL(mpsol, offer(_, _))
-        .WillOnce(Invoke(
+        .WillOnce(
             [&](struct zwp_primary_selection_offer_v1* offer, char const* mime)
             {
                 EXPECT_THAT(offer, Eq(current_offer));
