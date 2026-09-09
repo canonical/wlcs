@@ -163,7 +163,7 @@ TEST_F(GtkPrimarySelection, sink_can_listen)
 
     InSequence seq;
     EXPECT_CALL(device_listener, data_offer(_, _))
-        .WillOnce(Invoke([&](auto*, auto* id) { offer_listener.listen_to(id); }));
+        .WillOnce([&](auto*, auto* id) { offer_listener.listen_to(id); });
 
     EXPECT_CALL(offer_listener, offer(_, StrEq(any_mime_type)));
 
@@ -201,7 +201,7 @@ TEST_F(GtkPrimarySelection, source_sees_request)
 
     EXPECT_CALL(source_listener, send(_, _, _))
         .Times(1)
-        .WillRepeatedly(Invoke([&](auto*, auto*, int fd) { close(fd); }));
+        .WillRepeatedly([&](auto*, auto*, int fd) { close(fd); });
 
     Pipe pipe;
     gtk_primary_selection_offer_receive(device_listener.selected, any_mime_type, pipe.source);

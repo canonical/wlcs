@@ -77,13 +77,13 @@ struct DataDeviceDragAndDropTest : StartedInProcessServer
     DataDeviceDragAndDropTest()
     {
         ON_CALL(device_listener, enter(_, _, _, _, _, _))
-            .WillByDefault(Invoke(
+            .WillByDefault(
                 [this](wl_data_device*, uint32_t, wl_surface* surface, wl_fixed_t, wl_fixed_t, wl_data_offer*)
                 {
                     surface_under_pointer = surface;
                 }));
         ON_CALL(device_listener, leave(_))
-            .WillByDefault(Invoke([this](wl_data_device*) { surface_under_pointer = nullptr; }));
+            .WillByDefault([this](wl_data_device*) { surface_under_pointer = nullptr; });
 
         the_server().move_surface_to(source_surface, source_x, source_y);
         the_server().move_surface_to(target_surface, target_x, target_y);
@@ -162,12 +162,12 @@ TEST_F(DataDeviceDragAndDropTest, data_offer_advertises_source_mime_type)
     MockDataOfferListener offer_listener;
 
     EXPECT_CALL(device_listener, data_offer(_, _))
-        .WillRepeatedly(Invoke(
+        .WillRepeatedly(
             [&](wl_data_device*, wl_data_offer* offer) { offer_listener.listen_to(offer); }));
 
     bool got_mime_type{false};
     EXPECT_CALL(offer_listener, offer(_, StrEq(specific_mime_type)))
-        .WillRepeatedly(Invoke([&](wl_data_offer*, char const*) { got_mime_type = true; }));
+        .WillRepeatedly([&](wl_data_offer*, char const*) { got_mime_type = true; });
 
     move_pointer_to_source();
     auto const button_serial = press_pointer();
@@ -179,7 +179,7 @@ TEST_F(DataDeviceDragAndDropTest, data_device_receives_motion_during_drag)
 {
     bool got_motion{false};
     EXPECT_CALL(device_listener, motion(_, _, _, _))
-        .WillRepeatedly(Invoke([&](wl_data_device*, uint32_t, wl_fixed_t, wl_fixed_t) { got_motion = true; }));
+        .WillRepeatedly([&](wl_data_device*, uint32_t, wl_fixed_t, wl_fixed_t) { got_motion = true; });
 
     move_pointer_to_source();
     auto const button_serial = press_pointer();
@@ -208,7 +208,7 @@ TEST_F(DataDeviceDragAndDropTest, data_device_receives_drop_when_button_released
 {
     bool dropped{false};
     EXPECT_CALL(device_listener, drop(_))
-        .WillRepeatedly(Invoke([&](wl_data_device*) { dropped = true; }));
+        .WillRepeatedly([&](wl_data_device*) { dropped = true; });
 
     move_pointer_to_source();
     auto const button_serial = press_pointer();
