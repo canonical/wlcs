@@ -1997,7 +1997,7 @@ uint32_t wlcs::Client::move_pointer_to(Pointer& pointer, int x, int y)
         });
     pointer.move_to(x, y);
     dispatch_until([&]{ return enter_serial.has_value(); });
-    return enter_serial.value();
+    return enter_serial.value(); // TICS -bugprone-unchecked-optional-access - access is checked in `dispatch_until`
 }
 
 void wlcs::Client::dispatch_until(std::function<bool()> const& predicate, std::chrono::seconds timeout)
