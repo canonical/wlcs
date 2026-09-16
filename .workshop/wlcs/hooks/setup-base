@@ -1,0 +1,13 @@
+set -xeu
+
+apt-get update
+apt-get --yes --no-install-recommends install \
+  build-essential \
+  ccache \
+  clang \
+  git \
+  ninja-build
+
+cat <<'EOF' > /etc/profile.d/wlcs.sh
+export CCACHE_SLOPPINESS=include_file_ctime,include_file_mtime,modules,pch_defines,time_macros
+EOF
