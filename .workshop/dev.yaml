@@ -1,0 +1,35 @@
+name: dev
+description: |
+  A development environment for WLCS.
+
+  Provides an Ubuntu 26.04 base with the WLCS project SDK, including the
+  toolchain needed to configure and build the `wlcs` binary.
+
+  The build output is written to `/home/workshop/build`, which is mounted from
+  the host so the resulting `wlcs` binary can be easily copied out and used in
+  another workshop or environment.
+
+  The location of the host build directory used by this workshop can be found
+  with `workshop info dev` under the "build" mount connection.
+base: ubuntu@26.04
+sdks:
+- name: project-wlcs
+- name: system
+actions:
+  configure: |
+    set -xeu
+    cmake \
+      -DCMAKE_BUILD_TYPE=Debug \
+      -DCMAKE_INSTALL_PREFIX=$HOME/install \
+      -DCMAKE_C_COMPILER=clang \
+      -DCMAKE_CXX_COMPILER=clang++ \
+      -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+      -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+      -B $HOME/build \
+      -G Ninja \
+      . \
+      "$@"
+
+  build: |
+    set -xeu
+    cmake --build ~/build --target wlcs "$@"
