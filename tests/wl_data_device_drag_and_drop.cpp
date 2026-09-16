@@ -81,7 +81,7 @@ struct DataDeviceDragAndDropTest : StartedInProcessServer
                 [this](wl_data_device*, uint32_t, wl_surface* surface, wl_fixed_t, wl_fixed_t, wl_data_offer*)
                 {
                     surface_under_pointer = surface;
-                }));
+                });
         ON_CALL(device_listener, leave(_))
             .WillByDefault([this](wl_data_device*) { surface_under_pointer = nullptr; });
 
@@ -163,7 +163,7 @@ TEST_F(DataDeviceDragAndDropTest, data_offer_advertises_source_mime_type)
 
     EXPECT_CALL(device_listener, data_offer(_, _))
         .WillRepeatedly(
-            [&](wl_data_device*, wl_data_offer* offer) { offer_listener.listen_to(offer); }));
+            [&](wl_data_device*, wl_data_offer* offer) { offer_listener.listen_to(offer); });
 
     bool got_mime_type{false};
     EXPECT_CALL(offer_listener, offer(_, StrEq(specific_mime_type)))

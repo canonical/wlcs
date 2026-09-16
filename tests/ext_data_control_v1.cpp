@@ -440,7 +440,7 @@ TEST_F(ExtDataControlV1Test, DISABLED_paste_from_clipboard_reaches_core_protocol
             {
                 mdol.listen_to(id);
                 current_offer = id;
-            }));
+            });
     EXPECT_CALL(mdol, offer(_, StrEq(test_mime_type)))
         .WillOnce(
             [&current_mime](auto, auto mime)
@@ -536,7 +536,7 @@ TEST_F(ExtDataControlV1Test, DISABLED_paste_from_clipboard_reaches_primary_selec
             {
                 mpsol.listen_to(id);
                 current_offer = id;
-            }));
+            });
 
     EXPECT_CALL(mpsol, offer(_, _))
         .WillOnce(
@@ -544,7 +544,7 @@ TEST_F(ExtDataControlV1Test, DISABLED_paste_from_clipboard_reaches_primary_selec
             {
                 EXPECT_THAT(offer, Eq(current_offer));
                 current_mime = mime;
-            }));
+            });
 
     Pipe pipe;
     EXPECT_CALL(listener, selection(_, _))
