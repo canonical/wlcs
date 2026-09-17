@@ -312,6 +312,25 @@ TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_existing_
     }, &xdg_wm_base_interface, XDG_WM_BASE_ERROR_ROLE);
 }
 
+TEST_F(XdgSurfaceStableTest, creating_a_second_xdg_surface_from_a_wl_surface_is_an_error)
+{
+    wlcs::Client client{the_server()};
+
+    auto const xdg_wm_base = client.bind_if_supported<struct xdg_wm_base>(AnyVersion);
+
+    wlcs::Surface surface{client};
+
+    // Give the surface the xdg_surface role.
+    wlcs::XdgSurfaceStable xdg_surface{client, surface};
+    wlcs::XdgToplevelStable toplevel{xdg_surface};
+    client.roundtrip();
+
+    // Try give the surface the role again.
+    EXPECT_PROTOCOL_ERROR({
+        xdg_wm_base_get_xdg_surface(xdg_wm_base, surface);
+        client.roundtrip();
+    }, &xdg_wm_base_interface, XDG_WM_BASE_ERROR_ROLE);
+}
 
 TEST_F(XdgSurfaceStableTest, creating_xdg_surface_from_wl_surface_with_attached_buffer_is_an_error)
 {
