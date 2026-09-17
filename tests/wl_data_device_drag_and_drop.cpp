@@ -16,6 +16,7 @@
 
 #include "in_process_server.h"
 #include "data_device.h"
+#include "expect_protocol_error.h"
 #include "version_specifier.h"
 
 #include <gmock/gmock.h>
@@ -90,12 +91,6 @@ struct DataDeviceDragAndDropTest : StartedInProcessServer
         client.roundtrip();
     }
 
-    void TearDown() override
-    {
-        client.roundtrip();
-        StartedInProcessServer::TearDown();
-    }
-
     // Move the pointer to the centre of the source surface.
     void move_pointer_to_source()
     {
@@ -151,6 +146,7 @@ TEST_F(DataDeviceDragAndDropTest, data_device_receives_offer_when_drag_enters_ta
     auto const button_serial = press_pointer();
     start_drag(button_serial, any_mime_type);
     move_pointer_to_target();
+    client.roundtrip();
 }
 
 TEST_F(DataDeviceDragAndDropTest, data_offer_advertises_source_mime_type)
@@ -173,6 +169,7 @@ TEST_F(DataDeviceDragAndDropTest, data_offer_advertises_source_mime_type)
     auto const button_serial = press_pointer();
     start_drag(button_serial, specific_mime_type);
     client.dispatch_until([&]() { return got_mime_type; });
+    client.roundtrip();
 }
 
 TEST_F(DataDeviceDragAndDropTest, data_device_receives_motion_during_drag)
@@ -189,6 +186,7 @@ TEST_F(DataDeviceDragAndDropTest, data_device_receives_motion_during_drag)
     got_motion = false;
     pointer.move_to(target_x + surface_width / 4, target_y + surface_height / 4);
     client.dispatch_until([&]() { return got_motion; });
+    client.roundtrip();
 }
 
 TEST_F(DataDeviceDragAndDropTest, data_device_receives_leave_when_drag_leaves_target_surface)
@@ -202,6 +200,7 @@ TEST_F(DataDeviceDragAndDropTest, data_device_receives_leave_when_drag_leaves_ta
     // leave of any other surface (e.g. the source) can't satisfy this.
     pointer.move_to(target_x + surface_width + 50, target_y + surface_height + 50);
     client.dispatch_until([this]() { return surface_under_pointer != target_surface.wl_surface(); });
+    client.roundtrip();
 }
 
 TEST_F(DataDeviceDragAndDropTest, data_device_receives_drop_when_button_released_over_target_surface)
@@ -217,4 +216,22 @@ TEST_F(DataDeviceDragAndDropTest, data_device_receives_drop_when_button_released
 
     pointer.left_button_up();
     client.dispatch_until([&]() { return dropped; });
+    client.roundtrip();
+}
+
+TEST_F(DataDeviceDragAndDropTest, start_drag_with_icon_surface_that_has_another_role_is_a_protocol_error)
+{
+    move_pointer_to_source();
+    auto const button_serial = press_pointer();
+
+    // The target surface already has a shell role from create_visible_surface.
+    auto const icon_surface = target_surface.wl_surface();
+
+    wl_data_source_offer(data_source, any_mime_type);
+    wl_data_device_start_drag(
+        data_device, data_source, source_surface, icon_surface, button_serial);
+
+    EXPECT_PROTOCOL_ERROR(
+        { client.roundtrip(); },
+        &wl_data_device_interface, WL_DATA_DEVICE_ERROR_ROLE);
 }
