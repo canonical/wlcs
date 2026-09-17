@@ -76,4 +76,3 @@ TEST_F(WlSubcompositorTest, get_subsurface_on_a_surface_with_another_role_is_a_p
         client.roundtrip();
     }, &wl_subcompositor_interface, WL_SUBCOMPOSITOR_ERROR_BAD_SURFACE);
 }
-
