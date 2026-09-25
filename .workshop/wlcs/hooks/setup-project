@@ -1,0 +1,15 @@
+set -xeu
+
+sudo apt-get --yes --no-install-recommends build-dep .
+
+cmake \
+  -DCMAKE_BUILD_TYPE=Debug \
+  -DCMAKE_INSTALL_PREFIX=$HOME/install \
+  -DCMAKE_C_COMPILER=clang \
+  -DCMAKE_CXX_COMPILER=clang++ \
+  -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+  -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+  -B $HOME/build \
+  -G Ninja \
+  . \
+  "$@"
