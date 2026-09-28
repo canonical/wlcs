@@ -25,6 +25,8 @@
 #include <boost/throw_exception.hpp>
 #include <gtest/gtest.h>
 
+#include <optional>
+
 using testing::_;
 using testing::AtLeast;
 using testing::Eq;
@@ -101,6 +103,64 @@ TEST_F(XdgDecorationV1Test, unset_mode_results_in_a_configure_event)
     zxdg_toplevel_decoration_v1_unset_mode(decoration);
 
     EXPECT_CALL(decoration, configure(_)).Times(AtLeast(1));
+
+    a_client.roundtrip();
+}
+
+TEST_F(XdgDecorationV1Test, mode_is_retained_across_destroy_without_commit)
+{
+    if (zxdg_decoration_manager_v1_get_version(manager) < 2)
+    {
+        GTEST_SKIP() << "Compositor only supports zxdg_decoration_manager_v1 version 1";
+    }
+
+    XdgToplevelStable xdg_toplevel{xdg_surface};
+    std::optional<ZxdgToplevelDecorationV1> decoration{std::in_place, manager, xdg_toplevel};
+
+    zxdg_toplevel_decoration_v1_set_mode(*decoration, ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+    EXPECT_CALL(*decoration, configure(Eq(ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE))).Times(AtLeast(1));
+    a_client.roundtrip();
+
+    // Destroy and immediately recreate the decoration object, with no
+    // intervening wl_surface.commit.
+    decoration.reset();
+    decoration.emplace(manager, xdg_toplevel);
+    zxdg_toplevel_decoration_v1_unset_mode(*decoration);
+
+    // The previously-negotiated mode should be retained, not the compositor's
+    // own baseline default.
+    EXPECT_CALL(*decoration, configure(Eq(ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE))).Times(AtLeast(1));
+
+    a_client.roundtrip();
+}
+
+TEST_F(XdgDecorationV1Test, mode_resets_after_commit_with_no_decoration_attached)
+{
+    if (zxdg_decoration_manager_v1_get_version(manager) < 2)
+    {
+        GTEST_SKIP() << "Compositor only supports zxdg_decoration_manager_v1 version 1";
+    }
+
+    XdgToplevelStable xdg_toplevel{xdg_surface};
+    std::optional<ZxdgToplevelDecorationV1> decoration{std::in_place, manager, xdg_toplevel};
+
+    zxdg_toplevel_decoration_v1_set_mode(*decoration, ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+    EXPECT_CALL(*decoration, configure(Eq(ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE))).Times(AtLeast(1));
+    a_client.roundtrip();
+
+    decoration.reset();
+    // A real, buffered commit (as any client would issue) with no decoration attached.
+    a_surface.attach_buffer(100, 100);
+    wl_surface_commit(a_surface);
+    a_client.roundtrip();
+
+    decoration.emplace(manager, xdg_toplevel);
+    zxdg_toplevel_decoration_v1_unset_mode(*decoration);
+
+    // A commit happened with no decoration object attached, so the retained
+    // mode should have been forgotten; this falls back to the compositor's
+    // own default (client-side, per this suite's default decoration strategy).
+    EXPECT_CALL(*decoration, configure(Eq(ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE))).Times(AtLeast(1));
 
     a_client.roundtrip();
 }
