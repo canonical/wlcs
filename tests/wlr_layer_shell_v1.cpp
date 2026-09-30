@@ -16,7 +16,6 @@
  * Authored by: William Wold <william.wold@canonical.com>
  */
 
-#include "helpers.h"
 #include "in_process_server.h"
 #include "layer_shell_v1.h"
 #include "xdg_shell_stable.h"
@@ -484,7 +483,7 @@ TEST_F(LayerSurfaceTest, does_not_take_keyboard_focus_without_keyboard_interacti
     pointer.left_click();
     client.roundtrip();
     ASSERT_THAT(client.keyboard_focused_window(), Eq(static_cast<wl_surface*>(normal_surface)))
-        << "Could not run test because normal surface was not given keyboeard focus";
+        << "Could not run test because normal surface was not given keyboard focus";
 
     zwlr_layer_surface_v1_set_size(layer_surface, default_width, default_height);
     zwlr_layer_surface_v1_set_anchor(
@@ -506,7 +505,7 @@ TEST_F(LayerSurfaceTest, takes_keyboard_focus_with_exclusive_keyboard_interactiv
     pointer.left_click();
     client.roundtrip();
     ASSERT_THAT(client.keyboard_focused_window(), Eq(static_cast<wl_surface*>(normal_surface)))
-        << "Could not run test because normal surface was not given keyboeard focus";
+        << "Could not run test because normal surface was not given keyboard focus";
 
     zwlr_layer_surface_v1_set_keyboard_interactivity(
         layer_surface,
@@ -522,6 +521,24 @@ TEST_F(LayerSurfaceTest, takes_keyboard_focus_with_exclusive_keyboard_interactiv
         << "Layer surface not given keyboard focus in exclusive mode";
 }
 
+TEST_F(LayerSurfaceTest, creating_layer_surface_from_a_surface_with_another_role_is_an_error)
+{
+    wlcs::Surface roled_surface{client};
+    wlcs::XdgSurfaceStable xdg_surface{client, roled_surface};
+    wlcs::XdgToplevelStable xdg_toplevel{xdg_surface};
+    auto const layer_shell = client.bind_if_supported<zwlr_layer_shell_v1>(wlcs::AnyVersion);
+    client.roundtrip();
+    EXPECT_PROTOCOL_ERROR({
+        zwlr_layer_shell_v1_get_layer_surface(
+            layer_shell,
+            roled_surface,
+            nullptr,
+            ZWLR_LAYER_SHELL_V1_LAYER_TOP,
+            "wlcs");
+        client.roundtrip();
+    }, &zwlr_layer_shell_v1_interface, ZWLR_LAYER_SHELL_V1_ERROR_ROLE);
+}
+
 TEST_F(LayerSurfaceTest, takes_keyboard_focus_after_click_with_on_demand_keyboard_interactivity)
 {
     auto normal_surface = client.create_visible_surface(100, 100);
@@ -531,7 +548,7 @@ TEST_F(LayerSurfaceTest, takes_keyboard_focus_after_click_with_on_demand_keyboar
     pointer.left_click();
     client.roundtrip();
     ASSERT_THAT(client.keyboard_focused_window(), Eq(static_cast<wl_surface*>(normal_surface)))
-        << "Could not run test because normal surface was not given keyboeard focus";
+        << "Could not run test because normal surface was not given keyboard focus";
 
     {
         wlcs::Client client{the_server()};
@@ -623,7 +640,7 @@ TEST_F(LayerSurfaceTest, takes_keyboard_focus_when_interactivity_changes_to_excl
     pointer.left_click();
     client.roundtrip();
     ASSERT_THAT(client.keyboard_focused_window(), Eq(static_cast<wl_surface*>(normal_surface)))
-        << "Could not run test because normal surface was not given keyboeard focus";
+        << "Could not run test because normal surface was not given keyboard focus";
 
     zwlr_layer_surface_v1_set_keyboard_interactivity(
         layer_surface,
@@ -636,7 +653,7 @@ TEST_F(LayerSurfaceTest, takes_keyboard_focus_when_interactivity_changes_to_excl
     surface.attach_visible_buffer(default_width, default_height);
 
     ASSERT_THAT(client.keyboard_focused_window(), Eq(static_cast<wl_surface*>(normal_surface)))
-        << "Could not run test because normal surface was not given keyboeard focus";
+        << "Could not run test because normal surface was not given keyboard focus";
 
     zwlr_layer_surface_v1_set_keyboard_interactivity(
         layer_surface,
@@ -658,7 +675,7 @@ TEST_F(LayerSurfaceTest, loses_keybaord_focus_when_interactivity_changes_to_none
 {
     auto normal_surface = client.create_visible_surface(100, 100);
     ASSERT_THAT(client.keyboard_focused_window(), Eq(static_cast<wl_surface*>(normal_surface)))
-        << "Could not run test because normal surface was not given keyboeard focus";
+        << "Could not run test because normal surface was not given keyboard focus";
 
     zwlr_layer_surface_v1_set_keyboard_interactivity(
         layer_surface,
