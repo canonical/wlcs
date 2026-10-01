@@ -9,6 +9,11 @@ description: |
   the host so the resulting `wlcs` binary can be easily copied out and used in
   another workshop or environment.
 
+  A compositor integration module can be made available by mounting another
+  workshop's compositor build to the `compositor` plug. The `test` action
+  expects the integration module to be present at
+  `/home/workshop/compositor/wlcs_integration.so`.
+
   The location of the host build directory used by this workshop can be found
   with `workshop info dev` under the "build" mount connection.
 base: ubuntu@26.04
@@ -33,3 +38,15 @@ actions:
   build: |
     set -xeu
     cmake --build ~/build --target wlcs "$@"
+
+  test: |
+    set -xeu
+
+    integration_module=/home/workshop/compositor/wlcs_integration.so
+    if [ ! -f "$integration_module" ]; then
+      echo "Compositor integration module not found at $integration_module" >&2
+      echo "Ensure the mounted compositor build provides wlcs_integration.so at the `compositor` plug mount root" >&2
+      exit 1
+    fi
+
+    ~/build/wlcs "$integration_module" "$@"
