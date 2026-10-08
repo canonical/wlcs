@@ -25,9 +25,12 @@
 #include <boost/throw_exception.hpp>
 #include <gtest/gtest.h>
 
+#include <optional>
+
 using testing::_;
 using testing::AtLeast;
 using testing::Eq;
+using testing::SaveArg;
 using namespace wlcs;
 
 class XdgDecorationV1Test : public StartedInProcessServer
@@ -37,6 +40,44 @@ public:
     ZxdgDecorationManagerV1 manager{a_client};
     Surface a_surface{a_client};
     XdgSurfaceStable xdg_surface{a_client, a_surface};
+
+    /// Sends set_mode (or unset_mode for no preference) and returns the mode the compositor configures
+    auto request_mode(ZxdgToplevelDecorationV1& decoration, std::optional<uint32_t> mode) -> uint32_t
+    {
+        uint32_t configured{0};
+        EXPECT_CALL(decoration, configure(_)).Times(AtLeast(1)).WillRepeatedly(SaveArg<0>(&configured));
+
+        if (mode)
+        {
+            zxdg_toplevel_decoration_v1_set_mode(decoration, *mode);
+        }
+        else
+        {
+            zxdg_toplevel_decoration_v1_unset_mode(decoration);
+        }
+        a_client.roundtrip();
+
+        // Also drops the SaveArg action so it can't outlive `configured`
+        testing::Mock::VerifyAndClearExpectations(&decoration);
+        return configured;
+    }
+
+    /// The mode this compositor picks when a fresh toplevel's client has no preference
+    auto no_preference_mode() -> uint32_t
+    {
+        Surface surface{a_client};
+        XdgSurfaceStable fresh_xdg_surface{a_client, surface};
+        XdgToplevelStable toplevel{fresh_xdg_surface};
+        ZxdgToplevelDecorationV1 decoration{manager, toplevel};
+
+        return request_mode(decoration, std::nullopt);
+    }
+
+    static auto opposite(uint32_t mode) -> uint32_t
+    {
+        return mode == ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE ? ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE
+                                                                     : ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE;
+    }
 };
 
 TEST_F(XdgDecorationV1Test, happy_path)
@@ -103,4 +144,59 @@ TEST_F(XdgDecorationV1Test, unset_mode_results_in_a_configure_event)
     EXPECT_CALL(decoration, configure(_)).Times(AtLeast(1));
 
     a_client.roundtrip();
+}
+
+TEST_F(XdgDecorationV1Test, mode_is_retained_across_destroy_without_commit)
+{
+    if (zxdg_decoration_manager_v1_get_version(manager) < 2)
+    {
+        GTEST_SKIP() << "Compositor only supports zxdg_decoration_manager_v1 version 1";
+    }
+
+    auto const default_mode = no_preference_mode();
+    auto const other_mode = opposite(default_mode);
+
+    XdgToplevelStable xdg_toplevel{xdg_surface};
+    std::optional<ZxdgToplevelDecorationV1> decoration{std::in_place, manager, xdg_toplevel};
+
+    if (request_mode(*decoration, other_mode) != other_mode)
+    {
+        GTEST_SKIP() << "Compositor doesn't allow changing the decoration mode, so retention can't be observed";
+    }
+
+    // Destroy and immediately recreate the decoration object, with no intervening wl_surface.commit
+    decoration.reset();
+    decoration.emplace(manager, xdg_toplevel);
+
+    // Without retention the compositor would answer with its default instead
+    EXPECT_THAT(request_mode(*decoration, std::nullopt), Eq(other_mode));
+}
+
+TEST_F(XdgDecorationV1Test, mode_resets_after_commit_with_no_decoration_attached)
+{
+    if (zxdg_decoration_manager_v1_get_version(manager) < 2)
+    {
+        GTEST_SKIP() << "Compositor only supports zxdg_decoration_manager_v1 version 1";
+    }
+
+    auto const default_mode = no_preference_mode();
+    auto const other_mode = opposite(default_mode);
+
+    XdgToplevelStable xdg_toplevel{xdg_surface};
+    std::optional<ZxdgToplevelDecorationV1> decoration{std::in_place, manager, xdg_toplevel};
+
+    if (request_mode(*decoration, other_mode) != other_mode)
+    {
+        GTEST_SKIP() << "Compositor doesn't allow changing the decoration mode, so a reset can't be observed";
+    }
+
+    decoration.reset();
+    a_surface.attach_buffer(100, 100);
+    wl_surface_commit(a_surface);
+    a_client.roundtrip();
+
+    decoration.emplace(manager, xdg_toplevel);
+
+    // The commit with no decoration attached means the old mode is forgotten
+    EXPECT_THAT(request_mode(*decoration, std::nullopt), Eq(default_mode));
 }
