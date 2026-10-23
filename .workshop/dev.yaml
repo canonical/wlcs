@@ -1,0 +1,75 @@
+# A development environment for WLCS.
+#
+# Provides an Ubuntu 26.04 base with the WLCS project SDK, including the
+# toolchain needed to configure and build the `wlcs` binary.
+#
+# The build output is written to `/home/workshop/build`, which is mounted from
+# the host so the resulting `wlcs` binary can be easily copied out and used in
+# another workshop or environment.
+#
+# A compositor integration module can be made available by mounting another
+# workshop's compositor build to the `compositor` plug. The `test` action
+# will search for an object matching `*_wlcs_integrations.so` in the
+# `compositor` plug by, however alternate patterns can be provided.
+#
+# ```sh
+# workshop run dev -- test '*_my_integration.so'
+# workshop run dev -- test -- --gtest_filter="..." # WLCS flags can be passed after `--`
+# ```
+#
+# The location of the host build directory used by this workshop can be found
+# with `workshop info dev` under the "build" mount connection.
+
+name: dev
+base: ubuntu@26.04
+sdks:
+- name: project-wlcs
+- name: system
+actions:
+  configure: |
+    set -xeu
+    cmake \
+      -DCMAKE_BUILD_TYPE=Debug \
+      -DCMAKE_INSTALL_PREFIX=$HOME/install \
+      -DCMAKE_C_COMPILER=clang \
+      -DCMAKE_CXX_COMPILER=clang++ \
+      -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+      -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+      -B $HOME/build \
+      -G Ninja \
+      . \
+      "$@"
+
+  build: |
+    set -xeu
+    cmake --build ~/build --target wlcs "$@"
+
+  test: |
+    set -xeu
+
+    search_path='/home/workshop/compositor'
+    integration_pattern='*_wlcs_integration.so'
+
+    if [ $# -ge 1 ] && [ "$1" != '--' ]; then
+      integration_pattern="$1"
+      shift
+    fi
+
+    if [ $# -ge 1 ] && [ "$1" = '--' ]; then
+      shift
+    fi
+
+    integration_module="$(find "$search_path" -name "$integration_pattern")"
+    if [ -z "$integration_module" ]; then
+      echo "Compositor integration module not found"
+      echo "Ensure the mounted compositor build provides a shared object matching '$integration_pattern'"
+      exit 1
+    elif [ "$(echo "$integration_module" | wc -l)" -ne 1 ]; then
+      echo "Multiple compositor integration modules found matching '$integration_pattern':"
+      echo "$integration_module"
+      exit 1
+    fi
+
+    echo "Running WLCS against '$integration_module'"
+
+    LD_LIBRARY_PATH="$search_path/lib:${LD_LIBRARY_PATH:-}" ~/build/wlcs "$integration_module" "$@"
