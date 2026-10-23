@@ -1,0 +1,31 @@
+summary: Build wlcs on Fedora
+systems: [fedora-*]
+
+execute: |
+  set -xeuo pipefail
+
+  : ${CC:=gcc} ${CXX:=g++}
+
+  if [[ "${SPREAD_SYSTEM}" == "fedora-rawhide" ]]; then
+    dnf --refresh --assumeyes upgrade
+    dnf --assumeyes install fedora-repos-rawhide
+    dnf --refresh --assumeyes --enablerepo=rawhide distro-sync
+  fi
+
+  dnf install --assumeyes \
+    ${CC/gcc/gcc-c++} \
+    boost-devel \
+    cmake \
+    gmock-devel \
+    gtest-devel \
+    libasan.x86_64 \
+    libtsan.x86_64 \
+    libubsan.x86_64 \
+    make \
+    pkg-config \
+    wayland-devel
+
+  cd "$(mktemp --directory)"
+  cmake \
+    "${SPREAD_PATH}"
+  make -j$(nproc)
