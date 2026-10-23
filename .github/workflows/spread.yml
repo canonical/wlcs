@@ -35,9 +35,11 @@ jobs:
         - lxd:...:ubuntu_proposed
         - lxd:...:ubuntu_stonking
         - lxd:alpine-3.24:...:default
+        - lxd:alpine-3.25:...:default
         - lxd:alpine-edge:...:default
         - lxd:archlinux-cloud:...:spread/archlinux:default
         - lxd:fedora-44:...:default
+        - lxd:fedora-45:...:default
         - lxd:fedora-rawhide:...:default
 
     runs-on: ubuntu-26.04
