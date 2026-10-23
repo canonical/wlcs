@@ -6,12 +6,12 @@ backends:
     lxd:
         systems:
             - ubuntu-26.04
-            - ubuntu-devel:
-                image: ubuntu-daily:devel/amd64
             - fedora-44
+            - fedora-45
             - fedora-rawhide:
-                image: images:fedora/44
+                image: images:fedora/45
             - alpine-3.24
+            - alpine-3.25
             - alpine-edge
             - archlinux-cloud
 
@@ -36,7 +36,8 @@ suites:
             DISTRO/debian_sid: debian
             RELEASE: resolute
             RELEASE/ubuntu: resolute
-            RELEASE/ubuntu_devel: stonking
+            RELEASE/ubuntu_stonking: stonking
+            RELEASE/ubuntu_devel: devel
             RELEASE/debian_sid: sid
             PROPOSED: false
             PROPOSED/ubuntu_proposed: true

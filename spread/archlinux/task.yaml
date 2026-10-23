@@ -1,0 +1,22 @@
+summary: Build wlcs on Arch Linux
+systems: [archlinux-*]
+
+execute: |
+  set -xeuo pipefail
+
+  : ${CC:=gcc} ${CXX:=g++}
+
+  pacman --sync --refresh
+  pacman --noconfirm --sync \
+    ${CC} \
+    base-devel \
+    boost \
+    cmake \
+    gtest \
+    wayland \
+    wayland-protocols
+
+  cd "$(mktemp --directory)"
+  cmake \
+    "${SPREAD_PATH}"
+  make -j$(nproc)

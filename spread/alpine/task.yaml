@@ -1,0 +1,29 @@
+summary: Build wlcs on Alpine
+systems: [alpine-*]
+
+execute: |
+  set -xeuo pipefail
+
+  : ${CC:=gcc} ${CXX:=g++}
+
+  apk add \
+    ${CC/gcc/g++} \
+    boost-dev \
+    cmake \
+    coreutils \
+    gtest-dev \
+    make \
+    wayland-dev
+
+  # Alpine doesn't build gcc's libsanitizer
+  CMAKE_FLAGS=(
+    -DWLCS_BUILD_ASAN=False
+    -DWLCS_BUILD_TSAN=False
+    -DWLCS_BUILD_UBSAN=False
+  )
+
+  cd "$(mktemp --directory)"
+  cmake \
+    "${CMAKE_FLAGS[@]}" \
+    "${SPREAD_PATH}"
+  make -j$(nproc)
