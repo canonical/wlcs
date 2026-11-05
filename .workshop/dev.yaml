@@ -49,15 +49,18 @@ actions:
 
     search_path='/home/workshop/compositor'
     integration_pattern='*_wlcs_integration.so'
+    wlcs_args=()
 
-    if [ $# -ge 1 ] && [ "$1" != '--' ]; then
-      integration_pattern="$1"
-      shift
-    fi
-
-    if [ $# -ge 1 ] && [ "$1" = '--' ]; then
-      shift
-    fi
+    # Take the first non-flag argument as the integration pattern, passing everything else to WLCS.
+    pattern_set=false
+    for arg in "$@"; do
+      if [ "$pattern_set" = false ] && [ "${arg#-}" = "$arg" ]; then
+        integration_pattern="$arg"
+        pattern_set=true
+      else
+        wlcs_args+=("$arg")
+      fi
+    done
 
     integration_module="$(find "$search_path" -name "$integration_pattern")"
     if [ -z "$integration_module" ]; then
@@ -72,4 +75,4 @@ actions:
 
     echo "Running WLCS against '$integration_module'"
 
-    LD_LIBRARY_PATH="$search_path/lib:${LD_LIBRARY_PATH:-}" ~/build/wlcs "$integration_module" "$@"
+    LD_LIBRARY_PATH="$search_path/lib:${LD_LIBRARY_PATH:-}" ~/build/wlcs "$integration_module" "${wlcs_args[@]}"
