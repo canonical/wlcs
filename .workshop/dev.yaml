@@ -13,8 +13,11 @@
 # `compositor` plug by, however alternate patterns can be provided.
 #
 # ```sh
-# workshop run dev -- test '*_my_integration.so'
-# workshop run dev -- test -- --gtest_filter="..." # WLCS flags can be passed after `--`
+# workshop stop dev
+# workshop remount dev/wlcs:compositor /path/to/compositor/build
+# workshop start dev
+#
+# workshop run dev -- test '*_my_integration.so' --gtest_filter="..."
 # ```
 #
 # The location of the host build directory used by this workshop can be found
