@@ -1,5 +1,6 @@
 summary: Build wlcs on Fedora
 systems: [fedora-*]
+variants: [default]
 
 execute: |
   set -xeuo pipefail

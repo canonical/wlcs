@@ -1,5 +1,6 @@
 summary: Build wlcs on Arch Linux
 systems: [archlinux-*]
+variants: [default]
 
 execute: |
   set -xeuo pipefail

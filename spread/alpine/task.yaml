@@ -1,5 +1,6 @@
 summary: Build wlcs on Alpine
 systems: [alpine-*]
+variants: [default]
 
 execute: |
   set -xeuo pipefail
