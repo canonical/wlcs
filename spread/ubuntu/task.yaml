@@ -1,0 +1,42 @@
+summary: Build wlcs on Ubuntu
+systems: [ubuntu-*]
+variants: [default, clang]
+
+execute: |
+  set -xeuo pipefail
+
+  : ${CC:=gcc} ${CXX:=g++}
+
+  add-apt-repository ppa:mir-team/dev
+
+  apt-get build-dep --yes "${SPREAD_PATH}"
+  apt-get install --yes \
+    ${CC} \
+    mir-graphics-drivers-desktop \
+    mir-wlcs-integration
+
+  CMAKE_FLAGS=(
+    -DCMAKE_C_FLAGS="-D_FORTIFY_SOURCE=2"
+    -DCMAKE_CXX_FLAGS="-D_FORTIFY_SOURCE=2"
+  )
+
+  cd "$(mktemp --directory)"
+  cmake \
+    "${CMAKE_FLAGS[@]}" \
+    "${SPREAD_PATH}"
+  make -j$(nproc)
+
+  case "${SPREAD_VARIANT}" in
+    *clang*)
+      ./wlcs /usr/lib/$(dpkg-architecture -qDEB_HOST_MULTIARCH)/mir/miral_wlcs_integration.so || {
+        test $? -lt 128 -o $? -gt 165
+      }
+      ;;
+    *gcc*)
+      for wlcs in wlcs{,.asan,.ubsan,.tsan}; do
+        ./${wlcs} /usr/lib/$(dpkg-architecture -qDEB_HOST_MULTIARCH)/mir/miral_wlcs_integration.so || {
+          test $? -lt 128 -o $? -gt 165
+        }
+      done
+      ;;
+  esac
