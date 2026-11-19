@@ -20,11 +20,13 @@
 #include "generated/xdg-decoration-unstable-v1-client.h"
 #include "in_process_server.h"
 #include "xdg_shell_stable.h"
+#include "version_specifier.h"
 #include "gmock/gmock.h"
 
 #include <boost/throw_exception.hpp>
 #include <gtest/gtest.h>
 
+#include <memory>
 #include <optional>
 
 using testing::_;
@@ -37,9 +39,22 @@ class XdgDecorationV1Test : public StartedInProcessServer
 {
 public:
     Client a_client{the_server()};
-    ZxdgDecorationManagerV1 manager{a_client};
     Surface a_surface{a_client};
     XdgSurfaceStable xdg_surface{a_client, a_surface};
+
+    void initialize_surface(Surface& surface, XdgSurfaceStable& surface_role)
+    {
+        auto configure_count = std::make_shared<unsigned int>(0);
+        ON_CALL(surface_role, configure).WillByDefault([&surface_role, configure_count](auto serial)
+            {
+                xdg_surface_ack_configure(surface_role, serial);
+                ++*configure_count;
+            });
+
+        wl_surface_commit(surface);
+        a_client.dispatch_until([configure_count] { return *configure_count > 0; });
+        a_client.roundtrip();
+    }
 
     /// Sends set_mode (or unset_mode for no preference) and returns the mode the compositor configures
     auto request_mode(ZxdgToplevelDecorationV1& decoration, std::optional<uint32_t> mode) -> uint32_t
@@ -63,13 +78,14 @@ public:
     }
 
     /// The mode this compositor picks when a fresh toplevel's client has no preference
-    auto no_preference_mode() -> uint32_t
+    auto no_preference_mode(ZxdgDecorationManagerV1& manager) -> uint32_t
     {
         Surface surface{a_client};
         XdgSurfaceStable fresh_xdg_surface{a_client, surface};
         XdgToplevelStable toplevel{fresh_xdg_surface};
         ZxdgToplevelDecorationV1 decoration{manager, toplevel};
 
+        initialize_surface(surface, fresh_xdg_surface);
         return request_mode(decoration, std::nullopt);
     }
 
@@ -82,14 +98,16 @@ public:
 
 TEST_F(XdgDecorationV1Test, happy_path)
 {
+    ZxdgDecorationManagerV1 manager{a_client};
     XdgToplevelStable xdg_toplevel{xdg_surface};
     ZxdgToplevelDecorationV1 decoration{manager, xdg_toplevel};
 
-    EXPECT_NO_THROW(a_client.roundtrip());
+    EXPECT_NO_THROW(initialize_surface(a_surface, xdg_surface));
 }
 
 TEST_F(XdgDecorationV1Test, duplicate_decorations_throw_already_constructed)
 {
+    ZxdgDecorationManagerV1 manager{a_client};
     XdgToplevelStable xdg_toplevel{xdg_surface};
     ZxdgToplevelDecorationV1 decoration{manager, xdg_toplevel};
     ZxdgToplevelDecorationV1 duplicate_decoration{manager, xdg_toplevel};
@@ -102,6 +120,7 @@ TEST_F(XdgDecorationV1Test, duplicate_decorations_throw_already_constructed)
 
 TEST_F(XdgDecorationV1Test, destroying_toplevel_before_decoration_throws_orphaned)
 {
+    ZxdgDecorationManagerV1 manager{a_client};
     auto* xdg_toplevel2 = new XdgToplevelStable{xdg_surface};
     ZxdgToplevelDecorationV1 decoration{manager, *xdg_toplevel2};
     delete xdg_toplevel2;
@@ -112,6 +131,7 @@ TEST_F(XdgDecorationV1Test, destroying_toplevel_before_decoration_throws_orphane
 
 TEST_F(XdgDecorationV1Test, set_mode_client_results_in_a_configure_event)
 {
+    ZxdgDecorationManagerV1 manager{a_client};
     XdgToplevelStable xdg_toplevel{xdg_surface};
     ZxdgToplevelDecorationV1 decoration{manager, xdg_toplevel};
 
@@ -119,11 +139,12 @@ TEST_F(XdgDecorationV1Test, set_mode_client_results_in_a_configure_event)
 
     EXPECT_CALL(decoration, configure(_)).Times(AtLeast(1));
 
-    a_client.roundtrip();
+    initialize_surface(a_surface, xdg_surface);
 }
 
 TEST_F(XdgDecorationV1Test, set_mode_server_results_in_a_configure_event)
 {
+    ZxdgDecorationManagerV1 manager{a_client};
     XdgToplevelStable xdg_toplevel{xdg_surface};
     ZxdgToplevelDecorationV1 decoration{manager, xdg_toplevel};
 
@@ -131,11 +152,12 @@ TEST_F(XdgDecorationV1Test, set_mode_server_results_in_a_configure_event)
 
     EXPECT_CALL(decoration, configure(_)).Times(AtLeast(1));
 
-    a_client.roundtrip();
+    initialize_surface(a_surface, xdg_surface);
 }
 
 TEST_F(XdgDecorationV1Test, unset_mode_results_in_a_configure_event)
 {
+    ZxdgDecorationManagerV1 manager{a_client};
     XdgToplevelStable xdg_toplevel{xdg_surface};
     ZxdgToplevelDecorationV1 decoration{manager, xdg_toplevel};
 
@@ -143,21 +165,18 @@ TEST_F(XdgDecorationV1Test, unset_mode_results_in_a_configure_event)
 
     EXPECT_CALL(decoration, configure(_)).Times(AtLeast(1));
 
-    a_client.roundtrip();
+    initialize_surface(a_surface, xdg_surface);
 }
 
 TEST_F(XdgDecorationV1Test, mode_is_retained_across_destroy_without_commit)
 {
-    if (zxdg_decoration_manager_v1_get_version(manager) < 2)
-    {
-        GTEST_SKIP() << "Compositor only supports zxdg_decoration_manager_v1 version 1";
-    }
-
-    auto const default_mode = no_preference_mode();
+    ZxdgDecorationManagerV1 manager{a_client, AtLeastVersion{2}};
+    auto const default_mode = no_preference_mode(manager);
     auto const other_mode = opposite(default_mode);
 
     XdgToplevelStable xdg_toplevel{xdg_surface};
     std::optional<ZxdgToplevelDecorationV1> decoration{std::in_place, manager, xdg_toplevel};
+    initialize_surface(a_surface, xdg_surface);
 
     if (request_mode(*decoration, other_mode) != other_mode)
     {
@@ -174,16 +193,13 @@ TEST_F(XdgDecorationV1Test, mode_is_retained_across_destroy_without_commit)
 
 TEST_F(XdgDecorationV1Test, mode_resets_after_commit_with_no_decoration_attached)
 {
-    if (zxdg_decoration_manager_v1_get_version(manager) < 2)
-    {
-        GTEST_SKIP() << "Compositor only supports zxdg_decoration_manager_v1 version 1";
-    }
-
-    auto const default_mode = no_preference_mode();
+    ZxdgDecorationManagerV1 manager{a_client, AtLeastVersion{2}};
+    auto const default_mode = no_preference_mode(manager);
     auto const other_mode = opposite(default_mode);
 
     XdgToplevelStable xdg_toplevel{xdg_surface};
     std::optional<ZxdgToplevelDecorationV1> decoration{std::in_place, manager, xdg_toplevel};
+    initialize_surface(a_surface, xdg_surface);
 
     if (request_mode(*decoration, other_mode) != other_mode)
     {
@@ -198,5 +214,5 @@ TEST_F(XdgDecorationV1Test, mode_resets_after_commit_with_no_decoration_attached
     decoration.emplace(manager, xdg_toplevel);
 
     // The commit with no decoration attached means the old mode is forgotten
-    EXPECT_THAT(request_mode(*decoration, std::nullopt), Eq(default_mode));
+    EXPECT_THAT(request_mode(*decoration, std::nullopt), Eq(ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE));
 }

@@ -21,7 +21,12 @@
 #include "version_specifier.h"
 
 wlcs::ZxdgDecorationManagerV1::ZxdgDecorationManagerV1(Client& client) :
-    manager{client.bind_if_supported<zxdg_decoration_manager_v1>(AnyVersion)}
+    ZxdgDecorationManagerV1{client, AnyVersion}
+{
+}
+
+wlcs::ZxdgDecorationManagerV1::ZxdgDecorationManagerV1(Client& client, VersionSpecifier const& version) :
+    manager{client.bind_if_supported<zxdg_decoration_manager_v1>(version)}
 {
 }
 
