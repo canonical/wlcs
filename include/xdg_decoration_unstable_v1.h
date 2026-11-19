@@ -27,11 +27,13 @@ namespace wlcs
 WLCS_CREATE_INTERFACE_DESCRIPTOR(zxdg_decoration_manager_v1);
 
 class Client;
+class VersionSpecifier;
 
 class ZxdgDecorationManagerV1
 {
 public:
     ZxdgDecorationManagerV1(Client& client);
+    ZxdgDecorationManagerV1(Client& client, VersionSpecifier const& version);
     ~ZxdgDecorationManagerV1();
 
     operator zxdg_decoration_manager_v1*() const;
