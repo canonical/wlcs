@@ -236,6 +236,7 @@ set(
   include/xdg_decoration_unstable_v1.h
   include/linux_dmabuf_v1.h
   include/ext_foreign_toplevel_list_v1.h
+  include/ext_image_copy_capture_v1.h
 
   src/data_device.cpp
   src/gtk_primary_selection.cpp
@@ -260,6 +261,7 @@ set(
   src/xdg_decoration_unstable_v1.cpp
   src/linux_dmabuf_v1.cpp
   src/ext_foreign_toplevel_list_v1.cpp
+  src/ext_image_copy_capture_v1.cpp
 
   ${PROTOCOL_SOURCES}
   ${WLCS_TESTS}
