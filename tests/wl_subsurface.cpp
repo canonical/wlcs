@@ -282,6 +282,37 @@ TEST_P(SubsurfaceTest, subsurface_does_not_move_when_parent_not_committed)
         << "Subsurface moved to new location without parent being committed";
 }
 
+TEST_P(SubsurfaceTest, sync_subsurface_releases_buffer_replaced_in_cached_state)
+{
+    wlcs::ShmBuffer first{client, subsurface_width, subsurface_height};
+    wlcs::ShmBuffer second{client, subsurface_width, subsurface_height};
+    wlcs::ShmBuffer third{client, subsurface_width, subsurface_height};
+
+    bool first_released{false}, second_released{false}, third_released{false};
+    first.add_release_listener([&]() { first_released = true; return true; });
+    second.add_release_listener([&]() { second_released = true; return true; });
+    third.add_release_listener([&]() { third_released = true; return true; });
+
+    wl_subsurface_set_sync(subsurface);
+
+    // The parent is never committed, so each commit goes into the subsurface's cached state
+    subsurface.attach_buffer(first);
+    wl_surface_commit(subsurface);
+    subsurface.attach_buffer(second);
+    wl_surface_commit(subsurface);
+    client.roundtrip();
+
+    EXPECT_THAT(first_released, IsTrue()) << "Buffer replaced in cached state was not released";
+    EXPECT_THAT(second_released, IsFalse()) << "Cached buffer was released before parent commit";
+
+    subsurface.attach_buffer(third);
+    wl_surface_commit(subsurface);
+    client.roundtrip();
+
+    EXPECT_THAT(second_released, IsTrue()) << "Buffer replaced in cached state was not released";
+    EXPECT_THAT(third_released, IsFalse()) << "Cached buffer was released before parent commit";
+}
+
 TEST_P(SubsurfaceTest, subsurface_extends_parent_input_region)
 {
     int const pointer_x = surface_x - 5, pointer_y = surface_y + surface_height + 8;
