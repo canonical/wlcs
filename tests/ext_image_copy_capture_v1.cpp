@@ -18,195 +18,20 @@
 #include "geometry/size.h"
 #include "in_process_server.h"
 #include "ext_foreign_toplevel_list_v1.h"
+#include "ext_image_copy_capture_v1.h"
 #include "version_specifier.h"
-#include "wl_interface_descriptor.h"
 #include "expect_protocol_error.h"
 #include "xdg_shell_stable.h"
-#include "generated/ext-image-capture-source-v1-client.h"
-#include "generated/ext-image-copy-capture-v1-client.h"
 
 #include <boost/throw_exception.hpp>
 #include <gmock/gmock.h>
 
 using namespace testing;
 
-namespace wlcs
-{
-WLCS_CREATE_INTERFACE_DESCRIPTOR(ext_foreign_toplevel_image_capture_source_manager_v1)
-WLCS_CREATE_INTERFACE_DESCRIPTOR(ext_output_image_capture_source_manager_v1)
-WLCS_CREATE_INTERFACE_DESCRIPTOR(ext_image_capture_source_v1)
-WLCS_CREATE_INTERFACE_DESCRIPTOR(ext_image_copy_capture_manager_v1)
-WLCS_CREATE_INTERFACE_DESCRIPTOR(ext_image_copy_capture_session_v1)
-WLCS_CREATE_INTERFACE_DESCRIPTOR(ext_image_copy_capture_cursor_session_v1)
-WLCS_CREATE_INTERFACE_DESCRIPTOR(ext_image_copy_capture_frame_v1)
-} // namespace wlcs
-
 namespace
 {
-
-class ImageCopyCaptureFrame
-{
-public:
-    explicit ImageCopyCaptureFrame(ext_image_copy_capture_frame_v1* frame);
-    ImageCopyCaptureFrame(ImageCopyCaptureFrame const&) = delete;
-    ImageCopyCaptureFrame& operator=(ImageCopyCaptureFrame const&) = delete;
-
-    auto is_ready() { return ready_; }
-    auto failure_reason() { return failure_reason_; }
-    auto damage() { return damage_; }
-
-    operator ext_image_copy_capture_frame_v1*() const { return frame; }
-
-private:
-    wlcs::WlHandle<ext_image_copy_capture_frame_v1> const frame;
-
-    std::optional<uint32_t> transform_;
-    std::vector<wlcs::Rectangle> damage_;
-    std::optional<uint32_t> presentation_time_;
-    bool ready_ = false;
-    std::optional<uint32_t> failure_reason_;
-};
-
-ImageCopyCaptureFrame::ImageCopyCaptureFrame(ext_image_copy_capture_frame_v1* frame)
-    : frame{frame}
-{
-    static ext_image_copy_capture_frame_v1_listener const listener = {
-        .transform = [](
-            void* data,
-            ext_image_copy_capture_frame_v1*,
-            uint32_t transform)
-            {
-                auto self = static_cast<ImageCopyCaptureFrame*>(data);
-                self->transform_ = transform;
-            },
-        .damage = [](
-            void* data,
-            ext_image_copy_capture_frame_v1*,
-            int32_t x,
-            int32_t y,
-            int32_t width,
-            int32_t height)
-            {
-                auto self = static_cast<ImageCopyCaptureFrame*>(data);
-                self->damage_.emplace_back(wlcs::Rectangle{{x, y}, {width, height}});
-            },
-        .presentation_time = [](
-            void* data,
-            ext_image_copy_capture_frame_v1*,
-            uint32_t tv_sec_hi,
-            [[maybe_unused]] uint32_t tv_sec_lo,
-            [[maybe_unused]] uint32_t tv_nsec)
-            {
-                auto self = static_cast<ImageCopyCaptureFrame*>(data);
-                self->presentation_time_ = tv_sec_hi;
-            },
-        .ready = [](
-            void* data,
-            ext_image_copy_capture_frame_v1*)
-            {
-                auto self = static_cast<ImageCopyCaptureFrame*>(data);
-                self->ready_ = true;
-            },
-        .failed = [](
-            void* data,
-            ext_image_copy_capture_frame_v1*,
-            uint32_t reason)
-            {
-                auto self = static_cast<ImageCopyCaptureFrame*>(data);
-                self->failure_reason_ = reason;
-            },
-    };
-    ext_image_copy_capture_frame_v1_add_listener(frame, &listener, this);
-}
-
-class ImageCopyCaptureSession
-{
-public:
-    explicit ImageCopyCaptureSession(ext_image_copy_capture_session_v1* session);
-    ImageCopyCaptureSession(ImageCopyCaptureSession const&) = delete;
-    ImageCopyCaptureSession& operator=(ImageCopyCaptureSession const&) = delete;
-
-    auto is_dirty() const { return dirty_; }
-    auto stopped() const { return stopped_; }
-    auto buffer_size() const { return buffer_size_; }
-    auto shm_formats() const { return shm_formats_; }
-
-    operator ext_image_copy_capture_session_v1*() const { return session; }
-
-private:
-    wlcs::WlHandle<ext_image_copy_capture_session_v1> const session;
-
-    bool dirty_ = false;
-    bool stopped_ = false;
-    std::optional<wlcs::Size> buffer_size_;
-    std::vector<uint32_t> shm_formats_;
-
-    void mark_dirty();
-};
-
-ImageCopyCaptureSession::ImageCopyCaptureSession(ext_image_copy_capture_session_v1* session)
-    : session{session}
-{
-    static ext_image_copy_capture_session_v1_listener const listener = {
-        .buffer_size = [](
-            void* data,
-            ext_image_copy_capture_session_v1*,
-            uint32_t width,
-            uint32_t height)
-            {
-                auto self = static_cast<ImageCopyCaptureSession*>(data);
-                self->mark_dirty();
-                self->buffer_size_ = wlcs::Size{width, height};
-            },
-        .shm_format = [](
-            void* data,
-            ext_image_copy_capture_session_v1*,
-            uint32_t format)
-            {
-                auto self = static_cast<ImageCopyCaptureSession*>(data);
-                self->mark_dirty();
-                self->shm_formats_.push_back(format);
-            },
-        .dmabuf_device = [](
-            [[maybe_unused]] void* data,
-            ext_image_copy_capture_session_v1*,
-            [[maybe_unused]] wl_array* device)
-            {
-            },
-        .dmabuf_format = [](
-            [[maybe_unused]] void* data,
-            ext_image_copy_capture_session_v1*,
-            [[maybe_unused]] uint32_t format,
-            [[maybe_unused]] wl_array* modifiers)
-            {
-            },
-        .done = [](
-            void* data,
-            ext_image_copy_capture_session_v1*)
-            {
-                auto self = static_cast<ImageCopyCaptureSession*>(data);
-                self->dirty_ = false;
-            },
-        .stopped = [](
-            void* data,
-            ext_image_copy_capture_session_v1*)
-            {
-                auto self = static_cast<ImageCopyCaptureSession*>(data);
-                self->stopped_ = true;
-            },
-    };
-    ext_image_copy_capture_session_v1_add_listener(session, &listener, this);
-}
-
-void ImageCopyCaptureSession::mark_dirty()
-{
-    if (dirty_)
-        return;
-    dirty_ = true;
-    // Clear previous session info
-    buffer_size_.reset();
-    shm_formats_.clear();
-}
+using wlcs::ImageCopyCaptureFrame;
+using wlcs::ImageCopyCaptureSession;
 
 class ImageCopyCaptureCursorSession
 {

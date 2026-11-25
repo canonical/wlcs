@@ -159,6 +159,7 @@ GENERATE_PROTOCOL(viewporter)
 GENERATE_PROTOCOL(fractional-scale-v1)
 GENERATE_PROTOCOL(linux-dmabuf-stable-v1)
 GENERATE_PROTOCOL(ext-data-control-v1)
+GENERATE_PROTOCOL(ext-foreign-buffer-v1)
 GENERATE_PROTOCOL(ext-foreign-toplevel-list-v1)
 GENERATE_PROTOCOL(ext-image-capture-source-v1)
 GENERATE_PROTOCOL(ext-image-copy-capture-v1)
@@ -171,6 +172,7 @@ option(WLCS_BUILD_UBSAN "Build a test runner with UndefinedBehaviourSanitizer an
 
 set(WLCS_TESTS
   tests/ext_data_control_v1.cpp
+  tests/ext_foreign_buffer_v1.cpp
   tests/ext_foreign_toplevel_list_v1.cpp
   tests/ext_image_copy_capture_v1.cpp
   tests/ext_input_trigger_action_v1.cpp
@@ -235,7 +237,9 @@ set(
   include/input_method.h
   include/xdg_decoration_unstable_v1.h
   include/linux_dmabuf_v1.h
+  include/ext_foreign_buffer_v1.h
   include/ext_foreign_toplevel_list_v1.h
+  include/ext_image_copy_capture_v1.h
 
   src/data_device.cpp
   src/gtk_primary_selection.cpp
@@ -259,7 +263,9 @@ set(
   src/input_method.cpp
   src/xdg_decoration_unstable_v1.cpp
   src/linux_dmabuf_v1.cpp
+  src/ext_foreign_buffer_v1.cpp
   src/ext_foreign_toplevel_list_v1.cpp
+  src/ext_image_copy_capture_v1.cpp
 
   ${PROTOCOL_SOURCES}
   ${WLCS_TESTS}
