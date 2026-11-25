@@ -28,6 +28,8 @@
 #include <optional>
 #include <vector>
 
+#include <wayland-client-protocol.h>
+
 namespace wlcs
 {
 WLCS_CREATE_INTERFACE_DESCRIPTOR(ext_foreign_toplevel_image_capture_source_manager_v1)
@@ -48,6 +50,7 @@ public:
     auto is_ready() const { return ready_; }
     auto failure_reason() const { return failure_reason_; }
     auto damage() const { return damage_; }
+    auto transform() const -> uint32_t { return transform_.value_or(WL_OUTPUT_TRANSFORM_NORMAL); }
 
     operator ext_image_copy_capture_frame_v1*() const { return frame; }
 

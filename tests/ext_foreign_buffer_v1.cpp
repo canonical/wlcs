@@ -170,6 +170,44 @@ struct CapturedFrame
     auto centre() const -> uint32_t { return at(size.width.as_int() / 2, size.height.as_int() / 2); }
 };
 
+auto untransform(uint32_t transform, wlcs::Size buffer_size, std::vector<uint32_t> buffer) -> CapturedFrame
+{
+    if (transform == WL_OUTPUT_TRANSFORM_NORMAL)
+    {
+        return CapturedFrame{buffer_size, std::move(buffer)};
+    }
+
+    auto const buffer_width = buffer_size.width.as_int();
+    auto const buffer_height = buffer_size.height.as_int();
+    bool const swaps_axes = transform & WL_OUTPUT_TRANSFORM_90;
+    auto const width = swaps_axes ? buffer_height : buffer_width;
+    auto const height = swaps_axes ? buffer_width : buffer_height;
+
+    CapturedFrame image{wlcs::Size{width, height}, std::vector<uint32_t>(buffer.size())};
+    for (int y = 0; y < height; ++y)
+    {
+        for (int x = 0; x < width; ++x)
+        {
+            auto const [bx, by] = [&]() -> std::pair<int, int>
+                {
+                    switch (transform)
+                    {
+                    case WL_OUTPUT_TRANSFORM_FLIPPED:     return {width - 1 - x, y};
+                    case WL_OUTPUT_TRANSFORM_90:          return {y, width - 1 - x};
+                    case WL_OUTPUT_TRANSFORM_FLIPPED_90:  return {y, x};
+                    case WL_OUTPUT_TRANSFORM_180:         return {width - 1 - x, height - 1 - y};
+                    case WL_OUTPUT_TRANSFORM_FLIPPED_180: return {x, height - 1 - y};
+                    case WL_OUTPUT_TRANSFORM_270:         return {height - 1 - y, x};
+                    case WL_OUTPUT_TRANSFORM_FLIPPED_270: return {height - 1 - y, width - 1 - x};
+                    default:                              return {x, y};
+                    }
+                }();
+            image.pixels[y * width + x] = buffer[by * buffer_width + bx];
+        }
+    }
+    return image;
+}
+
 class Capture
 {
 public:
@@ -209,11 +247,12 @@ public:
             auto const reason = frame->failure_reason();
             if (!reason)
             {
+                auto const transform = frame->transform();
                 frame.reset();
                 auto const data = target->data();
-                CapturedFrame image{target_size, std::vector<uint32_t>(data.size() / sizeof(uint32_t))};
-                std::memcpy(image.pixels.data(), data.data(), data.size());
-                return image;
+                std::vector<uint32_t> pixels(data.size() / sizeof(uint32_t));
+                std::memcpy(pixels.data(), data.data(), data.size());
+                return untransform(transform, target_size, std::move(pixels));
             }
 
             frame.reset();
